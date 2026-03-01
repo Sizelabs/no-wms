@@ -241,6 +241,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
 }
 
 export async function getWarehouseReceipts(filters?: {
+  warehouse_id?: string;
   status?: string;
   agency_id?: string;
   search?: string;
@@ -257,6 +258,10 @@ export async function getWarehouseReceipts(filters?: {
     .from("warehouse_receipts")
     .select("*, agencies(name, code, type), consignees(full_name)", { count: "exact" })
     .order("received_at", { ascending: false });
+
+  if (filters?.warehouse_id) {
+    query = query.eq("warehouse_id", filters.warehouse_id);
+  }
 
   if (filters?.status) {
     query = query.eq("status", filters.status);

@@ -13,6 +13,7 @@ export default async function InventoryPage({
     search?: string;
     status?: string;
     agency_id?: string;
+    warehouse_id?: string;
     carrier?: string;
     is_damaged?: string;
     date_from?: string;
@@ -29,6 +30,7 @@ export default async function InventoryPage({
       search: filters.search,
       status: filters.status,
       agency_id: filters.agency_id,
+      warehouse_id: filters.warehouse_id,
       carrier: filters.carrier,
       is_damaged: filters.is_damaged,
       date_from: filters.date_from,
