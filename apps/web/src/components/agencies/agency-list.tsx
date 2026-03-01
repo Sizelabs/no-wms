@@ -2,6 +2,8 @@
 
 import type { AgencyType } from "@no-wms/shared/constants/agency-types";
 import { AGENCY_TYPE_LABELS } from "@no-wms/shared/constants/agency-types";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
 interface Agency {
   id: string;
@@ -17,6 +19,8 @@ interface AgencyListProps {
 }
 
 export function AgencyList({ agencies }: AgencyListProps) {
+  const { locale } = useParams<{ locale: string }>();
+
   return (
     <div className="rounded-lg border bg-white">
       <table className="w-full text-left text-sm">
@@ -42,7 +46,12 @@ export function AgencyList({ agencies }: AgencyListProps) {
               <tr key={agency.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-mono text-xs">{agency.code}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
-                  {agency.name}
+                  <Link
+                    href={`/${locale}/agencies/${agency.id}`}
+                    className="hover:underline"
+                  >
+                    {agency.name}
+                  </Link>
                 </td>
                 <td className="px-4 py-3">
                   <span

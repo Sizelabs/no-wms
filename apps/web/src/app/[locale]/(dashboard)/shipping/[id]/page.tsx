@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { SiActions } from "@/components/shipping/si-actions";
+import { InfoCard, Section } from "@/components/ui/detail-page";
 import { getShippingInstruction } from "@/lib/actions/shipping-instructions";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -47,20 +48,20 @@ export default async function ShippingDetailPage({
 
       {/* Status + key info */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card label="Estado">
+        <InfoCard label="Estado">
           <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[si.status] ?? ""}`}>
             {SI_STATUS_LABELS[si.status as SiStatus] ?? si.status}
           </span>
-        </Card>
-        <Card label="Modalidad">
+        </InfoCard>
+        <InfoCard label="Modalidad">
           {si.modality}{si.courier_category ? ` — Cat ${si.courier_category}` : ""}
-        </Card>
-        <Card label="Agencia">
+        </InfoCard>
+        <InfoCard label="Agencia">
           {si.agencies ? `${si.agencies.name} (${si.agencies.code})` : "—"}
-        </Card>
-        <Card label="Piezas / Peso">
+        </InfoCard>
+        <InfoCard label="Piezas / Peso">
           {si.shipping_instruction_items?.length ?? 0} pzs • {totalWeight.toFixed(1)} lb
-        </Card>
+        </InfoCard>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -68,11 +69,11 @@ export default async function ShippingDetailPage({
         <div className="space-y-6">
           <Section title="Detalles">
             <dl className="space-y-2 text-sm">
-              <DtDd label="Destinatario" value={si.consignees?.name ?? "—"} />
-              <DtDd label="Cédula/RUC" value={si.cedula_ruc ?? "—"} />
-              <DtDd label="Cupo 4x4" value={si.cupo_4x4_used ? "Sí" : "No"} />
-              <DtDd label="Creado" value={new Date(si.created_at).toLocaleString("es")} />
-              {si.approved_at && <DtDd label="Aprobado" value={new Date(si.approved_at).toLocaleString("es")} />}
+              <SiDtDd label="Destinatario" value={si.consignees?.name ?? "—"} />
+              <SiDtDd label="Cédula/RUC" value={si.cedula_ruc ?? "—"} />
+              <SiDtDd label="Cupo 4x4" value={si.cupo_4x4_used ? "Sí" : "No"} />
+              <SiDtDd label="Creado" value={new Date(si.created_at).toLocaleString("es")} />
+              {si.approved_at && <SiDtDd label="Aprobado" value={new Date(si.approved_at).toLocaleString("es")} />}
               {si.special_instructions && (
                 <div>
                   <dt className="text-xs text-gray-500">Instrucciones especiales</dt>
@@ -153,25 +154,7 @@ export default async function ShippingDetailPage({
   );
 }
 
-function Card({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-white p-3">
-      <dt className="text-xs font-medium text-gray-500">{label}</dt>
-      <dd className="mt-1">{children}</dd>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-white p-4">
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-function DtDd({ label, value }: { label: string; value: string }) {
+function SiDtDd({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
       <dt className="text-gray-500">{label}</dt>

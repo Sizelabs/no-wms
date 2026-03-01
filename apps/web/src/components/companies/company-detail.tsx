@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
+import { DetailActions } from "@/components/ui/detail-actions";
+import type { DetailAction } from "@/components/ui/detail-actions";
 import { UserList } from "@/components/users/user-list";
 import { deleteOrganization } from "@/lib/actions/organizations";
 
@@ -59,7 +62,8 @@ export function CompanyDetail({
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const { notify } = useNotification();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const userRoles = useUserRoles();
 
   function handleDelete() {
     if (!confirm(`¿Eliminar "${company.name}"? Esta acción no se puede deshacer.`)) return;
@@ -72,6 +76,20 @@ export function CompanyDetail({
       }
     });
   }
+
+  const detailActions: DetailAction[] = [
+    {
+      label: "Editar",
+      href: `/${locale}/companies/${company.id}/edit`,
+      roles: ["super_admin", "company_admin"],
+    },
+    {
+      label: "Eliminar",
+      variant: "danger",
+      roles: ["super_admin"],
+      onClick: handleDelete,
+    },
+  ];
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "warehouses", label: "Bodegas", count: warehouses.length },
@@ -109,21 +127,8 @@ export function CompanyDetail({
               </dd>
             </div>
           </dl>
-          <div className="ml-4 flex gap-2">
-            <Link
-              href={`/${locale}/companies/${company.id}/edit`}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Editar
-            </Link>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={handleDelete}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-            >
-              Eliminar
-            </button>
+          <div className="ml-4">
+            <DetailActions actions={detailActions} userRoles={userRoles} />
           </div>
         </div>
       </div>

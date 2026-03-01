@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
+
 interface Warehouse {
   id: string;
   name: string;
@@ -15,6 +18,7 @@ interface WarehouseListProps {
 }
 
 export function WarehouseList({ warehouses }: WarehouseListProps) {
+  const { locale } = useParams<{ locale: string }>();
   return (
     <div className="rounded-lg border bg-white">
       <table className="w-full text-left text-sm">
@@ -40,7 +44,12 @@ export function WarehouseList({ warehouses }: WarehouseListProps) {
               <tr key={w.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-mono text-xs">{w.code}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
-                  {w.name}
+                  <Link
+                    href={`/${locale}/warehouses/${w.id}`}
+                    className="hover:underline"
+                  >
+                    {w.name}
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-gray-500">{w.city ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-500">{w.country ?? "—"}</td>

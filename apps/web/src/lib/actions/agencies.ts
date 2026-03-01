@@ -57,6 +57,22 @@ export async function createAgency(formData: FormData): Promise<void> {
   revalidatePath("/agencies");
 }
 
+export async function deleteAgency(
+  id: string,
+): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("agencies").delete().eq("id", id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/agencies");
+  revalidatePath("/companies");
+  return null;
+}
+
 export async function updateAgency(id: string, formData: FormData): Promise<void> {
   const supabase = await createClient();
 

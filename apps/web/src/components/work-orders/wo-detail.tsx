@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
+import { InfoCard, Section } from "@/components/ui/detail-page";
 import type { UploadedPhoto } from "@/components/ui/photo-upload";
 import { PhotoUpload } from "@/components/ui/photo-upload";
 import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
@@ -116,24 +117,24 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
 
       {/* Header cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card label="Estado">
+        <InfoCard label="Estado">
           <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[wo.status] ?? ""}`}>
             {WO_STATUS_LABELS[wo.status as WoStatus] ?? wo.status}
           </span>
-        </Card>
-        <Card label="Tipo">
+        </InfoCard>
+        <InfoCard label="Tipo">
           {WORK_ORDER_TYPE_LABELS[wo.type as WorkOrderType] ?? wo.type}
-        </Card>
-        <Card label="Prioridad">
+        </InfoCard>
+        <InfoCard label="Prioridad">
           <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
             wo.priority === "high" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700"
           }`}>
             {wo.priority === "high" ? "Alta" : "Normal"}
           </span>
-        </Card>
-        <Card label="Agencia">
+        </InfoCard>
+        <InfoCard label="Agencia">
           {wo.agencies ? `${wo.agencies.name} (${wo.agencies.code})` : "—"}
-        </Card>
+        </InfoCard>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -141,10 +142,10 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
         <div className="space-y-6">
           <Section title="Información">
             <dl className="space-y-2 text-sm">
-              <DtDd label="Solicitado por" value={wo.profiles?.full_name ?? "—"} />
-              <DtDd label="Fecha" value={new Date(wo.created_at).toLocaleString("es")} />
+              <WoDtDd label="Solicitado por" value={wo.profiles?.full_name ?? "—"} />
+              <WoDtDd label="Fecha" value={new Date(wo.created_at).toLocaleString("es")} />
               {wo.completed_at && (
-                <DtDd label="Completado" value={new Date(wo.completed_at).toLocaleString("es")} />
+                <WoDtDd label="Completado" value={new Date(wo.completed_at).toLocaleString("es")} />
               )}
               {wo.instructions && (
                 <div>
@@ -171,11 +172,11 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
           {wo.type === "authorize_pickup" && wo.pickup_date && (
             <Section title="Datos de retiro">
               <dl className="space-y-2 text-sm">
-                <DtDd label="Fecha" value={wo.pickup_date} />
-                {wo.pickup_time && <DtDd label="Hora" value={wo.pickup_time} />}
-                {wo.pickup_location && <DtDd label="Ubicación" value={wo.pickup_location} />}
-                {wo.pickup_authorized_person && <DtDd label="Persona autorizada" value={wo.pickup_authorized_person} />}
-                {wo.pickup_contact_info && <DtDd label="Contacto" value={wo.pickup_contact_info} />}
+                <WoDtDd label="Fecha" value={wo.pickup_date} />
+                {wo.pickup_time && <WoDtDd label="Hora" value={wo.pickup_time} />}
+                {wo.pickup_location && <WoDtDd label="Ubicación" value={wo.pickup_location} />}
+                {wo.pickup_authorized_person && <WoDtDd label="Persona autorizada" value={wo.pickup_authorized_person} />}
+                {wo.pickup_contact_info && <WoDtDd label="Contacto" value={wo.pickup_contact_info} />}
               </dl>
             </Section>
           )}
@@ -307,25 +308,7 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
   );
 }
 
-function Card({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-white p-3">
-      <dt className="text-xs font-medium text-gray-500">{label}</dt>
-      <dd className="mt-1">{children}</dd>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-white p-4">
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-function DtDd({ label, value }: { label: string; value: string }) {
+function WoDtDd({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
       <dt className="text-gray-500">{label}</dt>

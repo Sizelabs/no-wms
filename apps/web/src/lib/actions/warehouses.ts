@@ -56,6 +56,22 @@ export async function createWarehouse(formData: FormData): Promise<void> {
   revalidatePath("/companies");
 }
 
+export async function deleteWarehouse(
+  id: string,
+): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("warehouses").delete().eq("id", id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/warehouses");
+  revalidatePath("/companies");
+  return null;
+}
+
 export async function updateWarehouse(id: string, formData: FormData): Promise<void> {
   const supabase = await createClient();
 

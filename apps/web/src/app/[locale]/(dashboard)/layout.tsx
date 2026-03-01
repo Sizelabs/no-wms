@@ -2,6 +2,7 @@ import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { RoleProvider } from "@/components/auth/role-provider";
 import { NotificationProvider } from "@/components/layout/notification";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
@@ -42,7 +43,9 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar userName={userName} userRole={userRole} />
         <NotificationProvider>
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+          <RoleProvider roles={roles}>
+            <main className="flex-1 overflow-y-auto p-6">{children}</main>
+          </RoleProvider>
         </NotificationProvider>
       </div>
     </div>

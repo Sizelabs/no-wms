@@ -2,7 +2,8 @@
 
 import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
 import type { Role } from "@no-wms/shared/constants/roles";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
@@ -29,6 +30,7 @@ interface UserListProps {
 }
 
 export function UserList({ users }: UserListProps) {
+  const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -73,7 +75,12 @@ export function UserList({ users }: UserListProps) {
             users.map((u) => (
               <tr key={u.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">
-                  {u.full_name}
+                  <Link
+                    href={`/${locale}/users/${u.id}`}
+                    className="hover:underline"
+                  >
+                    {u.full_name}
+                  </Link>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">

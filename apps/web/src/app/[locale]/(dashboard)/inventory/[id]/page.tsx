@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { DtDd, InfoCard, Section } from "@/components/ui/detail-page";
 import { getWarehouseReceipt } from "@/lib/actions/warehouse-receipts";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -196,29 +197,3 @@ export default async function WrDetailPage({
   );
 }
 
-function InfoCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-white p-3">
-      <dt className="text-xs font-medium text-gray-500">{label}</dt>
-      <dd className="mt-1">{children}</dd>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-white p-4">
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-function DtDd({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-gray-500">{label}</dt>
-      <dd className="mt-0.5 font-medium text-gray-700">{value}</dd>
-    </div>
-  );
-}
