@@ -23,6 +23,21 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
     { label: "settings", href: "/settings", icon: "Settings" },
   ],
+  company_admin: [
+    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
+    { label: "agencies", href: "/agencies", icon: "Building2" },
+    { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package" },
+    { label: "inventory", href: "/inventory", icon: "Warehouse" },
+    { label: "workOrders", href: "/work-orders", icon: "ClipboardList" },
+    { label: "shipping", href: "/shipping", icon: "Truck" },
+    { label: "manifests", href: "/manifests", icon: "FileText" },
+    { label: "tariffs", href: "/tariffs", icon: "DollarSign" },
+    { label: "invoicing", href: "/invoicing", icon: "Receipt" },
+    { label: "tickets", href: "/tickets", icon: "TicketCheck" },
+    { label: "reports", href: "/reports", icon: "BarChart3" },
+    { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
+    { label: "settings", href: "/settings", icon: "Settings" },
+  ],
   warehouse_admin: [
     { label: "dashboard", href: "/", icon: "LayoutDashboard" },
     { label: "agencies", href: "/agencies", icon: "Building2" },
@@ -98,6 +113,7 @@ export function getNavForRole(role: Role): NavItem[] {
 /** Get the primary (highest-privilege) role for a user with multiple roles */
 const ROLE_PRIORITY: Role[] = [
   "super_admin",
+  "company_admin",
   "warehouse_admin",
   "destination_admin",
   "shipping_clerk",

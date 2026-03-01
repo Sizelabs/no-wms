@@ -1145,14 +1145,14 @@ begin
     'warehouses', 'warehouse_zones', 'warehouse_locations',
     'destination_countries', 'courier_categories', 'agencies', 'agency_contacts',
     'consignees', 'warehouse_receipts', 'wr_photos', 'wr_status_history', 'wr_notes',
-    'unknown_wrs', 'work_orders', 'work_order_items', 'work_order_status_history',
-    'shipping_instructions', 'shipping_instruction_items', 'shipping_instruction_status_history',
-    'mawbs', 'hawbs', 'mawb_status_history', 'sacas', 'saca_items', 'cargo_releases',
-    'airline_reservations', 'tariff_schedules', 'tariff_rates',
-    'invoices', 'invoice_line_items', 'storage_charges',
-    'tickets', 'ticket_wrs', 'ticket_messages', 'ticket_status_history',
+    'unknown_wrs', 'work_orders', 'work_order_status_history',
+    'shipping_instructions', 'shipping_instruction_status_history',
+    'mawbs', 'hawbs', 'mawb_status_history', 'sacas', 'cargo_releases',
+    'airline_reservations', 'tariff_schedules',
+    'invoices', 'storage_charges',
+    'tickets', 'ticket_messages', 'ticket_status_history',
     'notification_templates', 'notifications', 'mass_notifications',
-    'pickup_requests', 'pickup_request_wrs',
+    'pickup_requests',
     'saved_searches', 'recent_searches',
     'wr_transfer_requests', 'sync_queue', 'audit_logs'
   ])
@@ -1178,9 +1178,83 @@ create policy "notif_prefs_select" on notification_preferences for select using 
 create policy "notif_prefs_insert" on notification_preferences for insert with check (user_id = auth.uid());
 create policy "notif_prefs_update" on notification_preferences for update using (user_id = auth.uid());
 
--- Junction tables without organization_id need special handling
--- work_order_items, shipping_instruction_items, saca_items, ticket_wrs, pickup_request_wrs
--- These inherit access from their parent table via JOINs (already covered by parent RLS)
+-- Junction/child tables without organization_id — inherit access via parent FK join
+-- work_order_items -> work_orders
+create policy "org_select" on work_order_items for select using (
+  exists (select 1 from work_orders wo where wo.id = work_order_id and wo.organization_id = auth_org_id())
+);
+create policy "org_insert" on work_order_items for insert with check (
+  exists (select 1 from work_orders wo where wo.id = work_order_id and wo.organization_id = auth_org_id())
+);
+create policy "org_update" on work_order_items for update using (
+  exists (select 1 from work_orders wo where wo.id = work_order_id and wo.organization_id = auth_org_id())
+);
+
+-- shipping_instruction_items -> shipping_instructions
+create policy "org_select" on shipping_instruction_items for select using (
+  exists (select 1 from shipping_instructions si where si.id = shipping_instruction_id and si.organization_id = auth_org_id())
+);
+create policy "org_insert" on shipping_instruction_items for insert with check (
+  exists (select 1 from shipping_instructions si where si.id = shipping_instruction_id and si.organization_id = auth_org_id())
+);
+create policy "org_update" on shipping_instruction_items for update using (
+  exists (select 1 from shipping_instructions si where si.id = shipping_instruction_id and si.organization_id = auth_org_id())
+);
+
+-- saca_items -> sacas
+create policy "org_select" on saca_items for select using (
+  exists (select 1 from sacas s where s.id = saca_id and s.organization_id = auth_org_id())
+);
+create policy "org_insert" on saca_items for insert with check (
+  exists (select 1 from sacas s where s.id = saca_id and s.organization_id = auth_org_id())
+);
+create policy "org_update" on saca_items for update using (
+  exists (select 1 from sacas s where s.id = saca_id and s.organization_id = auth_org_id())
+);
+
+-- tariff_rates -> tariff_schedules
+create policy "org_select" on tariff_rates for select using (
+  exists (select 1 from tariff_schedules ts where ts.id = schedule_id and ts.organization_id = auth_org_id())
+);
+create policy "org_insert" on tariff_rates for insert with check (
+  exists (select 1 from tariff_schedules ts where ts.id = schedule_id and ts.organization_id = auth_org_id())
+);
+create policy "org_update" on tariff_rates for update using (
+  exists (select 1 from tariff_schedules ts where ts.id = schedule_id and ts.organization_id = auth_org_id())
+);
+
+-- invoice_line_items -> invoices
+create policy "org_select" on invoice_line_items for select using (
+  exists (select 1 from invoices i where i.id = invoice_id and i.organization_id = auth_org_id())
+);
+create policy "org_insert" on invoice_line_items for insert with check (
+  exists (select 1 from invoices i where i.id = invoice_id and i.organization_id = auth_org_id())
+);
+create policy "org_update" on invoice_line_items for update using (
+  exists (select 1 from invoices i where i.id = invoice_id and i.organization_id = auth_org_id())
+);
+
+-- ticket_wrs -> tickets
+create policy "org_select" on ticket_wrs for select using (
+  exists (select 1 from tickets t where t.id = ticket_id and t.organization_id = auth_org_id())
+);
+create policy "org_insert" on ticket_wrs for insert with check (
+  exists (select 1 from tickets t where t.id = ticket_id and t.organization_id = auth_org_id())
+);
+create policy "org_update" on ticket_wrs for update using (
+  exists (select 1 from tickets t where t.id = ticket_id and t.organization_id = auth_org_id())
+);
+
+-- pickup_request_wrs -> pickup_requests
+create policy "org_select" on pickup_request_wrs for select using (
+  exists (select 1 from pickup_requests pr where pr.id = pickup_request_id and pr.organization_id = auth_org_id())
+);
+create policy "org_insert" on pickup_request_wrs for insert with check (
+  exists (select 1 from pickup_requests pr where pr.id = pickup_request_id and pr.organization_id = auth_org_id())
+);
+create policy "org_update" on pickup_request_wrs for update using (
+  exists (select 1 from pickup_requests pr where pr.id = pickup_request_id and pr.organization_id = auth_org_id())
+);
 
 -- Agency-scoped additional restriction: agency users only see their data
 -- Applied as additional policies on key tables

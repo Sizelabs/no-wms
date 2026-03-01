@@ -41,6 +41,14 @@ const DASHBOARD_WIDGETS: Record<Role, string[]> = {
     "storageAlerts",
     "pendingDispatches",
   ],
+  company_admin: [
+    "agencies",
+    "boxesReceivedToday",
+    "totalInWarehouse",
+    "pendingWorkOrders",
+    "storageAlerts",
+    "pendingDispatches",
+  ],
   warehouse_admin: [
     "agencies",
     "boxesReceivedToday",
