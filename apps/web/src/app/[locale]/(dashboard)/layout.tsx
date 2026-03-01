@@ -2,9 +2,9 @@ import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { getUserRoles } from "@/lib/auth/roles";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { getUserRoles } from "@/lib/auth/roles";
 import { getNavForRole, getPrimaryRole } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 

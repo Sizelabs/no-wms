@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { getUserRoles } from "@/lib/auth/roles";
 import { DashboardGrid } from "@/components/layout/dashboard-grid";
+import { getUserRoles } from "@/lib/auth/roles";
 import { getPrimaryRole } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 

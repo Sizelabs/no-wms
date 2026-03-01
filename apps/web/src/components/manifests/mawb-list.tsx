@@ -1,0 +1,158 @@
+"use client";
+
+import { MAWB_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import { useState, useTransition } from "react";
+
+import { updateMawbStatus } from "@/lib/actions/manifests";
+
+interface Hawb {
+  id: string;
+  hawb_number: string;
+  shipping_instruction_id: string;
+}
+
+interface Mawb {
+  id: string;
+  mawb_number: string;
+  airline: string;
+  flight_number: string | null;
+  flight_date: string | null;
+  status: string;
+  total_pieces: number | null;
+  total_weight_lb: number | null;
+  created_at: string;
+  destination_countries: { name: string } | null;
+  hawbs: Hawb[];
+}
+
+interface MawbListProps {
+  data: Mawb[];
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  created: "bg-blue-100 text-blue-800",
+  ready_for_flight: "bg-yellow-100 text-yellow-800",
+  in_transit: "bg-indigo-100 text-indigo-800",
+  arrived: "bg-green-100 text-green-800",
+  delivered: "bg-gray-100 text-gray-800",
+};
+
+const STATUS_FLOW: Record<string, string> = {
+  created: "ready_for_flight",
+  ready_for_flight: "in_transit",
+  in_transit: "arrived",
+  arrived: "delivered",
+};
+
+const STATUS_ACTION_LABELS: Record<string, string> = {
+  ready_for_flight: "Listo para Vuelo",
+  in_transit: "En Tránsito",
+  arrived: "Arribado",
+  delivered: "Entregado",
+};
+
+export function MawbList({ data }: MawbListProps) {
+  const [isPending, startTransition] = useTransition();
+  const [filter, setFilter] = useState("");
+
+  const filtered = data.filter((m) => {
+    if (filter && m.status !== filter) return false;
+    return true;
+  });
+
+  const handleAdvance = (id: string, currentStatus: string) => {
+    const next = STATUS_FLOW[currentStatus];
+    if (!next) return;
+    startTransition(async () => {
+      await updateMawbStatus(id, next);
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-3">
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+        >
+          <option value="">Todos los estados</option>
+          {Object.entries(MAWB_STATUS_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border bg-white">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3">MAWB #</th>
+              <th className="px-4 py-3">Aerolínea</th>
+              <th className="px-4 py-3">Vuelo</th>
+              <th className="px-4 py-3">Fecha</th>
+              <th className="px-4 py-3">Destino</th>
+              <th className="px-4 py-3">HAWBs</th>
+              <th className="px-4 py-3">Pzas</th>
+              <th className="px-4 py-3">Peso</th>
+              <th className="px-4 py-3">Estado</th>
+              <th className="px-4 py-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {filtered.map((m) => {
+              const nextStatus = STATUS_FLOW[m.status];
+              return (
+                <tr key={m.id}>
+                  <td className="px-4 py-3 font-mono text-xs">{m.mawb_number}</td>
+                  <td className="px-4 py-3 text-xs">{m.airline}</td>
+                  <td className="px-4 py-3 text-xs">{m.flight_number ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {m.flight_date ? new Date(m.flight_date).toLocaleDateString("es") : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">{m.destination_countries?.name ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {m.hawbs.length > 0
+                      ? m.hawbs.map((h) => h.hawb_number).join(", ")
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">{m.total_pieces ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {m.total_weight_lb ? `${m.total_weight_lb} lb` : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[m.status] ?? ""}`}
+                    >
+                      {MAWB_STATUS_LABELS[m.status as keyof typeof MAWB_STATUS_LABELS] ?? m.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {nextStatus && (
+                      <button
+                        onClick={() => handleAdvance(m.id, m.status)}
+                        disabled={isPending}
+                        className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
+                      >
+                        {STATUS_ACTION_LABELS[nextStatus]}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {!filtered.length && (
+              <tr>
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
+                  No hay MAWBs
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
