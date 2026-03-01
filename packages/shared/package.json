@@ -1,0 +1,27 @@
+{
+  "name": "@no-wms/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./constants/*": "./src/constants/*.ts",
+    "./validators/*": "./src/validators/*.ts",
+    "./types/*": "./src/types/*.ts",
+    "./business-rules/*": "./src/business-rules/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@no-wms/tsconfig": "workspace:*",
+    "@no-wms/eslint-config": "workspace:*",
+    "eslint": "^9.28.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.3"
+  }
+}

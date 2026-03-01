@@ -1,0 +1,20 @@
+{
+  "name": "@no-wms/supabase",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": "./src/database.types.ts"
+  },
+  "scripts": {
+    "generate-types": "supabase gen types typescript --local > src/database.types.ts",
+    "db:reset": "supabase db reset",
+    "db:migrate": "supabase migration up",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests yet'"
+  },
+  "devDependencies": {
+    "@no-wms/tsconfig": "workspace:*",
+    "typescript": "^5.8.3"
+  }
+}

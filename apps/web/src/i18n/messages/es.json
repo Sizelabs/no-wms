@@ -1,0 +1,52 @@
+{
+  "common": {
+    "appName": "no-wms",
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "back": "Volver",
+    "confirm": "Confirmar",
+    "yes": "Sí",
+    "no": "No",
+    "actions": "Acciones",
+    "status": "Estado",
+    "date": "Fecha",
+    "noResults": "Sin resultados"
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "logout": "Cerrar Sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "warehouseReceipts": "Recibos de Carga",
+    "inventory": "Inventario",
+    "workOrders": "Órdenes de Trabajo",
+    "shipping": "Embarques",
+    "manifests": "Manifiestos",
+    "agencies": "Agencias",
+    "tariffs": "Tarifas",
+    "invoicing": "Facturación",
+    "tickets": "Tickets",
+    "reports": "Reportes",
+    "settings": "Configuración",
+    "unknownWrs": "WR Desconocidos"
+  },
+  "dashboard": {
+    "welcome": "Bienvenido a no-wms",
+    "boxesReceivedToday": "Cajas recibidas hoy",
+    "totalInWarehouse": "Total en bodega",
+    "pendingWorkOrders": "OT pendientes",
+    "storageAlerts": "Alertas de almacenaje",
+    "pendingDispatches": "Despachos pendientes"
+  }
+}

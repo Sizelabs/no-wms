@@ -1,0 +1,52 @@
+{
+  "common": {
+    "appName": "no-wms",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "back": "Back",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "actions": "Actions",
+    "status": "Status",
+    "date": "Date",
+    "noResults": "No results"
+  },
+  "auth": {
+    "login": "Log In",
+    "logout": "Log Out",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot your password?"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "warehouseReceipts": "Warehouse Receipts",
+    "inventory": "Inventory",
+    "workOrders": "Work Orders",
+    "shipping": "Shipping",
+    "manifests": "Manifests",
+    "agencies": "Agencies",
+    "tariffs": "Tariffs",
+    "invoicing": "Invoicing",
+    "tickets": "Tickets",
+    "reports": "Reports",
+    "settings": "Settings",
+    "unknownWrs": "Unknown WRs"
+  },
+  "dashboard": {
+    "welcome": "Welcome to no-wms",
+    "boxesReceivedToday": "Boxes received today",
+    "totalInWarehouse": "Total in warehouse",
+    "pendingWorkOrders": "Pending work orders",
+    "storageAlerts": "Storage alerts",
+    "pendingDispatches": "Pending dispatches"
+  }
+}
