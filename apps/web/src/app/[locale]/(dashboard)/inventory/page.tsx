@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { InventoryTable } from "@/components/warehouse/inventory-table";
@@ -13,7 +13,7 @@ export default async function InventoryPage({
 }) {
   const { locale } = await params;
   const filters = await searchParams;
-  const t = useTranslations("nav");
+  const t = await getTranslations("nav");
 
   const { data, count } = await getWarehouseReceipts({
     search: filters.search,

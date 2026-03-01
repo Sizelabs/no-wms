@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { getUserRoles } from "@/lib/auth/roles";
 import { PageHeader } from "@/components/layout/page-header";
@@ -14,7 +14,7 @@ export default async function UnknownWrsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const t = useTranslations("nav");
+  const t = await getTranslations("nav");
   const supabase = await createClient();
 
   const {
