@@ -4,6 +4,7 @@ import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import {
   approveShippingInstruction,
   finalizeShippingInstruction,
@@ -38,6 +39,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function SiList({ data }: SiListProps) {
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [filter, setFilter] = useState({ status: "", modality: "" });
 
@@ -65,9 +67,9 @@ export function SiList({ data }: SiListProps) {
     startTransition(async () => {
       const result = await finalizeShippingInstruction(id);
       if (result.hawb_number) {
-        alert(`HAWB generado: ${result.hawb_number}`);
+        notify(`HAWB generado: ${result.hawb_number}`, "success");
       } else if (result.error) {
-        alert(result.error);
+        notify(result.error, "error");
       }
     });
   };

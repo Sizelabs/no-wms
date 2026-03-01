@@ -4,6 +4,7 @@ import type { Modality } from "@no-wms/shared/constants/modalities";
 import { MODALITY_LABELS, MVP_MODALITIES } from "@no-wms/shared/constants/modalities";
 import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { createShippingInstruction } from "@/lib/actions/shipping-instructions";
 
 interface Agency {
@@ -52,6 +53,7 @@ export function SiCreateForm({
   destinations,
   availableWrs,
 }: SiCreateFormProps) {
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [modality, setModality] = useState<Modality>("courier_a");
   const [agencyId, setAgencyId] = useState(agencies[0]?.id ?? "");
@@ -62,7 +64,6 @@ export function SiCreateForm({
   const [cedulaRuc, setCedulaRuc] = useState("");
   const [cupo4x4, setCupo4x4] = useState(false);
   const [specialInstructions, setSpecialInstructions] = useState("");
-  const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
 
   const filteredWrs = availableWrs.filter(
     (wr) => wr.status === "received" || wr.status === "in_warehouse",
@@ -95,9 +96,9 @@ export function SiCreateForm({
 
       const res = await createShippingInstruction(fd);
       if ("error" in res) {
-        setResult({ error: res.error });
+        notify(res.error, "error");
       } else {
-        setResult({ success: true });
+        notify("Instrucción de embarque creada", "success");
         setSelectedWrs([]);
         setSpecialInstructions("");
         setCedulaRuc("");
@@ -107,17 +108,6 @@ export function SiCreateForm({
 
   return (
     <div className="space-y-4">
-      {result?.error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {result.error}
-        </div>
-      )}
-      {result?.success && (
-        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          Instrucción de embarque creada
-        </div>
-      )}
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label className="block text-sm font-medium text-gray-700">Modalidad</label>

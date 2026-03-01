@@ -38,11 +38,18 @@
     "invoicing": "Facturación",
     "tickets": "Tickets",
     "reports": "Reportes",
+    "companies": "Empresas",
+    "warehouses": "Bodegas",
+    "users": "Usuarios",
     "settings": "Configuración",
     "unknownWrs": "WR Desconocidos"
   },
   "dashboard": {
     "welcome": "Bienvenido a no-wms",
+    "companies": "Empresas",
+    "globalStats": "Estadísticas Globales",
+    "allWarehouses": "Todas las Bodegas",
+    "warehouses": "Bodegas",
     "agencies": "Agencias",
     "boxesReceivedToday": "Cajas recibidas hoy",
     "totalInWarehouse": "Total en bodega",

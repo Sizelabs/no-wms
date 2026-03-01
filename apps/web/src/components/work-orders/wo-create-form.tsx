@@ -4,6 +4,7 @@ import type { WorkOrderType } from "@no-wms/shared/constants/work-order-types";
 import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-types";
 import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { createWorkOrder } from "@/lib/actions/work-orders";
 
 interface Agency {
@@ -33,13 +34,13 @@ interface WoCreateFormProps {
 }
 
 export function WoCreateForm({ agencies, warehouses, availableWrs }: WoCreateFormProps) {
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [type, setType] = useState<WorkOrderType>("photos");
   const [agencyId, setAgencyId] = useState(agencies[0]?.id ?? "");
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [selectedWrs, setSelectedWrs] = useState<string[]>([]);
   const [instructions, setInstructions] = useState("");
-  const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
 
   // Pickup fields
   const [pickupDate, setPickupDate] = useState("");
@@ -79,9 +80,9 @@ export function WoCreateForm({ agencies, warehouses, availableWrs }: WoCreateFor
 
       const res = await createWorkOrder(fd);
       if ("error" in res) {
-        setResult({ error: res.error });
+        notify(res.error, "error");
       } else {
-        setResult({ success: true });
+        notify("Orden de trabajo creada", "success");
         setSelectedWrs([]);
         setInstructions("");
       }
@@ -90,13 +91,6 @@ export function WoCreateForm({ agencies, warehouses, availableWrs }: WoCreateFor
 
   return (
     <div className="space-y-4">
-      {result?.error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{result.error}</div>
-      )}
-      {result?.success && (
-        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Orden de trabajo creada</div>
-      )}
-
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <label className="block text-sm font-medium text-gray-700">Tipo de OT</label>

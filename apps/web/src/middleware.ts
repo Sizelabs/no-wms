@@ -7,7 +7,7 @@ import { updateSession } from "./lib/supabase/middleware";
 const intlMiddleware = createIntlMiddleware(routing);
 
 // Paths that don't require authentication
-const publicPaths = ["/login", "/signup", "/forgot-password"];
+const publicPaths = ["/login", "/signup", "/forgot-password", "/set-password"];
 
 function isPublicPath(pathname: string): boolean {
   // Strip locale prefix (e.g., /es/login → /login)
@@ -26,6 +26,11 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export default async function middleware(request: NextRequest) {
+  // Skip intl middleware for the auth callback route (no locale prefix)
+  if (request.nextUrl.pathname.startsWith("/auth/")) {
+    return NextResponse.next();
+  }
+
   // 1. Run intl middleware first (handles locale routing)
   const intlResponse = intlMiddleware(request);
 

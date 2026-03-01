@@ -4,6 +4,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import type { ReactNode } from "react";
 
+import { AuthHashHandler } from "@/components/auth/auth-hash-handler";
+
 import "../globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,6 +29,7 @@ export default async function LocaleLayout({
     <html lang={locale}>
       <body className={inter.className}>
         <NextIntlClientProvider messages={messages}>
+          <AuthHashHandler />
           {children}
         </NextIntlClientProvider>
       </body>

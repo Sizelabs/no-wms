@@ -3,17 +3,20 @@
 import type { AgencyType } from "@no-wms/shared/constants/agency-types";
 import { AGENCY_TYPE_LABELS } from "@no-wms/shared/constants/agency-types";
 
-export function AgencyList() {
-  // TODO: Fetch real data from Supabase once connected
-  const agencies: {
-    id: string;
-    name: string;
-    code: string;
-    type: AgencyType;
-    email: string | null;
-    is_active: boolean;
-  }[] = [];
+interface Agency {
+  id: string;
+  name: string;
+  code: string;
+  type: AgencyType;
+  is_active: boolean;
+  destination_countries: { name: string } | null;
+}
 
+interface AgencyListProps {
+  agencies: Agency[];
+}
+
+export function AgencyList({ agencies }: AgencyListProps) {
   return (
     <div className="rounded-lg border bg-white">
       <table className="w-full text-left text-sm">
@@ -22,7 +25,7 @@ export function AgencyList() {
             <th className="px-4 py-3">Código</th>
             <th className="px-4 py-3">Nombre</th>
             <th className="px-4 py-3">Tipo</th>
-            <th className="px-4 py-3">Email</th>
+            <th className="px-4 py-3">País Destino</th>
             <th className="px-4 py-3">Estado</th>
             <th className="px-4 py-3">Acciones</th>
           </tr>
@@ -38,7 +41,9 @@ export function AgencyList() {
             agencies.map((agency) => (
               <tr key={agency.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-mono text-xs">{agency.code}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">{agency.name}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">
+                  {agency.name}
+                </td>
                 <td className="px-4 py-3">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -50,7 +55,9 @@ export function AgencyList() {
                     {AGENCY_TYPE_LABELS[agency.type]}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500">{agency.email ?? "—"}</td>
+                <td className="px-4 py-3 text-gray-500">
+                  {agency.destination_countries?.name ?? "—"}
+                </td>
                 <td className="px-4 py-3">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${

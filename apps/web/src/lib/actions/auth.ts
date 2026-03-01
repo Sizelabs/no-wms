@@ -39,6 +39,21 @@ export async function signup(formData: FormData): Promise<void> {
   redirect("/es");
 }
 
+export async function setPassword(
+  formData: FormData,
+): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const password = formData.get("password") as string;
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return null;
+}
+
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();

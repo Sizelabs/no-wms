@@ -34,14 +34,12 @@ function WidgetPlaceholder({ title }: WidgetProps) {
 
 const DASHBOARD_WIDGETS: Record<Role, string[]> = {
   super_admin: [
-    "agencies",
-    "boxesReceivedToday",
-    "totalInWarehouse",
-    "pendingWorkOrders",
-    "storageAlerts",
-    "pendingDispatches",
+    "companies",
+    "globalStats",
+    "allWarehouses",
   ],
   company_admin: [
+    "warehouses",
     "agencies",
     "boxesReceivedToday",
     "totalInWarehouse",

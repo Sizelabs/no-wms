@@ -52,6 +52,7 @@ export async function createWarehouse(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/settings");
+  revalidatePath("/warehouses");
 }
 
 export async function updateWarehouse(id: string, formData: FormData): Promise<void> {
@@ -73,4 +74,5 @@ export async function updateWarehouse(id: string, formData: FormData): Promise<v
   }
 
   revalidatePath("/settings");
+  revalidatePath("/warehouses");
 }

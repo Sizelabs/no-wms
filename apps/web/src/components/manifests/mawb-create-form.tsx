@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { createMawb } from "@/lib/actions/manifests";
 
 interface Warehouse {
@@ -21,6 +22,7 @@ interface MawbCreateFormProps {
 }
 
 export function MawbCreateForm({ warehouses, destinations }: MawbCreateFormProps) {
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [destinationId, setDestinationId] = useState(destinations[0]?.id ?? "");
@@ -28,7 +30,6 @@ export function MawbCreateForm({ warehouses, destinations }: MawbCreateFormProps
   const [airline, setAirline] = useState("");
   const [flightNumber, setFlightNumber] = useState("");
   const [flightDate, setFlightDate] = useState("");
-  const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
 
   const handleSubmit = () => {
     if (!mawbNumber || !airline || !warehouseId || !destinationId) return;
@@ -44,9 +45,9 @@ export function MawbCreateForm({ warehouses, destinations }: MawbCreateFormProps
 
       const res = await createMawb(fd);
       if ("error" in res) {
-        setResult({ error: res.error });
+        notify(res.error, "error");
       } else {
-        setResult({ success: true });
+        notify("MAWB creado exitosamente", "success");
         setMawbNumber("");
         setFlightNumber("");
         setFlightDate("");
@@ -56,17 +57,6 @@ export function MawbCreateForm({ warehouses, destinations }: MawbCreateFormProps
 
   return (
     <div className="space-y-4">
-      {result?.error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {result.error}
-        </div>
-      )}
-      {result?.success && (
-        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          MAWB creado exitosamente
-        </div>
-      )}
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label className="block text-sm font-medium text-gray-700">Número MAWB *</label>

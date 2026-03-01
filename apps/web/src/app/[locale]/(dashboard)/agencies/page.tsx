@@ -1,10 +1,13 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { AgencyList } from "@/components/agencies/agency-list";
 import { PageHeader } from "@/components/layout/page-header";
+import { getAgencies } from "@/lib/actions/agencies";
 
-export default function AgenciesPage() {
-  const t = useTranslations("nav");
+export default async function AgenciesPage() {
+  const t = await getTranslations("nav");
+
+  const { data: agencies } = await getAgencies();
 
   return (
     <div className="space-y-6">
@@ -16,7 +19,7 @@ export default function AgenciesPage() {
           + Nueva Agencia
         </button>
       </PageHeader>
-      <AgencyList />
+      <AgencyList agencies={agencies ?? []} />
     </div>
   );
 }
