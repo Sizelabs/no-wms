@@ -10,6 +10,7 @@
     "generate-types": "supabase gen types typescript --local > src/database.types.ts",
     "db:reset": "supabase db reset",
     "db:migrate": "supabase migration up",
+    "db:push:staging": "supabase db push --linked --db-url $STAGING_DB_URL",
     "typecheck": "tsc --noEmit",
     "test": "echo 'No tests yet'"
   },

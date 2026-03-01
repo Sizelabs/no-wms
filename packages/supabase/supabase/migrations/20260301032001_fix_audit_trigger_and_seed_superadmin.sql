@@ -32,14 +32,21 @@ on conflict (slug) do nothing;
 do $$
 declare
   v_org_id uuid;
+  v_user_exists boolean;
 begin
   select id into v_org_id from organizations where slug = 'no-wms';
 
-  insert into profiles (id, organization_id, full_name, locale, timezone)
-  values ('d1c4f217-5d0e-4e00-8e3a-60f11712bd78', v_org_id, 'Juan Acevedo', 'es', 'America/Guayaquil')
-  on conflict (id) do nothing;
+  -- Only seed profile + role if the auth user exists (environment-specific)
+  select exists(select 1 from auth.users where id = 'd1c4f217-5d0e-4e00-8e3a-60f11712bd78') into v_user_exists;
 
-  insert into user_roles (user_id, organization_id, role)
-  values ('d1c4f217-5d0e-4e00-8e3a-60f11712bd78', v_org_id, 'super_admin');
+  if v_user_exists then
+    insert into profiles (id, organization_id, full_name, locale, timezone)
+    values ('d1c4f217-5d0e-4e00-8e3a-60f11712bd78', v_org_id, 'Juan Acevedo', 'es', 'America/Guayaquil')
+    on conflict (id) do nothing;
+
+    insert into user_roles (user_id, organization_id, role)
+    values ('d1c4f217-5d0e-4e00-8e3a-60f11712bd78', v_org_id, 'super_admin')
+    on conflict (user_id, organization_id, role) do nothing;
+  end if;
 end;
 $$;
