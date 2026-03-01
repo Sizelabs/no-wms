@@ -86,7 +86,7 @@ no-wms/
 3. Supabase project (local dev via CLI + config)
 4. **Complete database schema** — all MVP tables created upfront to avoid mid-flight migrations
 5. RLS policies for multi-tenancy (org-scoped) + role-based access + **super_admin platform-level bypass**
-6. Supabase Auth (email/password, role metadata)
+6. Supabase Auth (email/password). **Roles read from `user_roles` DB table** (not JWT `app_metadata`) via shared `getUserRoles()` helper in `lib/auth/roles.ts`.
 7. Dashboard shell with **role-specific dashboards** (8 roles, 8 distinct layouts — see below)
 8. Settings hierarchy UI with cascading resolution (Platform → Org → Warehouse → Destination → Agency → User)
 9. User management (invite, assign roles by scope, deactivate)
