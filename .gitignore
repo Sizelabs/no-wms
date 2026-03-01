@@ -28,5 +28,8 @@ packages/supabase/.temp/
 # Testing
 coverage/
 
+# Staging credentials
+STAGING-USERS.md
+
 # Misc
 *.tsbuildinfo

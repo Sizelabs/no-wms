@@ -12,6 +12,7 @@
     "db:migrate": "supabase migration up",
     "db:push:staging": "supabase db push --linked --db-url $STAGING_DB_URL",
     "typecheck": "tsc --noEmit",
+    "seed:auth": "tsx scripts/seed-auth.ts",
     "test": "echo 'No tests yet'"
   },
   "devDependencies": {

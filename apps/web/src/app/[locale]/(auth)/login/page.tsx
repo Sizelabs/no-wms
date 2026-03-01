@@ -1,13 +1,14 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { login } from "@/lib/actions/auth";
 
-export default function LoginPage({
-  searchParams: _searchParams,
+export default async function LoginPage({
+  searchParams,
 }: {
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: Promise<{ redirect?: string; error?: string }>;
 }) {
-  const t = useTranslations("auth");
+  const { error } = await searchParams;
+  const t = await getTranslations("auth");
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -16,6 +17,12 @@ export default function LoginPage({
           <h1 className="text-2xl font-bold tracking-tight">no-wms</h1>
           <p className="mt-1 text-sm text-gray-500">{t("login")}</p>
         </div>
+
+        {error && (
+          <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+            {decodeURIComponent(error)}
+          </div>
+        )}
 
         <form action={login} className="space-y-4">
           <input
