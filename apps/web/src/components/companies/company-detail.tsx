@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { UserList } from "@/components/users/user-list";
+import { deleteOrganization } from "@/lib/actions/organizations";
 
 interface Organization {
   id: string;
@@ -55,6 +57,21 @@ export function CompanyDetail({
 }: CompanyDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("warehouses");
   const { locale } = useParams<{ locale: string }>();
+  const router = useRouter();
+  const { notify } = useNotification();
+  const [isPending, startTransition] = useTransition();
+
+  function handleDelete() {
+    if (!confirm(`¿Eliminar "${company.name}"? Esta acción no se puede deshacer.`)) return;
+    startTransition(async () => {
+      const result = await deleteOrganization(company.id);
+      if (result?.error) {
+        notify(result.error, "error");
+      } else {
+        router.push(`/${locale}/companies`);
+      }
+    });
+  }
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "warehouses", label: "Bodegas", count: warehouses.length },
@@ -65,32 +82,50 @@ export function CompanyDetail({
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-white p-5">
-        <dl className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs font-medium uppercase text-gray-500">
-              Nombre
-            </dt>
-            <dd className="mt-1 text-sm font-medium text-gray-900">
-              {company.name}
-            </dd>
+        <div className="flex items-start justify-between">
+          <dl className="grid flex-1 gap-4 sm:grid-cols-3">
+            <div>
+              <dt className="text-xs font-medium uppercase text-gray-500">
+                Nombre
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-gray-900">
+                {company.name}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-gray-500">
+                Slug
+              </dt>
+              <dd className="mt-1 font-mono text-sm text-gray-600">
+                {company.slug}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-gray-500">
+                Creada
+              </dt>
+              <dd className="mt-1 text-sm text-gray-600">
+                {new Date(company.created_at).toLocaleDateString("es")}
+              </dd>
+            </div>
+          </dl>
+          <div className="ml-4 flex gap-2">
+            <Link
+              href={`/${locale}/companies/${company.id}/edit`}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Editar
+            </Link>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleDelete}
+              className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              Eliminar
+            </button>
           </div>
-          <div>
-            <dt className="text-xs font-medium uppercase text-gray-500">
-              Slug
-            </dt>
-            <dd className="mt-1 font-mono text-sm text-gray-600">
-              {company.slug}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase text-gray-500">
-              Creada
-            </dt>
-            <dd className="mt-1 text-sm text-gray-600">
-              {new Date(company.created_at).toLocaleDateString("es")}
-            </dd>
-          </div>
-        </dl>
+        </div>
       </div>
 
       <div className="flex items-center justify-between border-b">
@@ -113,6 +148,14 @@ export function CompanyDetail({
             </button>
           ))}
         </nav>
+        {activeTab === "warehouses" && (
+          <Link
+            href={`/${locale}/companies/${company.id}/warehouses/new`}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva Bodega
+          </Link>
+        )}
         {activeTab === "users" && (
           <Link
             href={`/${locale}/companies/${company.id}/users/new`}

@@ -209,3 +209,21 @@ export async function updateOrganization(
 
   revalidatePath("/companies");
 }
+
+export async function deleteOrganization(
+  id: string,
+): Promise<{ error: string } | null> {
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("organizations")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/companies");
+  return null;
+}

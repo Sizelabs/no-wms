@@ -302,7 +302,7 @@ Super Admin (platform-level, cross-company)
 **What gets built**:
 1. Tariff schedule management (per agency × modality × category × weight ranges: 1-100 lb, 101-200 lb, etc.)
 2. Tariff rate CRUD + bulk CSV import
-3. Greater-of-actual-vs-volumetric billing rule (always, no exceptions)
+3. Greater-of-actual-vs-volumetric billing rule (its a setting)
 4. Invoice generation: select agency + date range → auto-calculate from dispatched WRs + tariff rates + surcharges
 5. Storage charge calculation: free days from settings → daily rate after threshold → per-WR tracking
 6. Work order charges: configurable per WO type
