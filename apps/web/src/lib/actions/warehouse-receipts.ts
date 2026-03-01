@@ -379,6 +379,16 @@ export async function getAgenciesForFilter() {
   return data ?? [];
 }
 
+export async function getWarehousesForFilter() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("warehouses")
+    .select("id, name, code")
+    .eq("is_active", true)
+    .order("name");
+  return data ?? [];
+}
+
 export async function getWarehouseReceipt(id: string) {
   const supabase = await createClient();
 

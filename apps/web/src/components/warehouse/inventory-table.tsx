@@ -30,6 +30,7 @@ interface InventoryTableProps {
   count: number;
   locale: string;
   agencies?: Array<{ id: string; name: string; code: string }>;
+  warehouses?: Array<{ id: string; name: string; code: string }>;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -54,7 +55,7 @@ function storageDayColor(days: number): string {
   return "text-gray-500";
 }
 
-export function InventoryTable({ data, count, locale, agencies = [] }: InventoryTableProps) {
+export function InventoryTable({ data, count, locale, agencies = [], warehouses = [] }: InventoryTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -107,7 +108,7 @@ export function InventoryTable({ data, count, locale, agencies = [] }: Inventory
     [pathname, router, searchParams],
   );
 
-  const activeFilterCount = ["status", "agency_id", "carrier", "is_damaged", "date_from", "date_to"]
+  const activeFilterCount = ["status", "agency_id", "warehouse_id", "carrier", "is_damaged", "date_from", "date_to"]
     .filter((k) => searchParams.has(k)).length;
 
   return (
@@ -148,6 +149,18 @@ export function InventoryTable({ data, count, locale, agencies = [] }: Inventory
       {/* Expanded filters */}
       {showFilters && (
         <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
+          <select
+            defaultValue={searchParams.get("warehouse_id") ?? ""}
+            onChange={(e) => updateFilter("warehouse_id", e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">Todas las bodegas</option>
+            {warehouses.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name} ({w.code})
+              </option>
+            ))}
+          </select>
           <select
             defaultValue={searchParams.get("agency_id") ?? ""}
             onChange={(e) => updateFilter("agency_id", e.target.value)}
