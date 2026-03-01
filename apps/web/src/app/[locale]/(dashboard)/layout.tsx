@@ -1,8 +1,8 @@
-import type { Role } from "@no-wms/shared/constants/roles";
 import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { getUserRoles } from "@/lib/auth/roles";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { getNavForRole, getPrimaryRole } from "@/lib/navigation";
@@ -26,7 +26,7 @@ export default async function DashboardLayout({
     redirect(`/${locale}/login`);
   }
 
-  const roles = (user.app_metadata?.roles as Role[] | undefined) ?? ["agency" as Role];
+  const roles = await getUserRoles(supabase, user.id);
   const primaryRole = getPrimaryRole(roles);
   const navItems = getNavForRole(primaryRole);
   const userName =

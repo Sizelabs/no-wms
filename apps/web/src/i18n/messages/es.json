@@ -43,6 +43,7 @@
   },
   "dashboard": {
     "welcome": "Bienvenido a no-wms",
+    "agencies": "Agencias",
     "boxesReceivedToday": "Cajas recibidas hoy",
     "totalInWarehouse": "Total en bodega",
     "pendingWorkOrders": "OT pendientes",

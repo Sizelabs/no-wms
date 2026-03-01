@@ -1,7 +1,7 @@
-import type { Role } from "@no-wms/shared/constants/roles";
 import { redirect } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { getUserRoles } from "@/lib/auth/roles";
 import { PageHeader } from "@/components/layout/page-header";
 import { UnknownWrList } from "@/components/warehouse/unknown-wr-list";
 import { getUnknownWrs } from "@/lib/actions/unknown-wrs";
@@ -25,7 +25,7 @@ export default async function UnknownWrsPage({
     redirect(`/${locale}/login`);
   }
 
-  const roles = (user.app_metadata?.roles as Role[] | undefined) ?? ["agency" as Role];
+  const roles = await getUserRoles(supabase, user.id);
   const primaryRole = getPrimaryRole(roles);
   const isAgencyRole = primaryRole === "agency";
 
