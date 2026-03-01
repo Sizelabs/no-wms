@@ -43,7 +43,7 @@ export async function generateWrNumber(): Promise<string> {
   return `GLP${String(nextNum).padStart(4, "0")}`;
 }
 
-export async function createWarehouseReceipt(formData: FormData): Promise<void> {
+export async function createWarehouseReceipt(formData: FormData): Promise<{ id: string; wr_number: string }> {
   const supabase = await createClient();
 
   const {
@@ -168,14 +168,86 @@ export async function createWarehouseReceipt(formData: FormData): Promise<void> 
     changed_by: user.id,
   });
 
+  // Save photo records
+  const photosJson = formData.get("photos") as string | null;
+  if (photosJson) {
+    try {
+      const photoRecords = JSON.parse(photosJson) as Array<{
+        storage_path: string;
+        file_name: string;
+        is_damage_photo: boolean;
+      }>;
+      if (photoRecords.length) {
+        await supabase.from("wr_photos").insert(
+          photoRecords.map((p) => ({
+            organization_id: profile.organization_id,
+            warehouse_receipt_id: wr.id,
+            storage_path: p.storage_path,
+            file_name: p.file_name,
+            is_damage_photo: p.is_damage_photo,
+          })),
+        );
+      }
+    } catch {
+      // Photo save failure shouldn't block WR creation
+      console.error("Failed to save photo records");
+    }
+  }
+
+  // Send email notification to agency (non-blocking, lazy import to avoid build-time Resend init)
+  try {
+    const { sendWrReceiptNotification } = await import("@/lib/email/wr-notifications");
+    const { data: agencyData } = await supabase
+      .from("agencies")
+      .select("name, agency_contacts(email, contact_type)")
+      .eq("id", input.agency_id)
+      .single();
+
+    if (agencyData) {
+      const adminContact = agencyData.agency_contacts?.find(
+        (c: { email: string | null; contact_type: string }) => c.contact_type === "admin" && c.email,
+      );
+      const anyEmailContact = agencyData.agency_contacts?.find(
+        (c: { email: string | null }) => c.email,
+      );
+      const contactEmail = adminContact?.email ?? anyEmailContact?.email;
+
+      if (contactEmail) {
+        const { data: consignee } = input.consignee_id
+          ? await supabase.from("consignees").select("full_name").eq("id", input.consignee_id).single()
+          : { data: null };
+
+        await sendWrReceiptNotification({
+          agencyEmail: contactEmail,
+          agencyName: agencyData.name,
+          trackingNumber: input.tracking_number,
+          wrNumber,
+          consigneeName: consignee?.full_name ?? null,
+          weightLb: billableWeightLb,
+          isDamaged: input.is_damaged,
+          damageDescription: input.damage_description ?? null,
+        });
+      }
+    }
+  } catch {
+    // Email failure shouldn't block WR creation
+    console.error("Failed to send WR receipt email");
+  }
+
   revalidatePath("/warehouse-receipts");
   revalidatePath("/inventory");
+
+  return { id: wr.id, wr_number: wrNumber };
 }
 
 export async function getWarehouseReceipts(filters?: {
   status?: string;
   agency_id?: string;
   search?: string;
+  carrier?: string;
+  is_damaged?: string;
+  date_from?: string;
+  date_to?: string;
   limit?: number;
   offset?: number;
 }) {
@@ -194,7 +266,24 @@ export async function getWarehouseReceipts(filters?: {
     query = query.eq("agency_id", filters.agency_id);
   }
 
+  if (filters?.carrier) {
+    query = query.eq("carrier", filters.carrier);
+  }
+
+  if (filters?.is_damaged === "true") {
+    query = query.eq("is_damaged", true);
+  }
+
+  if (filters?.date_from) {
+    query = query.gte("received_at", filters.date_from);
+  }
+
+  if (filters?.date_to) {
+    query = query.lte("received_at", `${filters.date_to}T23:59:59`);
+  }
+
   if (filters?.search) {
+    // Use ilike for now — pg_trgm similarity requires an RPC function
     query = query.or(
       `tracking_number.ilike.%${filters.search}%,wr_number.ilike.%${filters.search}%,sender_name.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`,
     );
@@ -211,6 +300,78 @@ export async function getWarehouseReceipts(filters?: {
   }
 
   return { data, error: null, count: count ?? 0 };
+}
+
+export async function extendFreeStorage(
+  wrId: string,
+  days: number,
+  reason: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("warehouse_receipts")
+    .update({
+      free_storage_override_days: days,
+      free_storage_override_reason: reason,
+    })
+    .eq("id", wrId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  return {};
+}
+
+export async function processAutoAbandon(): Promise<{ count: number; error?: string }> {
+  const supabase = await createClient();
+
+  // Default auto-abandon threshold: 90 days
+  const thresholdDate = new Date();
+  thresholdDate.setDate(thresholdDate.getDate() - 90);
+
+  // Find WRs past threshold that are still active (not dispatched/abandoned)
+  const { data: wrs, error } = await supabase
+    .from("warehouse_receipts")
+    .select("id, organization_id, free_storage_override_days, received_at")
+    .in("status", ["received", "in_warehouse"])
+    .lt("received_at", thresholdDate.toISOString());
+
+  if (error) return { count: 0, error: error.message };
+
+  const toAbandon = (wrs ?? []).filter((wr) => {
+    if (wr.free_storage_override_days) {
+      const overrideDate = new Date(wr.received_at);
+      overrideDate.setDate(overrideDate.getDate() + wr.free_storage_override_days);
+      return new Date() > overrideDate;
+    }
+    return true;
+  });
+
+  if (!toAbandon.length) return { count: 0 };
+
+  const ids = toAbandon.map((wr) => wr.id);
+
+  await supabase
+    .from("warehouse_receipts")
+    .update({ status: "abandoned" })
+    .in("id", ids);
+
+  revalidatePath("/inventory");
+  return { count: ids.length };
+}
+
+export async function getAgenciesForFilter() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("agencies")
+    .select("id, name, code")
+    .eq("is_active", true)
+    .order("name");
+  return data ?? [];
 }
 
 export async function getWarehouseReceipt(id: string) {

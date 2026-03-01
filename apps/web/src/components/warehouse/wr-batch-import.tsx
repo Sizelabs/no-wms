@@ -1,7 +1,7 @@
 "use client";
 
 import { CARRIERS } from "@no-wms/shared/constants/carriers";
-import { useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 
 import { createWarehouseReceipt } from "@/lib/actions/warehouse-receipts";
 
@@ -52,6 +52,38 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
   const [agencyId, setAgencyId] = useState("");
   const [rows, setRows] = useState<BatchRow[]>([{ ...EMPTY_ROW }]);
   const [results, setResults] = useState<{ index: number; success: boolean; error?: string }[]>([]);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCsvUpload = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split("\n").filter((l) => l.trim());
+      // Skip header row
+      const dataLines = lines.length > 1 && lines[0]!.toLowerCase().includes("tracking") ? lines.slice(1) : lines;
+
+      const newRows: BatchRow[] = dataLines.map((line) => {
+        const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+        return {
+          tracking_number: cols[0] ?? "",
+          carrier: cols[1] ?? "",
+          actual_weight_lb: cols[2] ?? "",
+          length_in: cols[3] ?? "",
+          width_in: cols[4] ?? "",
+          height_in: cols[5] ?? "",
+          consignee_name: cols[6] ?? "",
+          pieces_count: cols[7] || "1",
+          notes: cols[8] ?? "",
+        };
+      }).filter((r) => r.tracking_number);
+
+      if (newRows.length) {
+        setRows(newRows);
+        setResults([]);
+      }
+    };
+    reader.readAsText(file);
+  }, []);
 
   const updateRow = (index: number, field: keyof BatchRow, value: string) => {
     setRows((prev) => {
@@ -264,7 +296,7 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={addRow}
@@ -272,6 +304,27 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
         >
           + Agregar fila
         </button>
+        <button
+          type="button"
+          onClick={() => csvInputRef.current?.click()}
+          className="rounded-md border px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Importar CSV
+        </button>
+        <input
+          ref={csvInputRef}
+          type="file"
+          accept=".csv"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleCsvUpload(file);
+            e.target.value = "";
+          }}
+          className="hidden"
+        />
+        <span className="self-center text-xs text-gray-400">
+          CSV: tracking, carrier, peso, largo, ancho, alto, destinatario, piezas, notas
+        </span>
         <div className="flex-1" />
         <button
           type="button"

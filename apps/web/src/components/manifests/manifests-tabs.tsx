@@ -3,24 +3,32 @@
 import { useState } from "react";
 
 import { MawbList } from "./mawb-list";
+import { PickupList } from "./pickup-list";
+import { ReservationCreateForm } from "./reservation-create-form";
 import { ReservationList } from "./reservation-list";
 import { SacaList } from "./saca-list";
+import { TransferList } from "./transfer-list";
 
 interface ManifestsTabsProps {
   mawbs: Parameters<typeof MawbList>[0]["data"];
   sacas: Parameters<typeof SacaList>[0]["data"];
   reservations: Parameters<typeof ReservationList>[0]["data"];
+  transfers?: Parameters<typeof TransferList>[0]["data"];
+  pickups?: Parameters<typeof PickupList>[0]["data"];
+  agencies?: Array<{ id: string; name: string; code: string }>;
 }
 
 const TABS = [
   { key: "mawbs", label: "MAWBs" },
   { key: "sacas", label: "Sacas" },
   { key: "reservations", label: "Reservaciones" },
+  { key: "transfers", label: "Transferencias" },
+  { key: "pickups", label: "Retiros" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
-export function ManifestsTabs({ mawbs, sacas, reservations }: ManifestsTabsProps) {
+export function ManifestsTabs({ mawbs, sacas, reservations, transfers = [], pickups = [], agencies = [] }: ManifestsTabsProps) {
   const [active, setActive] = useState<TabKey>("mawbs");
 
   return (
@@ -43,7 +51,14 @@ export function ManifestsTabs({ mawbs, sacas, reservations }: ManifestsTabsProps
 
       {active === "mawbs" && <MawbList data={mawbs} />}
       {active === "sacas" && <SacaList data={sacas} />}
-      {active === "reservations" && <ReservationList data={reservations} />}
+      {active === "reservations" && (
+        <div className="space-y-4">
+          <ReservationCreateForm />
+          <ReservationList data={reservations} />
+        </div>
+      )}
+      {active === "transfers" && <TransferList data={transfers} agencies={agencies} />}
+      {active === "pickups" && <PickupList data={pickups} />}
     </div>
   );
 }

@@ -8,7 +8,9 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
-import { searchConsignees } from "@/lib/actions/consignees";
+import type { UploadedPhoto } from "@/components/ui/photo-upload";
+import { PhotoUpload } from "@/components/ui/photo-upload";
+import { quickCreateConsignee, searchConsignees } from "@/lib/actions/consignees";
 import { checkDuplicateTracking, createWarehouseReceipt } from "@/lib/actions/warehouse-receipts";
 
 interface Agency {
@@ -23,6 +25,12 @@ interface Warehouse {
   code: string;
 }
 
+interface WarehouseLocation {
+  id: string;
+  zone_name: string | null;
+  location_code: string;
+}
+
 interface Consignee {
   id: string;
   full_name: string;
@@ -33,6 +41,7 @@ interface Consignee {
 interface WrReceiptFormProps {
   agencies: Agency[];
   warehouses: Warehouse[];
+  warehouseLocations?: WarehouseLocation[];
   locale: string;
 }
 
@@ -68,13 +77,14 @@ const STEP_LABELS: Record<Step, string> = {
   confirm: "Confirmar",
 };
 
-export function WrReceiptForm({ agencies, warehouses, locale }: WrReceiptFormProps) {
+export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], locale }: WrReceiptFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   // Form state
   const [step, setStep] = useState<Step>("agency");
   const [error, setError] = useState<string | null>(null);
+  const [createdWr, setCreatedWr] = useState<{ id: string; wr_number: string } | null>(null);
 
   // Field values
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
@@ -94,6 +104,13 @@ export function WrReceiptForm({ agencies, warehouses, locale }: WrReceiptFormPro
   const [isDgr, setIsDgr] = useState(false);
   const [notes, setNotes] = useState("");
   const [senderName, setSenderName] = useState("");
+  const [warehouseLocationId, setWarehouseLocationId] = useState("");
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+
+  // Quick-create consignee
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [newConsigneeName, setNewConsigneeName] = useState("");
+  const [creatingConsignee, setCreatingConsignee] = useState(false);
 
   // Duplicate check state
   const [duplicateInfo, setDuplicateInfo] = useState<{
@@ -194,8 +211,61 @@ export function WrReceiptForm({ agencies, warehouses, locale }: WrReceiptFormPro
     goNext();
   }, [trackingNumber, goNext]);
 
+  // Quick-create consignee handler
+  const handleQuickCreate = useCallback(async () => {
+    if (!newConsigneeName.trim()) return;
+    setCreatingConsignee(true);
+    const fd = new FormData();
+    fd.set("agency_id", agencyId);
+    fd.set("full_name", newConsigneeName.trim());
+    const result = await quickCreateConsignee(fd);
+    if (result.data) {
+      setConsigneeId(result.data.id);
+      setConsigneeSearch(result.data.full_name);
+      setConsignees((prev) => [...prev, { id: result.data!.id, full_name: result.data!.full_name, cedula_ruc: null, city: null }]);
+      setShowQuickCreate(false);
+      setNewConsigneeName("");
+    } else {
+      setError(result.error ?? "Error al crear destinatario");
+    }
+    setCreatingConsignee(false);
+  }, [agencyId, newConsigneeName]);
+
+  // Reset form for "Register Another Box"
+  const resetForAnother = useCallback(() => {
+    // Keep warehouse and agency, reset everything else
+    setTrackingNumber("");
+    setCarrier("");
+    setActualWeight("");
+    setLengthIn("");
+    setWidthIn("");
+    setHeightIn("");
+    setConsigneeId("");
+    setConsigneeSearch("");
+    setConsignees([]);
+    setPiecesCount("1");
+    setIsDamaged(false);
+    setDamageDescription("");
+    setIsDgr(false);
+    setNotes("");
+    setSenderName("");
+    setWarehouseLocationId("");
+    setPhotos([]);
+    setDuplicateInfo(null);
+    setCreatedWr(null);
+    setError(null);
+    setStep("tracking");
+  }, []);
+
   // Submit
   const handleSubmit = useCallback(() => {
+    // Validate photo count
+    const minRequired = isDamaged ? 3 : 1;
+    if (photos.length < minRequired) {
+      setError(isDamaged ? "Se requieren mínimo 3 fotos para paquetes dañados" : "Se requiere al menos 1 foto");
+      return;
+    }
+
     startTransition(async () => {
       try {
         const formData = new FormData();
@@ -214,9 +284,15 @@ export function WrReceiptForm({ agencies, warehouses, locale }: WrReceiptFormPro
         formData.set("is_dgr", String(isDgr));
         if (notes) formData.set("notes", notes);
         if (senderName) formData.set("sender_name", senderName);
+        if (warehouseLocationId) formData.set("warehouse_location_id", warehouseLocationId);
+        formData.set("photos", JSON.stringify(photos.map((p) => ({
+          storage_path: p.storagePath,
+          file_name: p.fileName,
+          is_damage_photo: p.isDamagePhoto,
+        }))));
 
-        await createWarehouseReceipt(formData);
-        router.push(`/${locale}/warehouse-receipts?success=true`);
+        const result = await createWarehouseReceipt(formData);
+        setCreatedWr(result);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al crear recibo");
       }
@@ -225,8 +301,45 @@ export function WrReceiptForm({ agencies, warehouses, locale }: WrReceiptFormPro
     warehouseId, agencyId, trackingNumber, carrier, consigneeId,
     actualWeight, lengthIn, widthIn, heightIn, piecesCount,
     isDamaged, damageDescription, isDgr, notes, senderName,
-    locale, router,
+    warehouseLocationId, photos,
   ]);
+
+  // Success state — show summary + actions
+  if (createdWr) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4">
+        <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
+          <div className="text-2xl">✓</div>
+          <h3 className="mt-2 text-lg font-semibold text-green-800">Recibo creado</h3>
+          <p className="mt-1 font-mono text-sm text-green-700">{createdWr.wr_number}</p>
+          <p className="text-sm text-green-600">{trackingNumber} • {selectedAgency?.name}</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex-1 rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Imprimir Etiqueta
+          </button>
+          <button
+            type="button"
+            onClick={resetForAnother}
+            className="flex-1 rounded-md bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            Registrar Otra Caja
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => router.push(`/${locale}/inventory/${createdWr.id}`)}
+          className="w-full text-center text-sm text-gray-500 hover:text-gray-700 underline"
+        >
+          Ver detalle del recibo
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
@@ -442,15 +555,14 @@ export function WrReceiptForm({ agencies, warehouses, locale }: WrReceiptFormPro
             <label className="block text-sm font-medium text-gray-700">
               Fotos del paquete
             </label>
-            <div className="flex h-40 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50">
-              <div className="text-center text-sm text-gray-400">
-                <p>Subida de fotos a Supabase Storage</p>
-                <p className="text-xs">Se implementará con componente de upload</p>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400">
-              Mínimo 1 foto requerida. Si hay daño, mínimo 3 fotos.
-            </p>
+            <PhotoUpload
+              bucket="wr-photos"
+              folder={`${warehouseId}/${Date.now()}`}
+              minPhotos={isDamaged ? 3 : 1}
+              maxPhotos={10}
+              isDamageMode={isDamaged}
+              onPhotosChange={setPhotos}
+            />
           </div>
         )}
 
@@ -491,10 +603,50 @@ export function WrReceiptForm({ agencies, warehouses, locale }: WrReceiptFormPro
               </div>
             )}
 
-            {consigneeSearch.length >= 2 && consignees.length === 0 && (
-              <p className="text-xs text-gray-400">
-                No se encontró destinatario. Puede continuar sin seleccionar uno o crear uno nuevo.
-              </p>
+            {consigneeSearch.length >= 2 && consignees.length === 0 && !showQuickCreate && (
+              <div className="text-xs text-gray-400">
+                <p>No se encontró destinatario.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuickCreate(true);
+                    setNewConsigneeName(consigneeSearch);
+                  }}
+                  className="mt-1 text-gray-900 underline"
+                >
+                  Crear destinatario nuevo
+                </button>
+              </div>
+            )}
+
+            {showQuickCreate && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 space-y-2">
+                <p className="text-xs font-medium text-blue-700">Crear destinatario rápido</p>
+                <input
+                  type="text"
+                  value={newConsigneeName}
+                  onChange={(e) => setNewConsigneeName(e.target.value)}
+                  placeholder="Nombre completo"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleQuickCreate}
+                    disabled={creatingConsignee || !newConsigneeName.trim()}
+                    className="rounded bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {creatingConsignee ? "Creando..." : "Crear"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickCreate(false)}
+                    className="rounded border px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
             )}
 
             {selectedConsignee && (
@@ -518,6 +670,26 @@ export function WrReceiptForm({ agencies, warehouses, locale }: WrReceiptFormPro
                 className="mt-1 w-24 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
               />
             </div>
+
+            {warehouseLocations.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Ubicación en bodega
+                </label>
+                <select
+                  value={warehouseLocationId}
+                  onChange={(e) => setWarehouseLocationId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+                >
+                  <option value="">Sin asignar</option>
+                  {warehouseLocations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.zone_name ? `${loc.zone_name} — ` : ""}{loc.location_code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">

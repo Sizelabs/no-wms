@@ -419,6 +419,18 @@ export async function approveTransferRequest(id: string): Promise<{ error?: stri
   return {};
 }
 
+export async function getTransferRequests() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("wr_transfer_requests")
+    .select("*, warehouse_receipts(wr_number, tracking_number), from_agency:agencies!wr_transfer_requests_from_agency_id_fkey(name, code), to_agency:agencies!wr_transfer_requests_to_agency_id_fkey(name, code)")
+    .order("created_at", { ascending: false });
+
+  if (error) return { data: null, error: error.message };
+  return { data, error: null };
+}
+
 export async function rejectTransferRequest(id: string, reason: string): Promise<{ error?: string }> {
   const supabase = await createClient();
 

@@ -3,16 +3,25 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { ManifestsTabs } from "@/components/manifests/manifests-tabs";
-import { getAirlineReservations, getMawbs, getSacas } from "@/lib/actions/manifests";
+import {
+  getAirlineReservations,
+  getMawbs,
+  getPickupRequests,
+  getSacas,
+  getTransferRequests,
+} from "@/lib/actions/manifests";
 
 export default async function ManifestsPage() {
   const t = await getTranslations("nav");
 
-  const [mawbsResult, sacasResult, reservationsResult] = await Promise.all([
-    getMawbs(),
-    getSacas(),
-    getAirlineReservations(),
-  ]);
+  const [mawbsResult, sacasResult, reservationsResult, transfersResult, pickupsResult] =
+    await Promise.all([
+      getMawbs(),
+      getSacas(),
+      getAirlineReservations(),
+      getTransferRequests(),
+      getPickupRequests(),
+    ]);
 
   return (
     <div className="space-y-6">
@@ -36,6 +45,8 @@ export default async function ManifestsPage() {
         mawbs={mawbsResult.data ?? []}
         sacas={sacasResult.data ?? []}
         reservations={reservationsResult.data ?? []}
+        transfers={transfersResult.data ?? []}
+        pickups={pickupsResult.data ?? []}
       />
     </div>
   );

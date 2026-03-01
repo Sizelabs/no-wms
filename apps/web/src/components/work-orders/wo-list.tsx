@@ -2,6 +2,7 @@
 
 import { WO_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-types";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
@@ -39,7 +40,7 @@ const PRIORITY_BADGE: Record<string, string> = {
   low: "bg-gray-100 text-gray-500",
 };
 
-export function WoList({ data, locale: _locale }: WoListProps) {
+export function WoList({ data, locale }: WoListProps) {
   const [isPending, startTransition] = useTransition();
   const [filter, setFilter] = useState({ status: "", type: "" });
 
@@ -116,7 +117,11 @@ export function WoList({ data, locale: _locale }: WoListProps) {
           <tbody className="divide-y">
             {filtered.map((wo) => (
               <tr key={wo.id}>
-                <td className="px-4 py-3 font-mono text-xs">{wo.wo_number}</td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  <Link href={`/${locale}/work-orders/${wo.id}`} className="hover:underline">
+                    {wo.wo_number}
+                  </Link>
+                </td>
                 <td className="px-4 py-3">
                   {WORK_ORDER_TYPE_LABELS[wo.type as keyof typeof WORK_ORDER_TYPE_LABELS] ?? wo.type}
                 </td>

@@ -1,5 +1,6 @@
 "use client";
 
+import { CARRIERS } from "@no-wms/shared/constants/carriers";
 import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
@@ -17,6 +18,8 @@ interface WarehouseReceipt {
   actual_weight_lb: number | null;
   billable_weight_lb: number | null;
   pieces_count: number;
+  is_damaged: boolean;
+  is_dgr: boolean;
   received_at: string;
   agencies: { name: string; code: string; type: string } | null;
   consignees: { full_name: string } | null;
@@ -26,6 +29,7 @@ interface InventoryTableProps {
   data: WarehouseReceipt[];
   count: number;
   locale: string;
+  agencies?: Array<{ id: string; name: string; code: string }>;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -50,11 +54,12 @@ function storageDayColor(days: number): string {
   return "text-gray-500";
 }
 
-export function InventoryTable({ data, count, locale }: InventoryTableProps) {
+export function InventoryTable({ data, count, locale, agencies = [] }: InventoryTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const [showFilters, setShowFilters] = useState(false);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -88,13 +93,13 @@ export function InventoryTable({ data, count, locale }: InventoryTableProps) {
     [selected],
   );
 
-  const handleSearch = useCallback(
-    (value: string) => {
+  const updateFilter = useCallback(
+    (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
       if (value) {
-        params.set("search", value);
+        params.set(key, value);
       } else {
-        params.delete("search");
+        params.delete(key);
       }
       params.delete("offset");
       router.push(`${pathname}?${params.toString()}`);
@@ -102,34 +107,23 @@ export function InventoryTable({ data, count, locale }: InventoryTableProps) {
     [pathname, router, searchParams],
   );
 
-  const handleStatusFilter = useCallback(
-    (value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set("status", value);
-      } else {
-        params.delete("status");
-      }
-      params.delete("offset");
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [pathname, router, searchParams],
-  );
+  const activeFilterCount = ["status", "agency_id", "carrier", "is_damaged", "date_from", "date_to"]
+    .filter((k) => searchParams.has(k)).length;
 
   return (
     <div className="space-y-3">
-      {/* Search + filters */}
+      {/* Search + primary filter row */}
       <div className="flex flex-wrap gap-2">
         <input
           type="text"
           defaultValue={searchParams.get("search") ?? ""}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Buscar guía, WR#, destinatario..."
+          onChange={(e) => updateFilter("search", e.target.value)}
+          placeholder="Buscar guía, WR#, remitente..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
         <select
           defaultValue={searchParams.get("status") ?? ""}
-          onChange={(e) => handleStatusFilter(e.target.value)}
+          onChange={(e) => updateFilter("status", e.target.value)}
           className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         >
           <option value="">Todos los estados</option>
@@ -139,7 +133,80 @@ export function InventoryTable({ data, count, locale }: InventoryTableProps) {
             </option>
           ))}
         </select>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`rounded-md border px-3 py-2 text-sm ${
+            activeFilterCount > 0
+              ? "border-gray-900 bg-gray-900 text-white"
+              : "border-gray-300 text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </button>
       </div>
+
+      {/* Expanded filters */}
+      {showFilters && (
+        <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
+          <select
+            defaultValue={searchParams.get("agency_id") ?? ""}
+            onChange={(e) => updateFilter("agency_id", e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">Todas las agencias</option>
+            {agencies.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} ({a.code})
+              </option>
+            ))}
+          </select>
+          <select
+            defaultValue={searchParams.get("carrier") ?? ""}
+            onChange={(e) => updateFilter("carrier", e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">Todos los transportistas</option>
+            {CARRIERS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            defaultValue={searchParams.get("is_damaged") ?? ""}
+            onChange={(e) => updateFilter("is_damaged", e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">Daño: Todos</option>
+            <option value="true">Solo dañados</option>
+          </select>
+          <input
+            type="date"
+            defaultValue={searchParams.get("date_from") ?? ""}
+            onChange={(e) => updateFilter("date_from", e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            title="Desde"
+          />
+          <input
+            type="date"
+            defaultValue={searchParams.get("date_to") ?? ""}
+            onChange={(e) => updateFilter("date_to", e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            title="Hasta"
+          />
+          {activeFilterCount > 0 && (
+            <button
+              onClick={() => {
+                const params = new URLSearchParams();
+                const search = searchParams.get("search");
+                if (search) params.set("search", search);
+                router.push(`${pathname}?${params.toString()}`);
+              }}
+              className="text-xs text-red-600 hover:text-red-800"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Bulk actions */}
       {selected.size > 0 && (
@@ -221,6 +288,12 @@ export function InventoryTable({ data, count, locale }: InventoryTableProps) {
                       >
                         {wr.wr_number}
                       </Link>
+                      {wr.is_damaged && (
+                        <span className="ml-1 inline-flex rounded bg-red-100 px-1 text-[10px] text-red-700">Daño</span>
+                      )}
+                      {wr.is_dgr && (
+                        <span className="ml-1 inline-flex rounded bg-orange-100 px-1 text-[10px] text-orange-700">DGR</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
                       {wr.tracking_number}
@@ -257,9 +330,33 @@ export function InventoryTable({ data, count, locale }: InventoryTableProps) {
         </table>
       </div>
 
-      {/* Pagination info */}
-      <div className="text-xs text-gray-500">
-        {count} recibo(s) en total
+      {/* Pagination */}
+      <div className="flex items-center justify-between text-xs text-gray-500">
+        <span>{count} recibo(s) en total</span>
+        <div className="flex gap-2">
+          {(searchParams.get("offset") ? parseInt(searchParams.get("offset")!, 10) : 0) > 0 && (
+            <button
+              onClick={() => {
+                const current = parseInt(searchParams.get("offset") ?? "0", 10);
+                updateFilter("offset", String(Math.max(0, current - 50)));
+              }}
+              className="rounded border px-2 py-1 hover:bg-gray-50"
+            >
+              Anterior
+            </button>
+          )}
+          {count > (parseInt(searchParams.get("offset") ?? "0", 10) + 50) && (
+            <button
+              onClick={() => {
+                const current = parseInt(searchParams.get("offset") ?? "0", 10);
+                updateFilter("offset", String(current + 50));
+              }}
+              className="rounded border px-2 py-1 hover:bg-gray-50"
+            >
+              Siguiente
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

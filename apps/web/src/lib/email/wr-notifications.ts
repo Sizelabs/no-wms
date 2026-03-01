@@ -1,4 +1,4 @@
-import { EMAIL_FROM, resend } from "./client";
+import { EMAIL_FROM, getResend } from "./client";
 
 interface WrReceiptNotificationParams {
   agencyEmail: string;
@@ -51,7 +51,7 @@ Por favor revise las fotos adjuntas en el sistema.`;
 — no-wms`;
 
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: EMAIL_FROM,
       to: agencyEmail,
       subject,
