@@ -141,7 +141,7 @@ export async function getShippingInstruction(id: string) {
 
   const { data, error } = await supabase
     .from("shipping_instructions")
-    .select("*, agencies(name, code), consignees(name), hawbs(*), shipping_instruction_items(*, warehouse_receipts(wr_number, tracking_number, carrier, actual_weight_lb, billable_weight_lb))")
+    .select("*, agencies(name, code), consignees(name), hawbs(*), shipping_instruction_items(*, warehouse_receipts(wr_number, total_billable_weight_lb, packages(tracking_number, carrier)))")
     .eq("id", id)
     .single();
 
@@ -228,7 +228,7 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
 
   const { data: si } = await supabase
     .from("shipping_instructions")
-    .select("status, organization_id, shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(actual_weight_lb, billable_weight_lb))")
+    .select("status, organization_id, shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
     .eq("id", id)
     .single();
 
@@ -245,10 +245,10 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
   // Calculate totals from items
   const items = si.shipping_instruction_items ?? [];
   const totalPieces = items.length;
-  const totalWeight = items.reduce((sum: number, i: any) => sum + (i.warehouse_receipts?.billable_weight_lb ?? 0), 0);
+  const totalWeight = items.reduce((sum: number, i: any) => sum + (i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0);
 
   // Create HAWB
-  await supabase
+  const { data: hawb } = await supabase
     .from("hawbs")
     .insert({
       organization_id: si.organization_id,
@@ -256,7 +256,20 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
       hawb_number: hawbNumber,
       pieces: totalPieces,
       weight_lb: totalWeight,
-    });
+    })
+    .select("id")
+    .single();
+
+  // Set hawb_id on all WRs in this SI
+  if (hawb) {
+    const wrIds = items.map((i: any) => i.warehouse_receipt_id).filter(Boolean) as string[];
+    if (wrIds.length) {
+      await supabase
+        .from("warehouse_receipts")
+        .update({ hawb_id: hawb.id })
+        .in("id", wrIds);
+    }
+  }
 
   // Update SI totals and status
   await supabase

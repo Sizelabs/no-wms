@@ -8,7 +8,7 @@
   },
   "scripts": {
     "generate-types": "supabase gen types typescript --local > src/database.types.ts",
-    "db:reset": "supabase db reset",
+    "db:reset": "supabase db reset && tsx scripts/seed-auth.ts",
     "db:migrate": "supabase migration up",
     "db:push:staging": "supabase db push --linked --db-url $STAGING_DB_URL",
     "typecheck": "tsc --noEmit",
@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@no-wms/tsconfig": "workspace:*",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3"
   }
 }

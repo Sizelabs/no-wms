@@ -15,7 +15,7 @@ export async function getUnknownWrs(filters?: {
   const query = supabase
     .from("warehouse_receipts")
     .select(
-      "id, wr_number, tracking_number, carrier, sender_name, received_at, consignees(full_name), unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
+      "id, wr_number, received_at, consignees(full_name), packages(tracking_number, carrier, sender_name), unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
     )
     .is("agency_id", null)
     .order("received_at", { ascending: false });
@@ -42,11 +42,19 @@ export async function getUnknownWrs(filters?: {
   // Strip tracking numbers server-side so they never reach the client.
   // Agency users must prove they know the number to claim the WR.
   if (filters?.maskTracking && result) {
-    result = result.map((wr) => ({
-      ...wr,
-      tracking_number_masked: `${"•".repeat(Math.max(0, wr.tracking_number.length - 3))}${wr.tracking_number.slice(-3)}`,
-      tracking_number: null as unknown as string,
-    }));
+    result = result.map((wr) => {
+      const pkgs = Array.isArray(wr.packages) ? wr.packages : [];
+      const firstTracking = pkgs[0]?.tracking_number ?? "";
+      return {
+        ...wr,
+        tracking_number_masked: `${"•".repeat(Math.max(0, firstTracking.length - 3))}${firstTracking.slice(-3)}`,
+        packages: pkgs.map((p: Record<string, unknown>) => ({
+          tracking_number: null as string | null,
+          carrier: (p.carrier as string) ?? "",
+          sender_name: (p.sender_name as string) ?? "",
+        })),
+      };
+    });
   }
 
   return { data: result, error: null };
@@ -66,10 +74,10 @@ export async function claimUnknownWr(
     return { success: false, error: "No autenticado" };
   }
 
-  // Verify the WR exists, has no agency, and the tracking number matches
+  // Verify the WR exists, has no agency, and the tracking number matches a package
   const { data: wr } = await supabase
     .from("warehouse_receipts")
-    .select("id, tracking_number, organization_id")
+    .select("id, organization_id, packages(tracking_number)")
     .eq("id", warehouseReceiptId)
     .is("agency_id", null)
     .single();
@@ -78,7 +86,11 @@ export async function claimUnknownWr(
     return { success: false, error: "WR desconocido no encontrado o ya reclamado" };
   }
 
-  if (wr.tracking_number.toLowerCase() !== trackingNumber.toLowerCase()) {
+  const pkgs = Array.isArray(wr.packages) ? wr.packages : [];
+  const trackingMatch = pkgs.some(
+    (p: { tracking_number: string }) => p.tracking_number.toLowerCase() === trackingNumber.toLowerCase(),
+  );
+  if (!trackingMatch) {
     return { success: false, error: "El número de guía no coincide" };
   }
 

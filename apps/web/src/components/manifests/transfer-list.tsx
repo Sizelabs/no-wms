@@ -11,7 +11,7 @@ interface Transfer {
   created_at: string;
   from_agency: { name: string; code: string } | null;
   to_agency: { name: string; code: string } | null;
-  warehouse_receipts: { wr_number: string; tracking_number: string } | null;
+  warehouse_receipts: { wr_number: string; packages: { tracking_number: string }[] } | null;
 }
 
 interface TransferListProps {
@@ -69,7 +69,7 @@ export function TransferList({ data }: TransferListProps) {
             <tr key={t.id}>
               <td className="px-4 py-3 font-mono text-xs">
                 {t.warehouse_receipts?.wr_number ?? "—"}
-                <span className="ml-1 text-gray-400">{t.warehouse_receipts?.tracking_number}</span>
+                <span className="ml-1 text-gray-400">{t.warehouse_receipts?.packages?.[0]?.tracking_number}</span>
               </td>
               <td className="px-4 py-3 text-xs">
                 {t.from_agency ? `${t.from_agency.name} (${t.from_agency.code})` : "—"}

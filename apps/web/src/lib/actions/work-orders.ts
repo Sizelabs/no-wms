@@ -167,7 +167,7 @@ export async function getWorkOrder(id: string) {
 
   const { data, error } = await supabase
     .from("work_orders")
-    .select("*, agencies(name, code, type), profiles!work_orders_requested_by_fkey(full_name), work_order_items(*, warehouse_receipts(wr_number, tracking_number, carrier, status))")
+    .select("*, agencies(name, code, type), profiles!work_orders_requested_by_fkey(full_name), work_order_items(*, warehouse_receipts(wr_number, status, packages(tracking_number, carrier)))")
     .eq("id", id)
     .single();
 

@@ -30,8 +30,8 @@ export default async function ShippingDetailPage({
   }
 
   const totalWeight = si.shipping_instruction_items?.reduce(
-    (sum: number, item: { warehouse_receipts: { billable_weight_lb: number | null } | null }) =>
-      sum + (item.warehouse_receipts?.billable_weight_lb ?? 0),
+    (sum: number, item: { warehouse_receipts: { total_billable_weight_lb: number | null } | null }) =>
+      sum + (item.warehouse_receipts?.total_billable_weight_lb ? Number(item.warehouse_receipts.total_billable_weight_lb) : 0),
     0,
   ) ?? 0;
 
@@ -124,7 +124,7 @@ export default async function ShippingDetailPage({
             <div className="space-y-1">
               {si.shipping_instruction_items?.map((item: {
                 warehouse_receipt_id: string;
-                warehouse_receipts: { wr_number: string; tracking_number: string; carrier: string | null; actual_weight_lb: number | null; billable_weight_lb: number | null } | null;
+                warehouse_receipts: { wr_number: string; total_billable_weight_lb: number | null; packages: { tracking_number: string; carrier: string | null }[] } | null;
               }) => (
                 <Link
                   key={item.warehouse_receipt_id}
@@ -136,11 +136,11 @@ export default async function ShippingDetailPage({
                       {item.warehouse_receipts?.wr_number ?? "—"}
                     </span>
                     <span className="ml-2 text-xs text-gray-500">
-                      {item.warehouse_receipts?.tracking_number}
+                      {item.warehouse_receipts?.packages?.[0]?.tracking_number ?? ""}
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">
-                    {item.warehouse_receipts?.billable_weight_lb?.toFixed(1) ?? "—"} lb
+                    {item.warehouse_receipts?.total_billable_weight_lb ? Number(item.warehouse_receipts.total_billable_weight_lb).toFixed(1) : "—"} lb
                   </span>
                 </Link>
               ))}

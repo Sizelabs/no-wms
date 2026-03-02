@@ -4,25 +4,30 @@ import {
   calculateBillableWeight,
   calculateVolumetricWeight,
   createConsigneeSchema,
+  createPackageSchema,
   createWarehouseReceiptSchema,
 } from "../warehouse-receipt";
 
-const validWR = {
-  warehouse_id: "a0000000-0000-0000-0000-000000000001",
-  agency_id: "a0000000-0000-0000-0000-000000000002",
+const validPackage = {
   tracking_number: "1Z999AA10123456784",
   carrier: "UPS",
 };
 
-describe("createWarehouseReceiptSchema", () => {
+const validWR = {
+  warehouse_id: "a0000000-0000-0000-0000-000000000001",
+  agency_id: "a0000000-0000-0000-0000-000000000002",
+  packages: [validPackage],
+};
+
+describe("createPackageSchema", () => {
   it("accepts valid minimal input", () => {
-    const result = createWarehouseReceiptSchema.safeParse(validWR);
+    const result = createPackageSchema.safeParse(validPackage);
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid full input with dimensions", () => {
-    const result = createWarehouseReceiptSchema.safeParse({
-      ...validWR,
+  it("accepts full input with dimensions", () => {
+    const result = createPackageSchema.safeParse({
+      ...validPackage,
       actual_weight_lb: 5.5,
       length_in: 12,
       width_in: 8,
@@ -35,32 +40,24 @@ describe("createWarehouseReceiptSchema", () => {
   });
 
   it("rejects missing tracking_number", () => {
-    const result = createWarehouseReceiptSchema.safeParse({
-      ...validWR,
+    const result = createPackageSchema.safeParse({
+      ...validPackage,
       tracking_number: "",
     });
     expect(result.success).toBe(false);
   });
 
   it("rejects missing carrier", () => {
-    const result = createWarehouseReceiptSchema.safeParse({
-      ...validWR,
+    const result = createPackageSchema.safeParse({
+      ...validPackage,
       carrier: "",
     });
     expect(result.success).toBe(false);
   });
 
-  it("rejects non-uuid warehouse_id", () => {
-    const result = createWarehouseReceiptSchema.safeParse({
-      ...validWR,
-      warehouse_id: "not-a-uuid",
-    });
-    expect(result.success).toBe(false);
-  });
-
   it("requires damage_description when is_damaged is true", () => {
-    const result = createWarehouseReceiptSchema.safeParse({
-      ...validWR,
+    const result = createPackageSchema.safeParse({
+      ...validPackage,
       is_damaged: true,
     });
     expect(result.success).toBe(false);
@@ -70,8 +67,8 @@ describe("createWarehouseReceiptSchema", () => {
   });
 
   it("accepts damage_description when is_damaged is true", () => {
-    const result = createWarehouseReceiptSchema.safeParse({
-      ...validWR,
+    const result = createPackageSchema.safeParse({
+      ...validPackage,
       is_damaged: true,
       damage_description: "Box crushed",
     });
@@ -79,7 +76,7 @@ describe("createWarehouseReceiptSchema", () => {
   });
 
   it("defaults is_dgr to false", () => {
-    const result = createWarehouseReceiptSchema.safeParse(validWR);
+    const result = createPackageSchema.safeParse(validPackage);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.is_dgr).toBe(false);
@@ -87,7 +84,7 @@ describe("createWarehouseReceiptSchema", () => {
   });
 
   it("defaults pieces_count to 1", () => {
-    const result = createWarehouseReceiptSchema.safeParse(validWR);
+    const result = createPackageSchema.safeParse(validPackage);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.pieces_count).toBe(1);
@@ -95,9 +92,46 @@ describe("createWarehouseReceiptSchema", () => {
   });
 
   it("rejects negative weight", () => {
+    const result = createPackageSchema.safeParse({
+      ...validPackage,
+      actual_weight_lb: -5,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("createWarehouseReceiptSchema", () => {
+  it("accepts valid minimal input", () => {
+    const result = createWarehouseReceiptSchema.safeParse(validWR);
+    expect(result.success).toBe(true);
+  });
+
+  it("requires at least one package", () => {
     const result = createWarehouseReceiptSchema.safeParse({
       ...validWR,
-      actual_weight_lb: -5,
+      packages: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts multiple packages", () => {
+    const result = createWarehouseReceiptSchema.safeParse({
+      ...validWR,
+      packages: [
+        { tracking_number: "TRK001", carrier: "UPS" },
+        { tracking_number: "TRK002", carrier: "FedEx" },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.packages).toHaveLength(2);
+    }
+  });
+
+  it("rejects non-uuid warehouse_id", () => {
+    const result = createWarehouseReceiptSchema.safeParse({
+      ...validWR,
+      warehouse_id: "not-a-uuid",
     });
     expect(result.success).toBe(false);
   });

@@ -106,18 +106,18 @@ export async function updateMawbStatus(id: string, newStatus: string): Promise<{
   if (newStatus === "delivered") {
     const { data: hawbs } = await supabase
       .from("hawbs")
-      .select("shipping_instruction_id")
+      .select("id")
       .eq("mawb_id", id);
 
     if (hawbs?.length) {
-      const siIds = hawbs.map((h) => h.shipping_instruction_id);
-      const { data: siItems } = await supabase
-        .from("shipping_instruction_items")
-        .select("warehouse_receipt_id")
-        .in("shipping_instruction_id", siIds);
+      const hawbIds = hawbs.map((h) => h.id);
+      const { data: wrs } = await supabase
+        .from("warehouse_receipts")
+        .select("id")
+        .in("hawb_id", hawbIds);
 
-      if (siItems?.length) {
-        const wrIds = siItems.map((i) => i.warehouse_receipt_id);
+      if (wrs?.length) {
+        const wrIds = wrs.map((w) => w.id);
         await supabase
           .from("warehouse_receipts")
           .update({ status: "dispatched" })
@@ -213,7 +213,7 @@ export async function getSacas(filters?: { status?: string; mawb_id?: string }) 
 
   let query = supabase
     .from("sacas")
-    .select("*, saca_items(warehouse_receipt_id, warehouse_receipts(wr_number, tracking_number)), mawbs(mawb_number)")
+    .select("*, saca_items(warehouse_receipt_id, warehouse_receipts(wr_number, packages(tracking_number))), mawbs(mawb_number)")
     .order("created_at", { ascending: false });
 
   if (warehouseScope !== null) {
@@ -443,7 +443,7 @@ export async function getTransferRequests() {
 
   const { data, error } = await supabase
     .from("wr_transfer_requests")
-    .select("*, warehouse_receipts(wr_number, tracking_number), from_agency:agencies!wr_transfer_requests_from_agency_id_fkey(name, code), to_agency:agencies!wr_transfer_requests_to_agency_id_fkey(name, code)")
+    .select("*, warehouse_receipts(wr_number, packages(tracking_number)), from_agency:agencies!wr_transfer_requests_from_agency_id_fkey(name, code), to_agency:agencies!wr_transfer_requests_to_agency_id_fkey(name, code)")
     .order("created_at", { ascending: false });
 
   if (error) return { data: null, error: error.message };

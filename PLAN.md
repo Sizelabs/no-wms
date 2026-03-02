@@ -366,7 +366,7 @@ Super Admin (platform-level, cross-company)
 9. E2E tests (Playwright, including mobile viewports for operator screens)
 10. Accessibility audit
 11. Production deployment: Supabase prod project, Vercel prod, DNS for no-wms.com
-12. Seed data for demo: sample company (org), company_admin user, warehouses (Miami, Spain, China), agencies (corporativo + box) working across all warehouses, destinatarios, WRs across warehouses
+12. Seed data for demo
 
 ---
 

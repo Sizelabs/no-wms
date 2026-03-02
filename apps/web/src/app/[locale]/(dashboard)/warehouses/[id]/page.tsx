@@ -193,12 +193,12 @@ export default async function WarehouseDetailPage({
                 (wr: {
                   id: string;
                   wr_number: string;
-                  tracking_number: string;
                   status: string;
-                  billable_weight_lb: number | null;
-                  is_damaged: boolean;
+                  total_billable_weight_lb: number | null;
+                  has_damaged_package: boolean;
                   received_at: string;
                   agencies: { name: string; code: string } | null;
+                  packages: { tracking_number: string }[];
                 }) => (
                   <tr key={wr.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2.5">
@@ -208,20 +208,20 @@ export default async function WarehouseDetailPage({
                       >
                         {wr.wr_number}
                       </Link>
-                      {wr.is_damaged && (
+                      {wr.has_damaged_package && (
                         <span className="ml-1 inline-flex rounded bg-red-100 px-1 text-[10px] text-red-700">
                           Daño
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 font-mono text-xs text-gray-600">
-                      {wr.tracking_number}
+                      {wr.packages?.[0]?.tracking_number ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 text-gray-600">
                       {wr.agencies?.code ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 font-mono text-xs">
-                      {wr.billable_weight_lb?.toFixed(1) ?? "—"} lb
+                      {wr.total_billable_weight_lb ? Number(wr.total_billable_weight_lb).toFixed(1) : "—"} lb
                     </td>
                     <td className="px-4 py-2.5">
                       <span

@@ -18,7 +18,7 @@ interface MawbOption {
 interface WrOption {
   id: string;
   wr_number: string;
-  tracking_number: string;
+  packages?: { tracking_number: string }[];
 }
 
 interface SacaCreateFormProps {
@@ -125,7 +125,7 @@ export function SacaCreateForm({ warehouses, mawbs, availableWrs }: SacaCreateFo
                   className="rounded border-gray-300"
                 />
                 <span className="font-mono text-xs">{wr.wr_number}</span>
-                <span className="text-xs text-gray-500">{wr.tracking_number}</span>
+                <span className="text-xs text-gray-500">{wr.packages?.[0]?.tracking_number ?? ""}</span>
               </label>
             ))
           )}

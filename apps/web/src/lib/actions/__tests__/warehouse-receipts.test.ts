@@ -55,15 +55,21 @@ describe("checkDuplicateTracking", () => {
   it("returns null when no duplicate", async () => {
     const result = await checkDuplicateTracking("1Z999AA1012345");
     expect(result).toBeNull();
-    expect(mockSupabase.from).toHaveBeenCalledWith("warehouse_receipts");
+    expect(mockSupabase.from).toHaveBeenCalledWith("packages");
   });
 
   it("returns existing WR data when duplicate found", async () => {
-    const existing = { id: "wr-1", wr_number: "GLP0001", received_at: "2026-03-01" };
-    mockResult = { data: existing, error: null };
+    mockResult = {
+      data: {
+        id: "pkg-1",
+        warehouse_receipt_id: "wr-1",
+        warehouse_receipts: { wr_number: "GLP0001", received_at: "2026-03-01" },
+      },
+      error: null,
+    };
 
     const result = await checkDuplicateTracking("1Z999AA1012345");
-    expect(result).toEqual(existing);
+    expect(result).toEqual({ id: "wr-1", wr_number: "GLP0001", received_at: "2026-03-01" });
   });
 });
 

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { logout } from "@/lib/actions/auth";
 
 interface TopbarProps {
@@ -29,6 +30,7 @@ export function Topbar({ userName, userRole }: TopbarProps) {
 
       {/* User menu */}
       <div className="flex items-center gap-3">
+        <NotificationBell />
         <div className="text-right">
           <p className="text-sm font-medium text-gray-900">{userName}</p>
           <p className="text-xs text-gray-500">{userRole}</p>

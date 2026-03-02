@@ -93,6 +93,58 @@ export const TICKET_STATUSES = {
 export type TicketStatus =
   (typeof TICKET_STATUSES)[keyof typeof TICKET_STATUSES];
 
+export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
+  open: "Abierto",
+  in_review: "En Revisión",
+  resolved: "Resuelto",
+  closed: "Cerrado",
+};
+
+// ── Ticket priorities ──
+export const TICKET_PRIORITIES = {
+  LOW: "low",
+  NORMAL: "normal",
+  HIGH: "high",
+  URGENT: "urgent",
+} as const;
+
+export type TicketPriority =
+  (typeof TICKET_PRIORITIES)[keyof typeof TICKET_PRIORITIES];
+
+export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
+  low: "Baja",
+  normal: "Normal",
+  high: "Alta",
+  urgent: "Urgente",
+};
+
+// ── Ticket categories ──
+export const TICKET_CATEGORIES = [
+  "Paquete danado",
+  "Paquete extraviado",
+  "Consulta general",
+  "Reclamo de facturacion",
+  "Solicitud de informacion",
+  "Otro",
+] as const;
+
+export type TicketCategory = (typeof TICKET_CATEGORIES)[number];
+
+// ── Notification event types ──
+export const NOTIFICATION_EVENT_TYPES = {
+  WR_RECEIVED: "wr_received",
+  WR_DISPATCHED: "wr_dispatched",
+  WO_COMPLETED: "wo_completed",
+  INVOICE_SENT: "invoice_sent",
+  TICKET_CREATED: "ticket_created",
+  TICKET_STATUS_CHANGED: "ticket_status_changed",
+  TICKET_MESSAGE: "ticket_message",
+  MASS_ANNOUNCEMENT: "mass_announcement",
+} as const;
+
+export type NotificationEventType =
+  (typeof NOTIFICATION_EVENT_TYPES)[keyof typeof NOTIFICATION_EVENT_TYPES];
+
 // ── Invoice statuses ──
 export const INVOICE_STATUSES = {
   DRAFT: "draft",

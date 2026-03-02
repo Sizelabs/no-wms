@@ -15,10 +15,8 @@ interface ClaimRecord {
 interface UnknownWr {
   id: string;
   wr_number: string;
-  tracking_number: string;
   tracking_number_masked?: string;
-  carrier: string | null;
-  sender_name: string | null;
+  packages: Array<{ tracking_number: string | null; carrier: string; sender_name: string }>;
   consignees: { full_name: string }[] | { full_name: string } | null;
   received_at: string;
   unknown_wrs: ClaimRecord[] | ClaimRecord | null;
@@ -98,17 +96,17 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
                       <span>{item.tracking_number_masked.slice(-3)}</span>
                     </span>
                   ) : (
-                    item.tracking_number
+                    item.packages?.[0]?.tracking_number ?? "—"
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
-                  {item.sender_name ?? "—"}
+                  {item.packages?.[0]?.sender_name ?? "—"}
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
                   {(Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? "—"}
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
-                  {item.carrier ?? "—"}
+                  {item.packages?.[0]?.carrier ?? "—"}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-gray-400">
                   {new Date(item.received_at).toLocaleDateString("es")}

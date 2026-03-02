@@ -1,6 +1,5 @@
 "use client";
 
-import { CARRIERS } from "@no-wms/shared/constants/carriers";
 import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
@@ -9,17 +8,24 @@ import { useCallback, useState, useTransition } from "react";
 
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
+interface WrPackage {
+  tracking_number: string;
+  carrier: string;
+  billable_weight_lb: number;
+  is_damaged: boolean;
+  sender_name: string;
+}
+
 interface WarehouseReceipt {
   id: string;
   wr_number: string;
-  tracking_number: string;
-  carrier: string | null;
+  packages: WrPackage[];
+  total_billable_weight_lb: number | null;
+  has_damaged_package: boolean;
+  has_dgr_package: boolean;
+  total_packages: number;
+  total_pieces: number;
   status: string;
-  actual_weight_lb: number | null;
-  billable_weight_lb: number | null;
-  pieces_count: number;
-  is_damaged: boolean;
-  is_dgr: boolean;
   received_at: string;
   agencies: { name: string; code: string; type: string } | null;
   consignees: { full_name: string } | null;
@@ -108,7 +114,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
     [pathname, router, searchParams],
   );
 
-  const activeFilterCount = ["status", "agency_id", "warehouse_id", "carrier", "is_damaged", "date_from", "date_to"]
+  const activeFilterCount = ["status", "agency_id", "warehouse_id", "has_damaged_package", "date_from", "date_to"]
     .filter((k) => searchParams.has(k)).length;
 
   return (
@@ -174,18 +180,8 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
             ))}
           </select>
           <select
-            defaultValue={searchParams.get("carrier") ?? ""}
-            onChange={(e) => updateFilter("carrier", e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-          >
-            <option value="">Todos los transportistas</option>
-            {CARRIERS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <select
-            defaultValue={searchParams.get("is_damaged") ?? ""}
-            onChange={(e) => updateFilter("is_damaged", e.target.value)}
+            defaultValue={searchParams.get("has_damaged_package") ?? ""}
+            onChange={(e) => updateFilter("has_damaged_package", e.target.value)}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
           >
             <option value="">Daño: Todos</option>
@@ -301,15 +297,18 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                       >
                         {wr.wr_number}
                       </Link>
-                      {wr.is_damaged && (
+                      {wr.has_damaged_package && (
                         <span className="ml-1 inline-flex rounded bg-red-100 px-1 text-[10px] text-red-700">Daño</span>
                       )}
-                      {wr.is_dgr && (
+                      {wr.has_dgr_package && (
                         <span className="ml-1 inline-flex rounded bg-orange-100 px-1 text-[10px] text-orange-700">DGR</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
-                      {wr.tracking_number}
+                      {wr.packages[0]?.tracking_number ?? "—"}
+                      {wr.total_packages > 1 && (
+                        <span className="ml-1 text-gray-400">(+{wr.total_packages - 1})</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-gray-600">
                       {wr.agencies?.code ?? "—"}
@@ -318,7 +317,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                       {wr.consignees?.full_name ?? "—"}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs">
-                      {wr.billable_weight_lb?.toFixed(1) ?? "—"} lb
+                      {wr.total_billable_weight_lb?.toFixed(1) ?? "—"} lb
                     </td>
                     <td className="px-3 py-2.5">
                       <span

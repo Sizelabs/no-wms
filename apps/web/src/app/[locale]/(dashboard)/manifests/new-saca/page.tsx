@@ -34,7 +34,7 @@ export default async function NewSacaPage({
 
   let wrsQuery = supabase
     .from("warehouse_receipts")
-    .select("id, wr_number, tracking_number")
+    .select("id, wr_number, packages(tracking_number)")
     .eq("status", "in_dispatch")
     .order("received_at", { ascending: false })
     .limit(500);

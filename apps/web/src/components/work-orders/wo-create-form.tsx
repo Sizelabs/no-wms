@@ -22,9 +22,8 @@ interface Warehouse {
 interface WrOption {
   id: string;
   wr_number: string;
-  tracking_number: string;
-  carrier: string | null;
   status: string;
+  packages?: { tracking_number: string; carrier: string }[];
 }
 
 interface WoCreateFormProps {
@@ -152,8 +151,8 @@ export function WoCreateForm({ agencies, warehouses, availableWrs }: WoCreateFor
                   className="rounded border-gray-300"
                 />
                 <span className="text-xs font-mono">{wr.wr_number}</span>
-                <span className="text-xs text-gray-500">{wr.tracking_number}</span>
-                <span className="text-xs text-gray-400">{wr.carrier ?? ""}</span>
+                <span className="text-xs text-gray-500">{wr.packages?.[0]?.tracking_number ?? ""}</span>
+                <span className="text-xs text-gray-400">{wr.packages?.[0]?.carrier ?? ""}</span>
               </label>
             ))
           )}

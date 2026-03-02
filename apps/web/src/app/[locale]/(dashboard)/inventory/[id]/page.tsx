@@ -54,7 +54,12 @@ export default async function WrDetailPage({
           </span>
         </InfoCard>
         <InfoCard label="Guía">
-          <span className="font-mono text-sm">{wr.tracking_number}</span>
+          <span className="font-mono text-sm">
+            {wr.packages?.[0]?.tracking_number ?? "—"}
+            {(wr.packages?.length ?? 0) > 1 && (
+              <span className="ml-1 text-xs text-gray-400">(+{(wr.packages?.length ?? 0) - 1})</span>
+            )}
+          </span>
         </InfoCard>
         <InfoCard label="Agencia">
           {wr.agencies ? `${wr.agencies.name} (${wr.agencies.code})` : "—"}
@@ -70,36 +75,66 @@ export default async function WrDetailPage({
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left column: info */}
         <div className="space-y-6">
-          {/* Weight & dimensions */}
+          {/* Weight & dimensions (aggregates) */}
           <Section title="Peso y dimensiones">
             <dl className="grid grid-cols-2 gap-3 text-sm">
-              <DtDd label="Peso real" value={wr.actual_weight_lb ? `${wr.actual_weight_lb} lb` : "—"} />
-              <DtDd label="Peso volumétrico" value={wr.volumetric_weight_lb ? `${wr.volumetric_weight_lb.toFixed(2)} lb` : "—"} />
-              <DtDd label="Peso facturable" value={wr.billable_weight_lb ? `${wr.billable_weight_lb.toFixed(2)} lb` : "—"} />
-              <DtDd label="Piezas" value={String(wr.pieces_count)} />
-              <DtDd label="Dimensiones" value={
-                wr.length_in && wr.width_in && wr.height_in
-                  ? `${wr.length_in} × ${wr.width_in} × ${wr.height_in} in`
-                  : "—"
-              } />
-              <DtDd label="Transportista" value={wr.carrier ?? "—"} />
+              <DtDd label="Peso real total" value={wr.total_actual_weight_lb ? `${wr.total_actual_weight_lb} lb` : "—"} />
+              <DtDd label="Peso vol. total" value={wr.total_volumetric_weight_lb ? `${Number(wr.total_volumetric_weight_lb).toFixed(2)} lb` : "—"} />
+              <DtDd label="Peso facturable" value={wr.total_billable_weight_lb ? `${Number(wr.total_billable_weight_lb).toFixed(2)} lb` : "—"} />
+              <DtDd label="Paquetes" value={String(wr.total_packages ?? wr.packages?.length ?? 0)} />
             </dl>
           </Section>
+
+          {/* Per-package details */}
+          {wr.packages && wr.packages.length > 0 && (
+            <Section title={`Paquetes (${wr.packages.length})`}>
+              <div className="space-y-3">
+                {wr.packages.map((pkg: { id: string; tracking_number: string; carrier: string | null; actual_weight_lb: number | null; billable_weight_lb: number | null; length_in: number | null; width_in: number | null; height_in: number | null; sender_name: string | null; pieces_count: number; is_damaged: boolean; damage_description: string | null; is_dgr: boolean; dgr_class: string | null }) => (
+                  <div key={pkg.id} className="rounded-md border p-3 text-sm">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="font-mono text-xs font-medium">{pkg.tracking_number}</span>
+                      <span className="text-xs text-gray-500">{pkg.carrier ?? "—"}</span>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-2 text-xs">
+                      <DtDd label="Peso" value={pkg.actual_weight_lb ? `${pkg.actual_weight_lb} lb` : "—"} />
+                      <DtDd label="Facturable" value={pkg.billable_weight_lb ? `${Number(pkg.billable_weight_lb).toFixed(2)} lb` : "—"} />
+                      <DtDd label="Dimensiones" value={
+                        pkg.length_in && pkg.width_in && pkg.height_in
+                          ? `${pkg.length_in} × ${pkg.width_in} × ${pkg.height_in} in`
+                          : "—"
+                      } />
+                      <DtDd label="Piezas" value={String(pkg.pieces_count)} />
+                      {pkg.sender_name && <DtDd label="Remitente" value={pkg.sender_name} />}
+                    </dl>
+                    {pkg.is_damaged && (
+                      <div className="mt-2 rounded bg-red-50 p-1.5 text-xs text-red-700">
+                        Dañado: {pkg.damage_description ?? "Sin descripción"}
+                      </div>
+                    )}
+                    {pkg.is_dgr && (
+                      <div className="mt-1 rounded bg-orange-50 p-1.5 text-xs text-orange-700">
+                        DGR{pkg.dgr_class ? ` — Clase ${pkg.dgr_class}` : ""}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Section>
+          )}
 
           {/* Recipient & details */}
           <Section title="Detalles">
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <DtDd label="Destinatario" value={wr.consignees?.full_name ?? "Sin asignar"} />
-              <DtDd label="Remitente" value={wr.sender_name ?? "—"} />
               <DtDd label="Recibido" value={new Date(wr.received_at).toLocaleString("es")} />
-              {wr.is_damaged && (
+              {wr.has_damaged_package && (
                 <div className="col-span-2 rounded-md bg-red-50 p-2 text-sm text-red-700">
-                  <span className="font-medium">Dañado:</span> {wr.damage_description ?? "Sin descripción"}
+                  <span className="font-medium">Contiene paquete(s) dañado(s)</span>
                 </div>
               )}
-              {wr.is_dgr && (
+              {wr.has_dgr_package && (
                 <div className="col-span-2 rounded-md bg-orange-50 p-2 text-sm text-orange-700">
-                  Mercancía peligrosa (DGR)
+                  Contiene mercancía peligrosa (DGR)
                 </div>
               )}
               {wr.notes && (

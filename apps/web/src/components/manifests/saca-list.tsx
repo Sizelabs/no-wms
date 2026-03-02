@@ -6,7 +6,10 @@ import { updateSacaStatus } from "@/lib/actions/manifests";
 
 interface SacaItem {
   warehouse_receipt_id: string;
-  warehouse_receipts: { wr_number: string; tracking_number: string } | null;
+  warehouse_receipts: {
+    wr_number: string;
+    packages: { tracking_number: string }[];
+  } | null;
 }
 
 interface Saca {

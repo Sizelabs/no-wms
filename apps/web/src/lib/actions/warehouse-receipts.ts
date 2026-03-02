@@ -15,12 +15,16 @@ export async function checkDuplicateTracking(trackingNumber: string) {
   const supabase = await createClient();
 
   const { data } = await supabase
-    .from("warehouse_receipts")
-    .select("id, wr_number, received_at")
+    .from("packages")
+    .select("id, warehouse_receipt_id, warehouse_receipts(wr_number, received_at)")
     .eq("tracking_number", trackingNumber)
     .maybeSingle();
 
-  return data;
+  if (!data) return null;
+
+  const raw = data.warehouse_receipts;
+  const wr = (Array.isArray(raw) ? raw[0] : raw) as { wr_number: string; received_at: string } | null | undefined;
+  return wr ? { id: data.warehouse_receipt_id, wr_number: wr.wr_number, received_at: wr.received_at } : null;
 }
 
 export async function generateWrNumber(): Promise<string> {
@@ -55,27 +59,41 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     redirect("/es/login");
   }
 
-  // Parse and validate
+  // Parse packages from formData
+  const packagesJson = formData.get("packages") as string | null;
+  let packagesRaw: Array<Record<string, unknown>> = [];
+  if (packagesJson) {
+    packagesRaw = JSON.parse(packagesJson);
+  } else {
+    // Single-package fallback (batch import / legacy)
+    packagesRaw = [
+      {
+        tracking_number: (formData.get("tracking_number") as string)?.trim(),
+        carrier: formData.get("carrier") as string,
+        actual_weight_lb: formData.get("actual_weight_lb") ? Number(formData.get("actual_weight_lb")) : undefined,
+        length_in: formData.get("length_in") ? Number(formData.get("length_in")) : undefined,
+        width_in: formData.get("width_in") ? Number(formData.get("width_in")) : undefined,
+        height_in: formData.get("height_in") ? Number(formData.get("height_in")) : undefined,
+        content_description: (formData.get("content_description") as string) || undefined,
+        declared_value_usd: formData.get("declared_value_usd") ? Number(formData.get("declared_value_usd")) : undefined,
+        is_dgr: formData.get("is_dgr") === "true",
+        dgr_class: (formData.get("dgr_class") as string) || undefined,
+        is_damaged: formData.get("is_damaged") === "true",
+        damage_description: (formData.get("damage_description") as string) || undefined,
+        sender_name: (formData.get("sender_name") as string) || undefined,
+        pieces_count: formData.get("pieces_count") ? Number(formData.get("pieces_count")) : 1,
+      },
+    ];
+  }
+
   const raw = {
     warehouse_id: formData.get("warehouse_id") as string,
     agency_id: (formData.get("agency_id") as string) || null,
-    tracking_number: (formData.get("tracking_number") as string)?.trim(),
-    carrier: formData.get("carrier") as string,
     consignee_id: (formData.get("consignee_id") as string) || null,
-    actual_weight_lb: formData.get("actual_weight_lb") ? Number(formData.get("actual_weight_lb")) : undefined,
-    length_in: formData.get("length_in") ? Number(formData.get("length_in")) : undefined,
-    width_in: formData.get("width_in") ? Number(formData.get("width_in")) : undefined,
-    height_in: formData.get("height_in") ? Number(formData.get("height_in")) : undefined,
-    content_description: (formData.get("content_description") as string) || undefined,
-    is_dgr: formData.get("is_dgr") === "true",
-    dgr_class: (formData.get("dgr_class") as string) || undefined,
-    is_damaged: formData.get("is_damaged") === "true",
-    damage_description: (formData.get("damage_description") as string) || undefined,
     warehouse_location_id: (formData.get("warehouse_location_id") as string) || undefined,
-    sender_name: (formData.get("sender_name") as string) || undefined,
-    pieces_count: formData.get("pieces_count") ? Number(formData.get("pieces_count")) : 1,
     notes: (formData.get("notes") as string) || undefined,
     client_id: (formData.get("client_id") as string) || undefined,
+    packages: packagesRaw,
   };
 
   const parsed = createWarehouseReceiptSchema.safeParse(raw);
@@ -85,29 +103,33 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
 
   const input = parsed.data;
 
-  // Duplicate check
-  const duplicate = await checkDuplicateTracking(input.tracking_number);
+  // Duplicate check on first package tracking
+  const firstPkg = input.packages[0]!;
+  const duplicate = await checkDuplicateTracking(firstPkg.tracking_number);
   if (duplicate) {
     throw new Error(
       `Esta guía ya fue recibida el ${new Date(duplicate.received_at).toLocaleDateString("es")}. WR: ${duplicate.wr_number}`,
     );
   }
 
-  // Calculate weights
+  // Calculate weights per package
   const dimensionalFactor = 166; // TODO: resolve from settings
-  let volumetricWeightLb: number | null = null;
-  if (input.length_in && input.width_in && input.height_in) {
-    volumetricWeightLb = calculateVolumetricWeight(
-      input.length_in,
-      input.width_in,
-      input.height_in,
-      dimensionalFactor,
+  const packageInserts = input.packages.map((pkg) => {
+    let volumetricWeightLb: number | null = null;
+    if (pkg.length_in && pkg.width_in && pkg.height_in) {
+      volumetricWeightLb = calculateVolumetricWeight(
+        pkg.length_in,
+        pkg.width_in,
+        pkg.height_in,
+        dimensionalFactor,
+      );
+    }
+    const billableWeightLb = calculateBillableWeight(
+      pkg.actual_weight_lb ?? null,
+      volumetricWeightLb,
     );
-  }
-  const billableWeightLb = calculateBillableWeight(
-    input.actual_weight_lb ?? null,
-    volumetricWeightLb,
-  );
+    return { ...pkg, volumetric_weight_lb: volumetricWeightLb, billable_weight_lb: billableWeightLb };
+  });
 
   // Generate WR number
   const wrNumber = await generateWrNumber();
@@ -123,34 +145,18 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     throw new Error("Perfil no encontrado");
   }
 
-  // Insert WR
+  // Insert WR (without package-level fields — trigger computes aggregates)
   const { data: wr, error } = await supabase
     .from("warehouse_receipts")
     .insert({
       organization_id: profile.organization_id,
       warehouse_id: input.warehouse_id,
       wr_number: wrNumber,
-      tracking_number: input.tracking_number,
-      carrier: input.carrier,
       status: "received",
       agency_id: input.agency_id ?? null,
       is_unknown: !input.agency_id,
       consignee_id: input.consignee_id ?? null,
-      actual_weight_lb: input.actual_weight_lb ?? null,
-      length_in: input.length_in ?? null,
-      width_in: input.width_in ?? null,
-      height_in: input.height_in ?? null,
-      volumetric_weight_lb: volumetricWeightLb,
-      billable_weight_lb: billableWeightLb,
-      content_description: input.content_description ?? null,
-      is_dgr: input.is_dgr,
-      dgr_class: input.dgr_class ?? null,
-      dgr_checklist_completed: input.dgr_checklist_completed ?? null,
-      is_damaged: input.is_damaged,
-      damage_description: input.damage_description ?? null,
       warehouse_location_id: input.warehouse_location_id ?? null,
-      sender_name: input.sender_name ?? null,
-      pieces_count: input.pieces_count,
       notes: input.notes ?? null,
       received_by: user.id,
       client_id: input.client_id ?? null,
@@ -160,6 +166,34 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  // Insert packages (trigger will update WR aggregates)
+  const { error: pkgError } = await supabase.from("packages").insert(
+    packageInserts.map((pkg) => ({
+      organization_id: profile.organization_id,
+      warehouse_receipt_id: wr.id,
+      tracking_number: pkg.tracking_number,
+      carrier: pkg.carrier,
+      actual_weight_lb: pkg.actual_weight_lb ?? null,
+      length_in: pkg.length_in ?? null,
+      width_in: pkg.width_in ?? null,
+      height_in: pkg.height_in ?? null,
+      volumetric_weight_lb: pkg.volumetric_weight_lb,
+      billable_weight_lb: pkg.billable_weight_lb,
+      content_description: pkg.content_description ?? null,
+      declared_value_usd: pkg.declared_value_usd ?? null,
+      is_dgr: pkg.is_dgr,
+      dgr_class: pkg.dgr_class ?? null,
+      is_damaged: pkg.is_damaged,
+      damage_description: pkg.damage_description ?? null,
+      sender_name: pkg.sender_name ?? null,
+      pieces_count: pkg.pieces_count,
+    })),
+  );
+
+  if (pkgError) {
+    throw new Error(pkgError.message);
   }
 
   // Insert initial status history
@@ -205,8 +239,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     }
   }
 
-  // Send email notification to agency (non-blocking, lazy import to avoid build-time Resend init)
-  // Skip when agency is unknown
+  // Send email notification to agency (non-blocking)
   try {
     if (!input.agency_id) throw new Error("skip");
     const { sendWrReceiptNotification } = await import("@/lib/email/wr-notifications");
@@ -230,15 +263,17 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
           ? await supabase.from("consignees").select("full_name").eq("id", input.consignee_id).single()
           : { data: null };
 
+        const totalBillable = packageInserts.reduce((sum, p) => sum + p.billable_weight_lb, 0);
+
         await sendWrReceiptNotification({
           agencyEmail: contactEmail,
           agencyName: agencyData.name,
-          trackingNumber: input.tracking_number,
+          trackingNumber: firstPkg.tracking_number,
           wrNumber,
           consigneeName: consignee?.full_name ?? null,
-          weightLb: billableWeightLb,
-          isDamaged: input.is_damaged,
-          damageDescription: input.damage_description ?? null,
+          weightLb: totalBillable,
+          isDamaged: packageInserts.some((p) => p.is_damaged),
+          damageDescription: packageInserts.find((p) => p.is_damaged)?.damage_description ?? null,
         });
       }
     }
@@ -277,7 +312,7 @@ export async function getWarehouseReceipts(filters?: {
 
   let query = supabase
     .from("warehouse_receipts")
-    .select("*, agencies(name, code, type), consignees(full_name)", { count: "exact" })
+    .select("*, agencies(name, code, type), consignees(full_name), packages(*)", { count: "exact" })
     .order("received_at", { ascending: false });
 
   // Apply warehouse scope for warehouse-scoped users
@@ -306,12 +341,8 @@ export async function getWarehouseReceipts(filters?: {
     query = query.eq("agency_id", filters.agency_id);
   }
 
-  if (filters?.carrier) {
-    query = query.eq("carrier", filters.carrier);
-  }
-
   if (filters?.is_damaged === "true") {
-    query = query.eq("is_damaged", true);
+    query = query.eq("has_damaged_package", true);
   }
 
   if (filters?.date_from) {
@@ -323,9 +354,8 @@ export async function getWarehouseReceipts(filters?: {
   }
 
   if (filters?.search) {
-    // Use ilike for now — pg_trgm similarity requires an RPC function
     query = query.or(
-      `tracking_number.ilike.%${filters.search}%,wr_number.ilike.%${filters.search}%,sender_name.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`,
+      `wr_number.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`,
     );
   }
 
@@ -337,6 +367,25 @@ export async function getWarehouseReceipts(filters?: {
 
   if (error) {
     return { data: null, error: error.message, count: 0 };
+  }
+
+  // If searching by tracking/carrier/sender, filter via packages client-side
+  // since these fields are now on the packages table
+  if (filters?.search && data) {
+    const search = filters.search.toLowerCase();
+    const filtered = data.filter((wr: Record<string, unknown>) => {
+      const wrNumber = (wr.wr_number as string) || "";
+      const notes = (wr.notes as string) || "";
+      if (wrNumber.toLowerCase().includes(search) || notes.toLowerCase().includes(search)) return true;
+      const pkgs = wr.packages as Array<Record<string, unknown>> | null;
+      return pkgs?.some((p) => {
+        const tn = (p.tracking_number as string) || "";
+        const carrier = (p.carrier as string) || "";
+        const sender = (p.sender_name as string) || "";
+        return tn.toLowerCase().includes(search) || carrier.toLowerCase().includes(search) || sender.toLowerCase().includes(search);
+      });
+    });
+    return { data: filtered, error: null, count: filtered.length };
   }
 
   return { data, error: null, count: count ?? 0 };
@@ -452,7 +501,7 @@ export async function getWarehouseReceipt(id: string) {
   const { data, error } = await supabase
     .from("warehouse_receipts")
     .select(
-      "*, agencies(name, code, type), consignees(full_name), wr_photos(*), wr_status_history(*, profiles:changed_by(full_name)), wr_notes(*, profiles:created_by(full_name))",
+      "*, agencies(name, code, type), consignees(full_name), packages(*), wr_photos(*), wr_status_history(*, profiles:changed_by(full_name)), wr_notes(*, profiles:created_by(full_name))",
     )
     .eq("id", id)
     .single();

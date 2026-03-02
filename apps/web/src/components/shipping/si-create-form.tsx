@@ -29,13 +29,17 @@ interface DestinationCountry {
   name: string;
 }
 
+interface WrPackage {
+  tracking_number: string;
+  carrier: string | null;
+}
+
 interface WrOption {
   id: string;
   wr_number: string;
-  tracking_number: string;
-  carrier: string | null;
   status: string;
-  billable_weight_lb: number | null;
+  total_billable_weight_lb: number | null;
+  packages?: WrPackage[];
 }
 
 interface SiCreateFormProps {
@@ -77,7 +81,7 @@ export function SiCreateForm({
 
   const totalWeight = filteredWrs
     .filter((wr) => selectedWrs.includes(wr.id))
-    .reduce((sum, wr) => sum + (wr.billable_weight_lb ?? 0), 0);
+    .reduce((sum, wr) => sum + (wr.total_billable_weight_lb ?? 0), 0);
 
   const handleSubmit = () => {
     if (!selectedWrs.length || !agencyId || !consigneeId || !destinationId) return;
@@ -226,10 +230,10 @@ export function SiCreateForm({
                   className="rounded border-gray-300"
                 />
                 <span className="font-mono text-xs">{wr.wr_number}</span>
-                <span className="text-xs text-gray-500">{wr.tracking_number}</span>
-                <span className="text-xs text-gray-400">{wr.carrier ?? ""}</span>
+                <span className="text-xs text-gray-500">{wr.packages?.[0]?.tracking_number ?? ""}</span>
+                <span className="text-xs text-gray-400">{wr.packages?.[0]?.carrier ?? ""}</span>
                 <span className="ml-auto text-xs text-gray-500">
-                  {wr.billable_weight_lb ? `${wr.billable_weight_lb} lb` : "—"}
+                  {wr.total_billable_weight_lb ? `${wr.total_billable_weight_lb} lb` : "—"}
                 </span>
               </label>
             ))

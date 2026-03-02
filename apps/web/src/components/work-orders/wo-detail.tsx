@@ -36,9 +36,8 @@ interface WoDetailProps {
       warehouse_receipt_id: string;
       warehouse_receipts: {
         wr_number: string;
-        tracking_number: string;
-        carrier: string | null;
         status: string;
+        packages: { tracking_number: string; carrier: string }[];
       } | null;
     }>;
   };
@@ -197,7 +196,7 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
                     {item.warehouse_receipts?.wr_number ?? "—"}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {item.warehouse_receipts?.tracking_number}
+                    {item.warehouse_receipts?.packages?.[0]?.tracking_number ?? ""}
                   </span>
                 </Link>
               ))}

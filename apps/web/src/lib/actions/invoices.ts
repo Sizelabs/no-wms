@@ -128,7 +128,7 @@ export async function generateInvoice(formData: FormData): Promise<{ id: string 
   const { data: dispatchedSiItems } = await supabase
     .from("shipping_instruction_items")
     .select(
-      "warehouse_receipt_id, shipping_instruction_id, warehouse_receipts!inner(wr_number, billable_weight_lb, agency_id, organization_id), shipping_instructions!inner(status, agency_id, destination_country_id, modality, courier_category, finalized_at)",
+      "warehouse_receipt_id, shipping_instruction_id, warehouse_receipts!inner(wr_number, total_billable_weight_lb, agency_id, organization_id), shipping_instructions!inner(status, agency_id, destination_country_id, modality, courier_category, finalized_at)",
     )
     .eq("shipping_instructions.agency_id", agencyId)
     .eq("shipping_instructions.status", "finalized")
@@ -139,7 +139,7 @@ export async function generateInvoice(formData: FormData): Promise<{ id: string 
     for (const item of dispatchedSiItems) {
       const wr = item.warehouse_receipts as any;
       const si = item.shipping_instructions as any;
-      const weight = wr?.billable_weight_lb ?? 0;
+      const weight = wr?.total_billable_weight_lb ?? 0;
 
       // Look up applicable tariff rate
       let ratePerLb = 0;
