@@ -29,12 +29,15 @@ export default async function UnknownWrsPage({
   const primaryRole = getPrimaryRole(roles);
   const isAgencyRole = primaryRole === "agency";
 
-  const { data } = await getUnknownWrs({ status: "unclaimed" });
+  const { data } = await getUnknownWrs({
+    status: "unclaimed",
+    maskTracking: isAgencyRole,
+  });
 
   return (
     <div className="space-y-6">
       <PageHeader title={t("unknownWrs")} />
-      <UnknownWrList data={data ?? []} isAgencyRole={isAgencyRole} />
+      <UnknownWrList data={data ?? []} isAgencyRole={isAgencyRole} trackingMasked={isAgencyRole} />
     </div>
   );
 }

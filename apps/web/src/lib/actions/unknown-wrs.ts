@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 
-export async function getUnknownWrs(filters?: { status?: string }) {
+export async function getUnknownWrs(filters?: {
+  status?: string;
+  maskTracking?: boolean;
+}) {
   const supabase = await createClient();
 
   // Query warehouse_receipts directly where agency is not assigned,
@@ -12,7 +15,7 @@ export async function getUnknownWrs(filters?: { status?: string }) {
   const query = supabase
     .from("warehouse_receipts")
     .select(
-      "id, wr_number, tracking_number, carrier, sender_name, received_at, unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
+      "id, wr_number, tracking_number, carrier, sender_name, received_at, consignees(full_name), unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
     )
     .is("agency_id", null)
     .order("received_at", { ascending: false });
@@ -23,17 +26,30 @@ export async function getUnknownWrs(filters?: { status?: string }) {
     return { data: null, error: error.message };
   }
 
+  let result = data;
+
   // Apply claim status filter in application layer since unknown_wrs record may not exist
-  if (filters?.status && data) {
-    const filtered = data.filter((wr) => {
-      const claimRecord = Array.isArray(wr.unknown_wrs) ? wr.unknown_wrs[0] : wr.unknown_wrs;
+  if (filters?.status && result) {
+    result = result.filter((wr) => {
+      const claimRecord = Array.isArray(wr.unknown_wrs)
+        ? wr.unknown_wrs[0]
+        : wr.unknown_wrs;
       const effectiveStatus = claimRecord?.status ?? "unclaimed";
       return effectiveStatus === filters.status;
     });
-    return { data: filtered, error: null };
   }
 
-  return { data, error: null };
+  // Strip tracking numbers server-side so they never reach the client.
+  // Agency users must prove they know the number to claim the WR.
+  if (filters?.maskTracking && result) {
+    result = result.map((wr) => ({
+      ...wr,
+      tracking_number_masked: `${"•".repeat(Math.max(0, wr.tracking_number.length - 3))}${wr.tracking_number.slice(-3)}`,
+      tracking_number: null as unknown as string,
+    }));
+  }
+
+  return { data: result, error: null };
 }
 
 export async function claimUnknownWr(

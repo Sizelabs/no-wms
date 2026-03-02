@@ -16,8 +16,10 @@ interface UnknownWr {
   id: string;
   wr_number: string;
   tracking_number: string;
+  tracking_number_masked?: string;
   carrier: string | null;
   sender_name: string | null;
+  consignees: { full_name: string }[] | { full_name: string } | null;
   received_at: string;
   unknown_wrs: ClaimRecord[] | ClaimRecord | null;
 }
@@ -25,23 +27,10 @@ interface UnknownWr {
 interface UnknownWrListProps {
   data: UnknownWr[];
   isAgencyRole: boolean;
+  trackingMasked?: boolean;
 }
 
-const CLAIM_STATUS_LABELS: Record<string, string> = {
-  unclaimed: "Sin reclamar",
-  claimed: "Reclamado",
-  verified: "Verificado",
-  rejected: "Rechazado",
-};
-
-const CLAIM_STATUS_COLORS: Record<string, string> = {
-  unclaimed: "bg-yellow-50 text-yellow-700",
-  claimed: "bg-blue-50 text-blue-700",
-  verified: "bg-green-50 text-green-700",
-  rejected: "bg-red-50 text-red-700",
-};
-
-export function UnknownWrList({ data, isAgencyRole }: UnknownWrListProps) {
+export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -78,9 +67,9 @@ export function UnknownWrList({ data, isAgencyRole }: UnknownWrListProps) {
             <th className="px-4 py-3">WR#</th>
             <th className="px-4 py-3">Guía</th>
             <th className="px-4 py-3">Remitente</th>
+            <th className="px-4 py-3">Destinatario</th>
             <th className="px-4 py-3">Transportista</th>
             <th className="px-4 py-3">Fecha</th>
-            <th className="px-4 py-3">Estado</th>
             {isAgencyRole && <th className="px-4 py-3">Acción</th>}
           </tr>
         </thead>
@@ -101,25 +90,28 @@ export function UnknownWrList({ data, isAgencyRole }: UnknownWrListProps) {
                   {item.wr_number}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-xs text-gray-600">
-                  {item.tracking_number}
+                  {trackingMasked && item.tracking_number_masked ? (
+                    <span>
+                      <span className="select-none blur-[3px]" aria-hidden="true">
+                        {item.tracking_number_masked.slice(0, -3)}
+                      </span>
+                      <span>{item.tracking_number_masked.slice(-3)}</span>
+                    </span>
+                  ) : (
+                    item.tracking_number
+                  )}
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
                   {item.sender_name ?? "—"}
+                </td>
+                <td className="px-4 py-2.5 text-gray-600">
+                  {(Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? "—"}
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
                   {item.carrier ?? "—"}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-gray-400">
                   {new Date(item.received_at).toLocaleDateString("es")}
-                </td>
-                <td className="px-4 py-2.5">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      CLAIM_STATUS_COLORS[claimStatus] ?? "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {CLAIM_STATUS_LABELS[claimStatus] ?? claimStatus}
-                  </span>
                 </td>
                 {isAgencyRole && (
                   <td className="px-4 py-2.5">
