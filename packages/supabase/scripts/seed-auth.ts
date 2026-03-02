@@ -13,11 +13,9 @@
  */
 
 const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  "https://YOUR_PROJECT.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_ROLE_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ??
-  "REMOVED_SECRET";
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 const PASSWORD = "TestPassword1234";
 
