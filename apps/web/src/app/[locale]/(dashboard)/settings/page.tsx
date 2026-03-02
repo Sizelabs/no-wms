@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { PermissionsLink } from "@/components/settings/permissions-link";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 
 export default function SettingsPage() {
@@ -9,6 +10,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("settings")} />
+      <PermissionsLink />
       <SettingsPanel />
     </div>
   );
