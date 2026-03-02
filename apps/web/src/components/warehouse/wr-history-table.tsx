@@ -4,7 +4,7 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 interface WrPackage {
   tracking_number: string;
@@ -26,7 +26,7 @@ interface WarehouseReceipt {
   status: string;
   received_at: string;
   agencies: { name: string; code: string; type: string } | null;
-  consignees: { full_name: string } | null;
+  consignees: { full_name: string; casillero: string | null } | null;
 }
 
 interface WrHistoryTableProps {
@@ -47,11 +47,31 @@ const STATUS_COLORS: Record<string, string> = {
   abandoned: "bg-gray-200 text-gray-500",
 };
 
+function groupByConsignee(receipts: WarehouseReceipt[]) {
+  const groups = new Map<string, WarehouseReceipt[]>();
+  for (const wr of receipts) {
+    const key = wr.consignees?.full_name ?? "";
+    const list = groups.get(key);
+    if (list) {
+      list.push(wr);
+    } else {
+      groups.set(key, [wr]);
+    }
+  }
+  return [...groups.entries()].sort((a, b) => {
+    if (!a[0]) return 1;
+    if (!b[0]) return -1;
+    return a[0].localeCompare(b[0]);
+  });
+}
+
 export function WrHistoryTable({ data, count, locale, agencies = [], warehouses = [] }: WrHistoryTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
+
+  const grouped = groupByConsignee(data);
 
   const updateFilter = useCallback(
     (key: string, value: string) => {
@@ -171,7 +191,6 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
               <th className="px-3 py-3">Guía</th>
               <th className="px-3 py-3">Transportista</th>
               <th className="px-3 py-3">Agencia</th>
-              <th className="px-3 py-3">Destinatario</th>
               <th className="px-3 py-3">Piezas</th>
               <th className="px-3 py-3">Peso</th>
               <th className="px-3 py-3">Estado</th>
@@ -181,66 +200,86 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
           <tbody className="divide-y">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-gray-400">
+                <td colSpan={8} className="px-3 py-8 text-center text-gray-400">
                   No se encontraron recibos.
                 </td>
               </tr>
             ) : (
-              data.map((wr) => (
-                <tr key={wr.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-2.5">
-                    <Link
-                      href={`/${locale}/inventory/${wr.id}`}
-                      className="font-mono text-xs font-medium text-gray-900 hover:underline"
+              grouped.map(([consignee, receipts]) => {
+                const casillero = receipts[0]?.consignees?.casillero;
+                const totalPieces = receipts.reduce((sum, r) => sum + r.total_pieces, 0);
+                const totalWeight = receipts.reduce((sum, r) => sum + (Number(r.total_billable_weight_lb) || 0), 0);
+                return (
+                <React.Fragment key={consignee || "__none"}>
+                  <tr className="bg-gray-50">
+                    <td
+                      colSpan={8}
+                      className="px-3 py-2 text-xs font-semibold text-gray-700"
                     >
-                      {wr.wr_number}
-                    </Link>
-                    {wr.has_damaged_package && (
-                      <span className="ml-1 inline-flex rounded bg-red-100 px-1 text-[10px] text-red-700">Daño</span>
-                    )}
-                    {wr.has_dgr_package && (
-                      <span className="ml-1 inline-flex rounded bg-orange-100 px-1 text-[10px] text-orange-700">DGR</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
-                    {wr.packages[0]?.tracking_number ?? "—"}
-                    {wr.total_packages > 1 && (
-                      <span className="ml-1 text-gray-400">(+{wr.total_packages - 1})</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 text-gray-600 text-xs">
-                    {wr.packages.length === 0
-                      ? "—"
-                      : new Set(wr.packages.map((p) => p.carrier)).size > 1
-                        ? "Multiple"
-                        : wr.packages[0]?.carrier ?? "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-gray-600">
-                    {wr.agencies?.code ?? "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-gray-600">
-                    {wr.consignees?.full_name ?? "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-center text-xs">
-                    {wr.total_pieces}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs">
-                    {wr.total_billable_weight_lb?.toFixed(1) ?? "—"} lb
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        STATUS_COLORS[wr.status] ?? "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-gray-400">
-                    {new Date(wr.received_at).toLocaleDateString("es")}
-                  </td>
-                </tr>
-              ))
+                      {consignee || "Sin destinatario"}
+                      {casillero && (
+                        <span className="ml-1.5 font-mono font-normal text-gray-500">#{casillero}</span>
+                      )}
+                      <span className="ml-2 font-normal text-gray-400">
+                        — {receipts.length} {receipts.length === 1 ? "recibo" : "recibos"}, {totalPieces} pzs, {totalWeight.toFixed(1)} lb
+                      </span>
+                    </td>
+                  </tr>
+                  {receipts.map((wr) => (
+                    <tr key={wr.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2.5">
+                        <Link
+                          href={`/${locale}/inventory/${wr.id}`}
+                          className="font-mono text-xs font-medium text-gray-900 hover:underline"
+                        >
+                          {wr.wr_number}
+                        </Link>
+                        {wr.has_damaged_package && (
+                          <span className="ml-1 inline-flex rounded bg-red-100 px-1 text-[10px] text-red-700">Daño</span>
+                        )}
+                        {wr.has_dgr_package && (
+                          <span className="ml-1 inline-flex rounded bg-orange-100 px-1 text-[10px] text-orange-700">DGR</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
+                        {wr.packages[0]?.tracking_number ?? "—"}
+                        {wr.total_packages > 1 && (
+                          <span className="ml-1 text-gray-400">(+{wr.total_packages - 1})</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-gray-600">
+                        {wr.packages.length === 0
+                          ? "—"
+                          : new Set(wr.packages.map((p) => p.carrier)).size > 1
+                            ? "Multiple"
+                            : wr.packages[0]?.carrier ?? "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-gray-600">
+                        {wr.agencies?.code ?? "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-center text-xs">
+                        {wr.total_pieces}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-xs">
+                        {wr.total_billable_weight_lb?.toFixed(1) ?? "—"} lb
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            STATUS_COLORS[wr.status] ?? "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-gray-400">
+                        {new Date(wr.received_at).toLocaleDateString("es")}
+                      </td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+                );
+              })
             )}
           </tbody>
         </table>

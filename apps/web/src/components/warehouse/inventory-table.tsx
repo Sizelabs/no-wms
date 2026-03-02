@@ -4,7 +4,7 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
@@ -27,7 +27,7 @@ interface PackageRow {
     status: string;
     received_at: string;
     agencies: { name: string; code: string } | null;
-    consignees: { full_name: string } | null;
+    consignees: { full_name: string; casillero: string | null } | null;
   };
 }
 
@@ -61,6 +61,25 @@ function storageDayColor(days: number): string {
   return "text-gray-500";
 }
 
+function groupByConsignee(packages: PackageRow[]) {
+  const groups = new Map<string, PackageRow[]>();
+  for (const pkg of packages) {
+    const key = pkg.warehouse_receipts.consignees?.full_name ?? "";
+    const list = groups.get(key);
+    if (list) {
+      list.push(pkg);
+    } else {
+      groups.set(key, [pkg]);
+    }
+  }
+  // Sort alphabetically, empty consignee last
+  return [...groups.entries()].sort((a, b) => {
+    if (!a[0]) return 1;
+    if (!b[0]) return -1;
+    return a[0].localeCompare(b[0]);
+  });
+}
+
 export function InventoryTable({ data, count, locale, agencies = [], warehouses = [] }: InventoryTableProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,6 +91,8 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
 
   // Track selected WR IDs (for bulk status updates)
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const grouped = groupByConsignee(data);
 
   // Deduplicate WR IDs from selected packages
   const selectedWrIds = new Set(
@@ -276,7 +297,6 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
               <th className="px-3 py-3">WR#</th>
               <th className="px-3 py-3">Transportista</th>
               <th className="px-3 py-3">Agencia</th>
-              <th className="px-3 py-3">Destinatario</th>
               <th className="px-3 py-3">Peso</th>
               <th className="px-3 py-3">Estado</th>
               <th className="px-3 py-3">Días</th>
@@ -286,73 +306,93 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
           <tbody className="divide-y">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={canSelect ? 10 : 9} className="px-3 py-8 text-center text-gray-400">
+                <td colSpan={canSelect ? 9 : 8} className="px-3 py-8 text-center text-gray-400">
                   No se encontraron paquetes.
                 </td>
               </tr>
             ) : (
-              data.map((pkg) => {
-                const wr = pkg.warehouse_receipts;
-                const days = storageDays(wr.received_at);
+              grouped.map(([consignee, packages]) => {
+                const casillero = packages[0]?.warehouse_receipts.consignees?.casillero;
+                const totalPieces = packages.reduce((sum, p) => sum + p.pieces_count, 0);
+                const totalWeight = packages.reduce((sum, p) => sum + (Number(p.billable_weight_lb) || 0), 0);
                 return (
-                  <tr key={pkg.id} className="hover:bg-gray-50">
-                    {canSelect && (
-                      <td className="px-3 py-2.5">
-                        <input
-                          type="checkbox"
-                          checked={selected.has(pkg.id)}
-                          onChange={() => toggleSelect(pkg.id)}
-                          className="rounded border-gray-300"
-                        />
-                      </td>
-                    )}
-                    <td className="px-3 py-2.5">
-                      <span className="font-mono text-xs font-medium text-gray-900">
-                        {pkg.tracking_number}
-                      </span>
-                      {pkg.is_damaged && (
-                        <span className="ml-1 inline-flex rounded bg-red-100 px-1 text-[10px] text-red-700">Daño</span>
+                <React.Fragment key={consignee || "__none"}>
+                  <tr className="bg-gray-50">
+                    <td
+                      colSpan={canSelect ? 9 : 8}
+                      className="px-3 py-2 text-xs font-semibold text-gray-700"
+                    >
+                      {consignee || "Sin destinatario"}
+                      {casillero && (
+                        <span className="ml-1.5 font-mono font-normal text-gray-500">#{casillero}</span>
                       )}
-                      {pkg.is_dgr && (
-                        <span className="ml-1 inline-flex rounded bg-orange-100 px-1 text-[10px] text-orange-700">DGR</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Link
-                        href={`/${locale}/inventory/${wr.id}`}
-                        className="font-mono text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline"
-                      >
-                        {wr.wr_number}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600">
-                      {pkg.carrier ?? "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-gray-600">
-                      {wr.agencies?.code ?? "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-gray-600">
-                      {wr.consignees?.full_name ?? "—"}
-                    </td>
-                    <td className="px-3 py-2.5 font-mono text-xs">
-                      {pkg.billable_weight_lb ? `${Number(pkg.billable_weight_lb).toFixed(1)} lb` : "—"}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          STATUS_COLORS[wr.status] ?? "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status}
+                      <span className="ml-2 font-normal text-gray-400">
+                        — {packages.length} {packages.length === 1 ? "paq" : "paqs"}, {totalPieces} pzs, {totalWeight.toFixed(1)} lb
                       </span>
-                    </td>
-                    <td className={`px-3 py-2.5 text-xs ${storageDayColor(days)}`}>
-                      {days}d
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-400">
-                      {new Date(wr.received_at).toLocaleDateString("es")}
                     </td>
                   </tr>
+                  {packages.map((pkg) => {
+                    const wr = pkg.warehouse_receipts;
+                    const days = storageDays(wr.received_at);
+                    return (
+                      <tr key={pkg.id} className="hover:bg-gray-50">
+                        {canSelect && (
+                          <td className="px-3 py-2.5">
+                            <input
+                              type="checkbox"
+                              checked={selected.has(pkg.id)}
+                              onChange={() => toggleSelect(pkg.id)}
+                              className="rounded border-gray-300"
+                            />
+                          </td>
+                        )}
+                        <td className="px-3 py-2.5">
+                          <span className="font-mono text-xs font-medium text-gray-900">
+                            {pkg.tracking_number}
+                          </span>
+                          {pkg.is_damaged && (
+                            <span className="ml-1 inline-flex rounded bg-red-100 px-1 text-[10px] text-red-700">Daño</span>
+                          )}
+                          {pkg.is_dgr && (
+                            <span className="ml-1 inline-flex rounded bg-orange-100 px-1 text-[10px] text-orange-700">DGR</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Link
+                            href={`/${locale}/inventory/${wr.id}`}
+                            className="font-mono text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline"
+                          >
+                            {wr.wr_number}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-gray-600">
+                          {pkg.carrier ?? "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-600">
+                          {wr.agencies?.code ?? "—"}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-xs">
+                          {pkg.billable_weight_lb ? `${Number(pkg.billable_weight_lb).toFixed(1)} lb` : "—"}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                              STATUS_COLORS[wr.status] ?? "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status}
+                          </span>
+                        </td>
+                        <td className={`px-3 py-2.5 text-xs ${storageDayColor(days)}`}>
+                          {days}d
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-gray-400">
+                          {new Date(wr.received_at).toLocaleDateString("es")}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </React.Fragment>
                 );
               })
             )}

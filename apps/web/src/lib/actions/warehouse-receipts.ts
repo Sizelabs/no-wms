@@ -313,7 +313,7 @@ export async function getPackages(filters?: {
   let query = supabase
     .from("packages")
     .select(
-      "*, warehouse_receipts!inner(id, wr_number, status, received_at, agency_id, warehouse_id, consignee_id, agencies(name, code), consignees(full_name))",
+      "*, warehouse_receipts!inner(id, wr_number, status, received_at, agency_id, warehouse_id, consignee_id, agencies(name, code), consignees(full_name, casillero))",
       { count: "exact" },
     )
     .order("created_at", { ascending: false });
@@ -400,7 +400,7 @@ export async function getWarehouseReceipts(filters?: {
 
   let query = supabase
     .from("warehouse_receipts")
-    .select("*, agencies(name, code, type), consignees(full_name), packages(*)", { count: "exact" })
+    .select("*, agencies(name, code, type), consignees(full_name, casillero), packages(*)", { count: "exact" })
     .order("received_at", { ascending: false });
 
   // Apply warehouse scope for warehouse-scoped users
