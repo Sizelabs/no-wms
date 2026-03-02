@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { InventoryTable } from "@/components/warehouse/inventory-table";
-import { getAgenciesForFilter, getWarehouseReceipts, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
+import { getAgenciesForFilter, getPackages, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
 
 export default async function InventoryPage({
   params,
@@ -26,7 +26,7 @@ export default async function InventoryPage({
   const t = await getTranslations("nav");
 
   const [{ data, count }, agencies, warehouses] = await Promise.all([
-    getWarehouseReceipts({
+    getPackages({
       search: filters.search,
       status: filters.status,
       agency_id: filters.agency_id,

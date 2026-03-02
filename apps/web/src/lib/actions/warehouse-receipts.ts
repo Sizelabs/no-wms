@@ -291,6 +291,94 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
   return { id: wr.id, wr_number: wrNumber };
 }
 
+export async function getPackages(filters?: {
+  warehouse_id?: string;
+  status?: string;
+  agency_id?: string;
+  search?: string;
+  carrier?: string;
+  is_damaged?: string;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const supabase = await createClient();
+
+  const [warehouseScope, agencyScope] = await Promise.all([
+    getUserWarehouseScope(),
+    getUserAgencyScope(),
+  ]);
+
+  let query = supabase
+    .from("packages")
+    .select(
+      "*, warehouse_receipts!inner(id, wr_number, status, received_at, agency_id, warehouse_id, consignee_id, agencies(name, code), consignees(full_name))",
+      { count: "exact" },
+    )
+    .order("created_at", { ascending: false });
+
+  // Apply warehouse scope
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    query = query.in("warehouse_receipts.warehouse_id", warehouseScope);
+  } else if (warehouseScope !== null && warehouseScope.length === 0) {
+    return { data: [], count: 0 };
+  }
+
+  // Apply agency scope
+  if (agencyScope !== null && agencyScope.length > 0) {
+    query = query.in("warehouse_receipts.agency_id", agencyScope);
+  } else if (agencyScope !== null && agencyScope.length === 0) {
+    return { data: [], count: 0 };
+  }
+
+  if (filters?.warehouse_id) {
+    query = query.eq("warehouse_receipts.warehouse_id", filters.warehouse_id);
+  }
+
+  if (filters?.status) {
+    query = query.eq("warehouse_receipts.status", filters.status);
+  }
+
+  if (filters?.agency_id) {
+    query = query.eq("warehouse_receipts.agency_id", filters.agency_id);
+  }
+
+  if (filters?.is_damaged === "true") {
+    query = query.eq("is_damaged", true);
+  }
+
+  if (filters?.carrier) {
+    query = query.eq("carrier", filters.carrier);
+  }
+
+  if (filters?.date_from) {
+    query = query.gte("warehouse_receipts.received_at", filters.date_from);
+  }
+
+  if (filters?.date_to) {
+    query = query.lte("warehouse_receipts.received_at", `${filters.date_to}T23:59:59`);
+  }
+
+  if (filters?.search) {
+    query = query.or(
+      `tracking_number.ilike.%${filters.search}%,sender_name.ilike.%${filters.search}%,content_description.ilike.%${filters.search}%`,
+    );
+  }
+
+  const limit = filters?.limit ?? 50;
+  const offset = filters?.offset ?? 0;
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    return { data: null, count: 0 };
+  }
+
+  return { data, count: count ?? 0 };
+}
+
 export async function getWarehouseReceipts(filters?: {
   warehouse_id?: string;
   status?: string;

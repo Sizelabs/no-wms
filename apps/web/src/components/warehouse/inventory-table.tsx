@@ -8,31 +8,30 @@ import { useCallback, useState, useTransition } from "react";
 
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
-interface WrPackage {
-  tracking_number: string;
-  carrier: string;
-  billable_weight_lb: number;
-  is_damaged: boolean;
-  sender_name: string;
-}
-
-interface WarehouseReceipt {
+interface PackageRow {
   id: string;
-  wr_number: string;
-  packages: WrPackage[];
-  total_billable_weight_lb: number | null;
-  has_damaged_package: boolean;
-  has_dgr_package: boolean;
-  total_packages: number;
-  total_pieces: number;
-  status: string;
-  received_at: string;
-  agencies: { name: string; code: string; type: string } | null;
-  consignees: { full_name: string } | null;
+  tracking_number: string;
+  carrier: string | null;
+  actual_weight_lb: number | null;
+  billable_weight_lb: number | null;
+  is_damaged: boolean;
+  damage_description: string | null;
+  is_dgr: boolean;
+  dgr_class: string | null;
+  sender_name: string | null;
+  pieces_count: number;
+  warehouse_receipts: {
+    id: string;
+    wr_number: string;
+    status: string;
+    received_at: string;
+    agencies: { name: string; code: string } | null;
+    consignees: { full_name: string } | null;
+  };
 }
 
 interface InventoryTableProps {
-  data: WarehouseReceipt[];
+  data: PackageRow[];
   count: number;
   locale: string;
   agencies?: Array<{ id: string; name: string; code: string }>;
@@ -68,7 +67,13 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
   const [isPending, startTransition] = useTransition();
   const [showFilters, setShowFilters] = useState(false);
 
+  // Track selected WR IDs (for bulk status updates)
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Deduplicate WR IDs from selected packages
+  const selectedWrIds = new Set(
+    data.filter((pkg) => selected.has(pkg.id)).map((pkg) => pkg.warehouse_receipts.id),
+  );
 
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
@@ -86,18 +91,18 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
     if (selected.size === data.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(data.map((wr) => wr.id)));
+      setSelected(new Set(data.map((pkg) => pkg.id)));
     }
   }, [data, selected.size]);
 
   const handleBulkStatus = useCallback(
     (status: string) => {
       startTransition(async () => {
-        await bulkUpdateStatus(Array.from(selected), status);
+        await bulkUpdateStatus(Array.from(selectedWrIds), status);
         setSelected(new Set());
       });
     },
-    [selected],
+    [selectedWrIds],
   );
 
   const updateFilter = useCallback(
@@ -114,7 +119,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
     [pathname, router, searchParams],
   );
 
-  const activeFilterCount = ["status", "agency_id", "warehouse_id", "has_damaged_package", "date_from", "date_to"]
+  const activeFilterCount = ["status", "agency_id", "warehouse_id", "is_damaged", "date_from", "date_to"]
     .filter((k) => searchParams.has(k)).length;
 
   return (
@@ -125,7 +130,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
           type="text"
           defaultValue={searchParams.get("search") ?? ""}
           onChange={(e) => updateFilter("search", e.target.value)}
-          placeholder="Buscar guía, WR#, remitente..."
+          placeholder="Buscar guía, remitente, descripción..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
         <select
@@ -180,8 +185,8 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
             ))}
           </select>
           <select
-            defaultValue={searchParams.get("has_damaged_package") ?? ""}
-            onChange={(e) => updateFilter("has_damaged_package", e.target.value)}
+            defaultValue={searchParams.get("is_damaged") ?? ""}
+            onChange={(e) => updateFilter("is_damaged", e.target.value)}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
           >
             <option value="">Daño: Todos</option>
@@ -220,7 +225,9 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
       {/* Bulk actions */}
       {selected.size > 0 && (
         <div className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm">
-          <span className="font-medium">{selected.size} seleccionado(s)</span>
+          <span className="font-medium">
+            {selected.size} paquete(s) — {selectedWrIds.size} WR(s)
+          </span>
           <button
             type="button"
             onClick={() => handleBulkStatus("in_warehouse")}
@@ -260,8 +267,9 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                   className="rounded border-gray-300"
                 />
               </th>
-              <th className="px-3 py-3">WR#</th>
               <th className="px-3 py-3">Guía</th>
+              <th className="px-3 py-3">WR#</th>
+              <th className="px-3 py-3">Transportista</th>
               <th className="px-3 py-3">Agencia</th>
               <th className="px-3 py-3">Destinatario</th>
               <th className="px-3 py-3">Peso</th>
@@ -273,42 +281,45 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
           <tbody className="divide-y">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-gray-400">
-                  No se encontraron recibos.
+                <td colSpan={10} className="px-3 py-8 text-center text-gray-400">
+                  No se encontraron paquetes.
                 </td>
               </tr>
             ) : (
-              data.map((wr) => {
+              data.map((pkg) => {
+                const wr = pkg.warehouse_receipts;
                 const days = storageDays(wr.received_at);
                 return (
-                  <tr key={wr.id} className="hover:bg-gray-50">
+                  <tr key={pkg.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2.5">
                       <input
                         type="checkbox"
-                        checked={selected.has(wr.id)}
-                        onChange={() => toggleSelect(wr.id)}
+                        checked={selected.has(pkg.id)}
+                        onChange={() => toggleSelect(pkg.id)}
                         className="rounded border-gray-300"
                       />
                     </td>
                     <td className="px-3 py-2.5">
-                      <Link
-                        href={`/${locale}/inventory/${wr.id}`}
-                        className="font-mono text-xs font-medium text-gray-900 hover:underline"
-                      >
-                        {wr.wr_number}
-                      </Link>
-                      {wr.has_damaged_package && (
+                      <span className="font-mono text-xs font-medium text-gray-900">
+                        {pkg.tracking_number}
+                      </span>
+                      {pkg.is_damaged && (
                         <span className="ml-1 inline-flex rounded bg-red-100 px-1 text-[10px] text-red-700">Daño</span>
                       )}
-                      {wr.has_dgr_package && (
+                      {pkg.is_dgr && (
                         <span className="ml-1 inline-flex rounded bg-orange-100 px-1 text-[10px] text-orange-700">DGR</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
-                      {wr.packages[0]?.tracking_number ?? "—"}
-                      {wr.total_packages > 1 && (
-                        <span className="ml-1 text-gray-400">(+{wr.total_packages - 1})</span>
-                      )}
+                    <td className="px-3 py-2.5">
+                      <Link
+                        href={`/${locale}/inventory/${wr.id}`}
+                        className="font-mono text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline"
+                      >
+                        {wr.wr_number}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-gray-600">
+                      {pkg.carrier ?? "—"}
                     </td>
                     <td className="px-3 py-2.5 text-gray-600">
                       {wr.agencies?.code ?? "—"}
@@ -317,7 +328,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                       {wr.consignees?.full_name ?? "—"}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs">
-                      {wr.total_billable_weight_lb?.toFixed(1) ?? "—"} lb
+                      {pkg.billable_weight_lb ? `${Number(pkg.billable_weight_lb).toFixed(1)} lb` : "—"}
                     </td>
                     <td className="px-3 py-2.5">
                       <span
@@ -344,7 +355,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
 
       {/* Pagination */}
       <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>{count} recibo(s) en total</span>
+        <span>{count} paquete(s) en total</span>
         <div className="flex gap-2">
           {(searchParams.get("offset") ? parseInt(searchParams.get("offset")!, 10) : 0) > 0 && (
             <button
