@@ -57,6 +57,7 @@ export const NAV_RESOURCE_MAP: Record<string, Resource> = {
   warehouses: "warehouses",
   agencies: "agencies",
   users: "users",
+  consignees: "consignees",
   warehouseReceipts: "warehouse_receipts",
   inventory: "inventory",
   workOrders: "work_orders",
@@ -144,6 +145,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
 
   destination_admin: makePermMap({
     agencies: READ,
+    consignees: READ,
     inventory: READ,
     shipping: crud(false, true, true, false),
     manifests: crud(false, true, true, false),
@@ -166,6 +168,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
   }),
 
   agency: makePermMap({
+    consignees: READ,
     inventory: READ,
     shipping: crud(true, true, false, false),
     manifests: READ,

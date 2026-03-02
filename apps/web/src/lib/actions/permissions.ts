@@ -5,6 +5,7 @@ import { DEFAULT_PERMISSIONS, RESOURCES } from "@no-wms/shared/constants/permiss
 import type { Role } from "@no-wms/shared/constants/roles";
 import { revalidatePath } from "next/cache";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 interface DbRow {
@@ -44,8 +45,10 @@ export async function getRolePermissions(role: Role): Promise<RolePermissionMap>
     return DEFAULT_PERMISSIONS.super_admin;
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase
+  // Use admin client to bypass RLS — role_permissions is global config
+  // that all users need to read for nav/permission checks.
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("role_permissions")
     .select("role, resource, can_create, can_read, can_update, can_delete")
     .eq("role", role);
@@ -54,8 +57,8 @@ export async function getRolePermissions(role: Role): Promise<RolePermissionMap>
 }
 
 export async function getAllRolePermissions(): Promise<Record<Role, RolePermissionMap>> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("role_permissions")
     .select("role, resource, can_create, can_read, can_update, can_delete");
 

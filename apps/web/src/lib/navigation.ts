@@ -1,3 +1,5 @@
+import type { RolePermissionMap } from "@no-wms/shared/constants/permissions";
+import { NAV_RESOURCE_MAP } from "@no-wms/shared/constants/permissions";
 import type { Role } from "@no-wms/shared/constants/roles";
 
 export interface NavItem {
@@ -6,101 +8,39 @@ export interface NavItem {
   icon: string; // Lucide icon name for future use
 }
 
-/** Navigation items visible per role */
-const NAV_BY_ROLE: Record<Role, NavItem[]> = {
-  super_admin: [
-    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-    { label: "companies", href: "/companies", icon: "Building" },
-    { label: "settings", href: "/settings", icon: "Settings" },
-  ],
-  company_admin: [
-    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-    { label: "warehouses", href: "/warehouses", icon: "Warehouse" },
-    { label: "agencies", href: "/agencies", icon: "Building2" },
-    { label: "consignees", href: "/consignees", icon: "Contact" },
-    { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package" },
-    { label: "inventory", href: "/inventory", icon: "Boxes" },
-    { label: "workOrders", href: "/work-orders", icon: "ClipboardList" },
-    { label: "shipping", href: "/shipping", icon: "Truck" },
-    { label: "manifests", href: "/manifests", icon: "FileText" },
-    { label: "tariffs", href: "/tariffs", icon: "DollarSign" },
-    { label: "invoicing", href: "/invoicing", icon: "Receipt" },
-    { label: "tickets", href: "/tickets", icon: "TicketCheck" },
-    { label: "reports", href: "/reports", icon: "BarChart3" },
-    { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
-    { label: "users", href: "/users", icon: "Users" },
-    { label: "settings", href: "/settings", icon: "Settings" },
-  ],
-  warehouse_admin: [
-    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-    { label: "agencies", href: "/agencies", icon: "Building2" },
-    { label: "consignees", href: "/consignees", icon: "Contact" },
-    { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package" },
-    { label: "inventory", href: "/inventory", icon: "Boxes" },
-    { label: "workOrders", href: "/work-orders", icon: "ClipboardList" },
-    { label: "shipping", href: "/shipping", icon: "Truck" },
-    { label: "manifests", href: "/manifests", icon: "FileText" },
-    { label: "tickets", href: "/tickets", icon: "TicketCheck" },
-    { label: "reports", href: "/reports", icon: "BarChart3" },
-    { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
-    { label: "settings", href: "/settings", icon: "Settings" },
-  ],
-  warehouse_operator: [
-    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-    { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package" },
-    { label: "inventory", href: "/inventory", icon: "Boxes" },
-    { label: "workOrders", href: "/work-orders", icon: "ClipboardList" },
-    { label: "manifests", href: "/manifests", icon: "FileText" },
-    { label: "tickets", href: "/tickets", icon: "TicketCheck" },
-    { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
-  ],
-  shipping_clerk: [
-    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-    { label: "inventory", href: "/inventory", icon: "Boxes" },
-    { label: "shipping", href: "/shipping", icon: "Truck" },
-    { label: "manifests", href: "/manifests", icon: "FileText" },
-    { label: "tickets", href: "/tickets", icon: "TicketCheck" },
-    { label: "reports", href: "/reports", icon: "BarChart3" },
-  ],
-  destination_admin: [
-    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-    { label: "agencies", href: "/agencies", icon: "Building2" },
-    { label: "consignees", href: "/consignees", icon: "Contact" },
-    { label: "inventory", href: "/inventory", icon: "Boxes" },
-    { label: "shipping", href: "/shipping", icon: "Truck" },
-    { label: "manifests", href: "/manifests", icon: "FileText" },
-    { label: "tariffs", href: "/tariffs", icon: "DollarSign" },
-    { label: "invoicing", href: "/invoicing", icon: "Receipt" },
-    { label: "tickets", href: "/tickets", icon: "TicketCheck" },
-    { label: "reports", href: "/reports", icon: "BarChart3" },
-    { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
-    { label: "settings", href: "/settings", icon: "Settings" },
-  ],
-  destination_operator: [
-    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-    { label: "agencies", href: "/agencies", icon: "Building2" },
-    { label: "inventory", href: "/inventory", icon: "Boxes" },
-    { label: "shipping", href: "/shipping", icon: "Truck" },
-    { label: "manifests", href: "/manifests", icon: "FileText" },
-    { label: "tickets", href: "/tickets", icon: "TicketCheck" },
-    { label: "reports", href: "/reports", icon: "BarChart3" },
-    { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
-  ],
-  agency: [
-    { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-    { label: "consignees", href: "/consignees", icon: "Contact" },
-    { label: "inventory", href: "/inventory", icon: "Boxes" },
-    { label: "shipping", href: "/shipping", icon: "Truck" },
-    { label: "manifests", href: "/manifests", icon: "FileText" },
-    { label: "invoicing", href: "/invoicing", icon: "Receipt" },
-    { label: "tariffs", href: "/tariffs", icon: "DollarSign" },
-    { label: "tickets", href: "/tickets", icon: "TicketCheck" },
-    { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
-  ],
-};
+/** All possible nav items in display order. Dashboard is always visible. */
+const ALL_NAV_ITEMS: NavItem[] = [
+  { label: "dashboard", href: "/", icon: "LayoutDashboard" },
+  { label: "companies", href: "/companies", icon: "Building" },
+  { label: "warehouses", href: "/warehouses", icon: "Warehouse" },
+  { label: "agencies", href: "/agencies", icon: "Building2" },
+  { label: "consignees", href: "/consignees", icon: "Contact" },
+  { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package" },
+  { label: "inventory", href: "/inventory", icon: "Boxes" },
+  { label: "workOrders", href: "/work-orders", icon: "ClipboardList" },
+  { label: "shipping", href: "/shipping", icon: "Truck" },
+  { label: "manifests", href: "/manifests", icon: "FileText" },
+  { label: "tariffs", href: "/tariffs", icon: "DollarSign" },
+  { label: "invoicing", href: "/invoicing", icon: "Receipt" },
+  { label: "tickets", href: "/tickets", icon: "TicketCheck" },
+  { label: "reports", href: "/reports", icon: "BarChart3" },
+  { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle" },
+  { label: "users", href: "/users", icon: "Users" },
+  { label: "settings", href: "/settings", icon: "Settings" },
+];
 
-export function getNavForRole(role: Role): NavItem[] {
-  return NAV_BY_ROLE[role] ?? NAV_BY_ROLE.agency;
+/**
+ * Derive visible nav items from effective permissions.
+ * A nav item is shown if the role has `read` on its mapped resource.
+ * Dashboard (no resource mapping) is always shown.
+ */
+export function getNavForPermissions(perms: RolePermissionMap): NavItem[] {
+  return ALL_NAV_ITEMS.filter((item) => {
+    const resource = NAV_RESOURCE_MAP[item.label];
+    // Items without a resource mapping (dashboard) are always visible
+    if (!resource) return true;
+    return perms[resource].read;
+  });
 }
 
 /** Get the primary (highest-privilege) role for a user with multiple roles */

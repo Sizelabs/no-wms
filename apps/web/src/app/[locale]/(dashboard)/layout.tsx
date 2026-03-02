@@ -6,8 +6,9 @@ import { RoleProvider } from "@/components/auth/role-provider";
 import { NotificationProvider } from "@/components/layout/notification";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { getRolePermissions } from "@/lib/actions/permissions";
 import { getScopedAgencyIds, getScopedWarehouseIds, getUserRoleAssignments } from "@/lib/auth/roles";
-import { getNavForRole, getPrimaryRole } from "@/lib/navigation";
+import { getNavForPermissions, getPrimaryRole } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -33,7 +34,8 @@ export default async function DashboardLayout({
   const warehouseIds = getScopedWarehouseIds(assignments);
   const agencyIds = getScopedAgencyIds(assignments);
   const primaryRole = getPrimaryRole(roles);
-  const navItems = getNavForRole(primaryRole);
+  const permissions = await getRolePermissions(primaryRole);
+  const navItems = getNavForPermissions(permissions);
   const userName =
     user.user_metadata?.full_name ??
     user.email ??
