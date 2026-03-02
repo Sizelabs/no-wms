@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WrReceiptForm } from "@/components/warehouse/wr-receipt-form";
+import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewWarehouseReceiptPage({
@@ -21,9 +22,23 @@ export default async function NewWarehouseReceiptPage({
   }
 
   // Fetch agencies and warehouses for the form
+  const warehouseScope = await getUserWarehouseScope();
+
+  let warehousesQuery = supabase
+    .from("warehouses")
+    .select("id, name, code")
+    .eq("is_active", true)
+    .order("name");
+
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    warehousesQuery = warehousesQuery.in("id", warehouseScope);
+  }
+
   const [agenciesResult, warehousesResult] = await Promise.all([
     supabase.from("agencies").select("id, name, code").eq("is_active", true).order("name"),
-    supabase.from("warehouses").select("id, name, code").eq("is_active", true).order("name"),
+    warehouseScope !== null && warehouseScope.length === 0
+      ? Promise.resolve({ data: [] })
+      : warehousesQuery,
   ]);
 
   const agencies = agenciesResult.data ?? [];

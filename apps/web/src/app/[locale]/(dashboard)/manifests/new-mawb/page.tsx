@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { MawbCreateForm } from "@/components/manifests/mawb-create-form";
+import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewMawbPage({
@@ -20,8 +21,22 @@ export default async function NewMawbPage({
     redirect(`/${locale}/login`);
   }
 
+  const warehouseScope = await getUserWarehouseScope();
+
+  let warehousesQuery = supabase
+    .from("warehouses")
+    .select("id, name, code")
+    .eq("is_active", true)
+    .order("name");
+
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    warehousesQuery = warehousesQuery.in("id", warehouseScope);
+  }
+
   const [warehousesResult, destinationsResult] = await Promise.all([
-    supabase.from("warehouses").select("id, name, code").eq("is_active", true).order("name"),
+    warehouseScope !== null && warehouseScope.length === 0
+      ? Promise.resolve({ data: [] })
+      : warehousesQuery,
     supabase.from("destination_countries").select("id, name").order("name"),
   ]);
 

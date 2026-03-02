@@ -8,6 +8,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export async function checkDuplicateTracking(trackingNumber: string) {
@@ -57,7 +58,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
   // Parse and validate
   const raw = {
     warehouse_id: formData.get("warehouse_id") as string,
-    agency_id: formData.get("agency_id") as string,
+    agency_id: (formData.get("agency_id") as string) || null,
     tracking_number: (formData.get("tracking_number") as string)?.trim(),
     carrier: formData.get("carrier") as string,
     consignee_id: (formData.get("consignee_id") as string) || null,
@@ -132,7 +133,8 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       tracking_number: input.tracking_number,
       carrier: input.carrier,
       status: "received",
-      agency_id: input.agency_id,
+      agency_id: input.agency_id ?? null,
+      is_unknown: !input.agency_id,
       consignee_id: input.consignee_id ?? null,
       actual_weight_lb: input.actual_weight_lb ?? null,
       length_in: input.length_in ?? null,
@@ -168,6 +170,15 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     changed_by: user.id,
   });
 
+  // Create unknown_wrs record if no agency was selected
+  if (!input.agency_id) {
+    await supabase.from("unknown_wrs").insert({
+      organization_id: profile.organization_id,
+      warehouse_receipt_id: wr.id,
+      status: "unclaimed",
+    });
+  }
+
   // Save photo records
   const photosJson = formData.get("photos") as string | null;
   if (photosJson) {
@@ -195,7 +206,9 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
   }
 
   // Send email notification to agency (non-blocking, lazy import to avoid build-time Resend init)
+  // Skip when agency is unknown
   try {
+    if (!input.agency_id) throw new Error("skip");
     const { sendWrReceiptNotification } = await import("@/lib/email/wr-notifications");
     const { data: agencyData } = await supabase
       .from("agencies")
@@ -236,6 +249,9 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
 
   revalidatePath("/warehouse-receipts");
   revalidatePath("/inventory");
+  if (!input.agency_id) {
+    revalidatePath("/unknown-wrs");
+  }
 
   return { id: wr.id, wr_number: wrNumber };
 }
@@ -254,10 +270,20 @@ export async function getWarehouseReceipts(filters?: {
 }) {
   const supabase = await createClient();
 
+  const warehouseScope = await getUserWarehouseScope();
+
   let query = supabase
     .from("warehouse_receipts")
     .select("*, agencies(name, code, type), consignees(full_name)", { count: "exact" })
     .order("received_at", { ascending: false });
+
+  // Apply warehouse scope for warehouse-scoped users
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    query = query.in("warehouse_id", warehouseScope);
+  } else if (warehouseScope !== null && warehouseScope.length === 0) {
+    // No warehouses assigned — return empty
+    return { data: [], error: null, count: 0 };
+  }
 
   if (filters?.warehouse_id) {
     query = query.eq("warehouse_id", filters.warehouse_id);
@@ -381,11 +407,21 @@ export async function getAgenciesForFilter() {
 
 export async function getWarehousesForFilter() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const warehouseScope = await getUserWarehouseScope();
+
+  let query = supabase
     .from("warehouses")
     .select("id, name, code")
     .eq("is_active", true)
     .order("name");
+
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    query = query.in("id", warehouseScope);
+  } else if (warehouseScope !== null && warehouseScope.length === 0) {
+    return [];
+  }
+
+  const { data } = await query;
   return data ?? [];
 }
 

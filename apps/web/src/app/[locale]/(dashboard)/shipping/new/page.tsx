@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { SiCreateForm } from "@/components/shipping/si-create-form";
+import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewShippingInstructionPage({
@@ -20,18 +21,36 @@ export default async function NewShippingInstructionPage({
     redirect(`/${locale}/login`);
   }
 
+  const warehouseScope = await getUserWarehouseScope();
+
+  let warehousesQuery = supabase
+    .from("warehouses")
+    .select("id, name, code")
+    .eq("is_active", true)
+    .order("name");
+
+  let wrsQuery = supabase
+    .from("warehouse_receipts")
+    .select("id, wr_number, tracking_number, carrier, status, billable_weight_lb")
+    .in("status", ["received", "in_warehouse"])
+    .order("received_at", { ascending: false })
+    .limit(500);
+
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    warehousesQuery = warehousesQuery.in("id", warehouseScope);
+    wrsQuery = wrsQuery.in("warehouse_id", warehouseScope);
+  }
+
+  const emptyResult = Promise.resolve({ data: [] });
+  const isEmpty = warehouseScope !== null && warehouseScope.length === 0;
+
   const [agenciesResult, warehousesResult, consigneesResult, destinationsResult, wrsResult] =
     await Promise.all([
       supabase.from("agencies").select("id, name, code").eq("is_active", true).order("name"),
-      supabase.from("warehouses").select("id, name, code").eq("is_active", true).order("name"),
+      isEmpty ? emptyResult : warehousesQuery,
       supabase.from("consignees").select("id, name").order("name").limit(1000),
       supabase.from("destination_countries").select("id, name").order("name"),
-      supabase
-        .from("warehouse_receipts")
-        .select("id, wr_number, tracking_number, carrier, status, billable_weight_lb")
-        .in("status", ["received", "in_warehouse"])
-        .order("received_at", { ascending: false })
-        .limit(500),
+      isEmpty ? emptyResult : wrsQuery,
     ]);
 
   return (

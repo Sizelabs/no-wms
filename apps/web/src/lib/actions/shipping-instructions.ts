@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createShippingInstruction(formData: FormData): Promise<{ id: string } | { error: string }> {
@@ -101,11 +102,20 @@ export async function getShippingInstructions(filters?: {
   modality?: string;
 }) {
   const supabase = await createClient();
+  const warehouseScope = await getUserWarehouseScope();
+
+  if (warehouseScope !== null && warehouseScope.length === 0) {
+    return { data: [], error: null };
+  }
 
   let query = supabase
     .from("shipping_instructions")
     .select("*, agencies(name, code), consignees(name), hawbs(hawb_number), shipping_instruction_items(warehouse_receipt_id)")
     .order("created_at", { ascending: false });
+
+  if (warehouseScope !== null) {
+    query = query.in("warehouse_id", warehouseScope);
+  }
 
   if (filters?.status) query = query.eq("status", filters.status);
   if (filters?.agency_id) query = query.eq("agency_id", filters.agency_id);

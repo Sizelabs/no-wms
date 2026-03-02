@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 // ── MAWB ──
@@ -50,11 +51,20 @@ export async function createMawb(formData: FormData): Promise<{ id: string } | {
 
 export async function getMawbs(filters?: { status?: string }) {
   const supabase = await createClient();
+  const warehouseScope = await getUserWarehouseScope();
+
+  if (warehouseScope !== null && warehouseScope.length === 0) {
+    return { data: [], error: null };
+  }
 
   let query = supabase
     .from("mawbs")
     .select("*, destination_countries(name), hawbs(id, hawb_number, shipping_instruction_id)")
     .order("created_at", { ascending: false });
+
+  if (warehouseScope !== null) {
+    query = query.in("warehouse_id", warehouseScope);
+  }
 
   if (filters?.status) query = query.eq("status", filters.status);
 
@@ -195,11 +205,20 @@ export async function createSaca(formData: FormData): Promise<{ id: string } | {
 
 export async function getSacas(filters?: { status?: string; mawb_id?: string }) {
   const supabase = await createClient();
+  const warehouseScope = await getUserWarehouseScope();
+
+  if (warehouseScope !== null && warehouseScope.length === 0) {
+    return { data: [], error: null };
+  }
 
   let query = supabase
     .from("sacas")
     .select("*, saca_items(warehouse_receipt_id, warehouse_receipts(wr_number, tracking_number)), mawbs(mawb_number)")
     .order("created_at", { ascending: false });
+
+  if (warehouseScope !== null) {
+    query = query.in("warehouse_id", warehouseScope);
+  }
 
   if (filters?.status) query = query.eq("status", filters.status);
   if (filters?.mawb_id) query = query.eq("mawb_id", filters.mawb_id);

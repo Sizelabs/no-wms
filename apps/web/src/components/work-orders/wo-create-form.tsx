@@ -109,7 +109,8 @@ export function WoCreateForm({ agencies, warehouses, availableWrs }: WoCreateFor
           <select
             value={warehouseId}
             onChange={(e) => setWarehouseId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+            disabled={warehouses.length <= 1}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
           >
             {warehouses.map((w) => (
               <option key={w.id} value={w.id}>{w.name} ({w.code})</option>

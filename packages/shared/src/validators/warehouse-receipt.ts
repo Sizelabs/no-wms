@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createWarehouseReceiptSchema = z.object({
   warehouse_id: z.string().uuid(),
-  agency_id: z.string().uuid(),
+  agency_id: z.string().uuid().nullable().optional(),
   tracking_number: z.string().min(1, "Número de guía requerido"),
   carrier: z.string().min(1, "Transportista requerido"),
   consignee_id: z.string().uuid().nullable().optional(),

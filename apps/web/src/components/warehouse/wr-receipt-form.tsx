@@ -147,7 +147,12 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     [consignees, consigneeId],
   );
 
-  const stepIndex = STEPS.indexOf(step);
+  const isUnknownAgency = agencyId === "unknown";
+  const activeSteps = useMemo(
+    () => (isUnknownAgency ? STEPS.filter((s) => s !== "consignee") : STEPS),
+    [isUnknownAgency],
+  );
+  const stepIndex = activeSteps.indexOf(step);
 
   // Consignee search
   useEffect(() => {
@@ -174,20 +179,20 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
   }, [step]);
 
   const goNext = useCallback(() => {
-    const idx = STEPS.indexOf(step);
-    if (idx < STEPS.length - 1) {
-      setStep(STEPS[idx + 1]!);
+    const idx = activeSteps.indexOf(step);
+    if (idx < activeSteps.length - 1) {
+      setStep(activeSteps[idx + 1]!);
       setError(null);
     }
-  }, [step]);
+  }, [step, activeSteps]);
 
   const goBack = useCallback(() => {
-    const idx = STEPS.indexOf(step);
+    const idx = activeSteps.indexOf(step);
     if (idx > 0) {
-      setStep(STEPS[idx - 1]!);
+      setStep(activeSteps[idx - 1]!);
       setError(null);
     }
-  }, [step]);
+  }, [step, activeSteps]);
 
   // Validate and advance from tracking step
   const handleTrackingNext = useCallback(async () => {
@@ -270,7 +275,9 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
       try {
         const formData = new FormData();
         formData.set("warehouse_id", warehouseId);
-        formData.set("agency_id", agencyId);
+        if (agencyId !== "unknown") {
+          formData.set("agency_id", agencyId);
+        }
         formData.set("tracking_number", trackingNumber.trim());
         formData.set("carrier", carrier);
         if (consigneeId) formData.set("consignee_id", consigneeId);
@@ -312,7 +319,9 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
           <div className="text-2xl">✓</div>
           <h3 className="mt-2 text-lg font-semibold text-green-800">Recibo creado</h3>
           <p className="mt-1 font-mono text-sm text-green-700">{createdWr.wr_number}</p>
-          <p className="text-sm text-green-600">{trackingNumber} • {selectedAgency?.name}</p>
+          <p className="text-sm text-green-600">
+            {trackingNumber} • {isUnknownAgency ? "Desconocido" : selectedAgency?.name}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -345,7 +354,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     <div className="mx-auto max-w-lg space-y-4">
       {/* Progress bar */}
       <div className="flex gap-1">
-        {STEPS.map((s, i) => (
+        {activeSteps.map((s, i) => (
           <div
             key={s}
             className={`h-1 flex-1 rounded-full ${
@@ -356,7 +365,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
       </div>
 
       <div className="text-xs font-medium text-gray-500">
-        Paso {stepIndex + 1} de {STEPS.length}: {STEP_LABELS[step]}
+        Paso {stepIndex + 1} de {activeSteps.length}: {STEP_LABELS[step]}
       </div>
 
       {/* Error display */}
@@ -386,7 +395,8 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
             <select
               value={warehouseId}
               onChange={(e) => setWarehouseId(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+              disabled={warehouses.length <= 1}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
             >
               {warehouses.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -417,9 +427,29 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                   {a.code}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setAgencyId("unknown");
+                  setConsigneeId("");
+                  setConsigneeSearch("");
+                }}
+                className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
+                  agencyId === "unknown"
+                    ? "border-amber-600 bg-amber-600 text-white"
+                    : "border-amber-200 text-amber-700 hover:bg-amber-50"
+                }`}
+              >
+                Desconocido
+              </button>
             </div>
             {selectedAgency && (
               <p className="text-sm text-gray-500">{selectedAgency.name}</p>
+            )}
+            {agencyId === "unknown" && (
+              <p className="text-sm text-amber-600">
+                El paquete se registrará como WR desconocido. Las agencias podrán reclamarlo después.
+              </p>
             )}
           </div>
         )}
@@ -759,7 +789,9 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
             <div className="divide-y rounded-md border text-sm">
               <div className="flex justify-between px-3 py-2">
                 <span className="text-gray-500">Agencia</span>
-                <span className="font-medium">{selectedAgency?.name}</span>
+                <span className={`font-medium ${isUnknownAgency ? "text-amber-600" : ""}`}>
+                  {isUnknownAgency ? "Desconocido" : selectedAgency?.name}
+                </span>
               </div>
               <div className="flex justify-between px-3 py-2">
                 <span className="text-gray-500">Guía</span>

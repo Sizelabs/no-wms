@@ -2,15 +2,25 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getWarehouses() {
   const supabase = await createClient();
+  const warehouseScope = await getUserWarehouseScope();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("warehouses")
     .select("*")
     .order("name");
+
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    query = query.in("id", warehouseScope);
+  } else if (warehouseScope !== null && warehouseScope.length === 0) {
+    return { data: [], error: null };
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return { data: null, error: error.message };
