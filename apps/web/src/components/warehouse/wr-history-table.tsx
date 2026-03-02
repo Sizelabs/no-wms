@@ -14,6 +14,8 @@ interface WrPackage {
   billable_weight_lb: number;
   is_damaged: boolean;
   sender_name: string;
+  declared_value_usd: number | null;
+  package_type: string | null;
 }
 
 interface WarehouseReceipt {
@@ -21,12 +23,14 @@ interface WarehouseReceipt {
   wr_number: string;
   packages: WrPackage[];
   total_billable_weight_lb: number | null;
+  total_declared_value_usd: number | null;
   has_damaged_package: boolean;
   has_dgr_package: boolean;
   total_packages: number;
   total_pieces: number;
   status: string;
   received_at: string;
+  free_storage_override_days: number | null;
   agencies: { name: string; code: string; type: string } | null;
   consignees: { full_name: string; casillero: string | null } | null;
 }
@@ -37,6 +41,8 @@ interface WrHistoryTableProps {
   locale: string;
   agencies?: Array<{ id: string; name: string; code: string }>;
   warehouses?: Array<{ id: string; name: string; code: string }>;
+  freeStorageDays: number;
+  storageDailyRate: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -48,6 +54,39 @@ const STATUS_COLORS: Record<string, string> = {
   damaged: "bg-red-50 text-red-700",
   abandoned: "bg-gray-200 text-gray-500",
 };
+
+const LB_TO_KG = 0.453592;
+const COL_COUNT = 12;
+
+function computeBodegaje(
+  wr: WarehouseReceipt,
+  freeStorageDays: number,
+  storageDailyRate: number,
+): { label: string; className: string } {
+  if (wr.status === "dispatched" || wr.status === "abandoned") {
+    return { label: "—", className: "text-gray-400" };
+  }
+
+  const daysSinceReceived = Math.ceil(
+    (Date.now() - new Date(wr.received_at).getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const freeDays = wr.free_storage_override_days ?? freeStorageDays;
+  const remaining = freeDays - daysSinceReceived;
+
+  if (remaining >= 0) {
+    return {
+      label: `Gratis (${remaining}d)`,
+      className: "text-green-700",
+    };
+  }
+
+  const chargeableDays = Math.abs(remaining);
+  const amount = (chargeableDays * storageDailyRate).toFixed(2);
+  return {
+    label: `${chargeableDays}d ($${amount})`,
+    className: chargeableDays > 30 ? "text-red-700 font-medium" : "text-orange-600",
+  };
+}
 
 function groupByConsignee(receipts: WarehouseReceipt[]) {
   const groups = new Map<string, WarehouseReceipt[]>();
@@ -67,7 +106,7 @@ function groupByConsignee(receipts: WarehouseReceipt[]) {
   });
 }
 
-export function WrHistoryTable({ data, count, locale, agencies = [], warehouses = [] }: WrHistoryTableProps) {
+export function WrHistoryTable({ data, count, locale, agencies = [], warehouses = [], freeStorageDays, storageDailyRate }: WrHistoryTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -284,19 +323,22 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                 />
               </th>
               <th className="px-3 py-3">WR#</th>
-              <th className="px-3 py-3">Guía</th>
-              <th className="px-3 py-3">Transportista</th>
-              <th className="px-3 py-3">Agencia</th>
+              <th className="px-3 py-3">Bodegaje</th>
+              <th className="px-3 py-3">Tracking</th>
               <th className="px-3 py-3">Piezas</th>
-              <th className="px-3 py-3">Peso</th>
+              <th className="px-3 py-3">Peso (lb)</th>
+              <th className="px-3 py-3">Peso (Kg)</th>
+              <th className="px-3 py-3">Tipo</th>
+              <th className="px-3 py-3">Remitente</th>
+              <th className="px-3 py-3">Transportista</th>
+              <th className="px-3 py-3">Valor Decl.</th>
               <th className="px-3 py-3">Estado</th>
-              <th className="px-3 py-3">Recibido</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-gray-400">
+                <td colSpan={COL_COUNT} className="px-3 py-8 text-center text-gray-400">
                   No se encontraron recibos.
                 </td>
               </tr>
@@ -306,7 +348,8 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                 const isCollapsed = collapsed.has(groupKey);
                 const casillero = receipts[0]?.consignees?.casillero;
                 const totalPieces = receipts.reduce((sum, r) => sum + r.total_pieces, 0);
-                const totalWeight = receipts.reduce((sum, r) => sum + (Number(r.total_billable_weight_lb) || 0), 0);
+                const totalWeightLb = receipts.reduce((sum, r) => sum + (Number(r.total_billable_weight_lb) || 0), 0);
+                const totalWeightKg = totalWeightLb * LB_TO_KG;
                 const groupIds = receipts.map((r) => r.id);
                 const allGroupSelected = groupIds.every((id) => selected.has(id));
                 const someGroupSelected = !allGroupSelected && groupIds.some((id) => selected.has(id));
@@ -324,7 +367,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                       />
                     </td>
                     <td
-                      colSpan={4}
+                      colSpan={3}
                       className="px-3 py-2.5 cursor-pointer select-none"
                       onClick={() => toggleCollapse(groupKey)}
                     >
@@ -344,14 +387,22 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                       {totalPieces}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
-                      {totalWeight.toFixed(1)} lb
+                      {totalWeightLb.toFixed(1)}
                     </td>
-                    <td colSpan={2} className="px-3 py-2.5 text-right text-xs text-gray-400">
+                    <td className="px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
+                      {totalWeightKg.toFixed(1)}
+                    </td>
+                    <td colSpan={4} />
+                    <td className="px-3 py-2.5 text-right text-xs text-gray-400">
                       {receipts.length} {receipts.length === 1 ? "recibo" : "recibos"}
                     </td>
                   </tr>
                   {/* Group rows */}
-                  {!isCollapsed && receipts.map((wr) => (
+                  {!isCollapsed && receipts.map((wr) => {
+                    const bodegaje = computeBodegaje(wr, freeStorageDays, storageDailyRate);
+                    const weightLb = wr.total_billable_weight_lb;
+                    const weightKg = weightLb != null ? (weightLb * LB_TO_KG).toFixed(1) : "—";
+                    return (
                     <tr key={wr.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-3 py-2.5">
                         <input
@@ -375,11 +426,29 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                           <span className="ml-1 inline-flex rounded bg-orange-100 px-1 text-[10px] text-orange-700">DGR</span>
                         )}
                       </td>
+                      <td className={`px-3 py-2.5 text-xs ${bodegaje.className}`}>
+                        {bodegaje.label}
+                      </td>
                       <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
                         {wr.packages[0]?.tracking_number ?? "—"}
                         {wr.total_packages > 1 && (
                           <span className="ml-1 text-gray-400">(+{wr.total_packages - 1})</span>
                         )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center text-xs">
+                        {wr.total_pieces}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-xs">
+                        {weightLb?.toFixed(1) ?? "—"}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-xs">
+                        {weightKg}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-gray-600">
+                        {wr.packages[0]?.package_type ?? "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-gray-600 truncate max-w-[120px]">
+                        {wr.packages[0]?.sender_name ?? "—"}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-gray-600">
                         {wr.packages.length === 0
@@ -388,14 +457,10 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                             ? "Multiple"
                             : wr.packages[0]?.carrier ?? "—"}
                       </td>
-                      <td className="px-3 py-2.5 text-gray-600">
-                        {wr.agencies?.code ?? "—"}
-                      </td>
-                      <td className="px-3 py-2.5 text-center text-xs">
-                        {wr.total_pieces}
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-xs">
-                        {wr.total_billable_weight_lb?.toFixed(1) ?? "—"} lb
+                      <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
+                        {wr.total_declared_value_usd != null
+                          ? `$${Number(wr.total_declared_value_usd).toFixed(2)}`
+                          : "—"}
                       </td>
                       <td className="px-3 py-2.5">
                         <span
@@ -406,11 +471,9 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                           {WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-gray-400">
-                        {new Date(wr.received_at).toLocaleDateString("es")}
-                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </React.Fragment>
                 );
               })

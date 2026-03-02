@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WrHistoryTable } from "@/components/warehouse/wr-history-table";
-import { getAgenciesForFilter, getWarehouseReceipts, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
+import { getAgenciesForFilter, getStorageSettings, getWarehouseReceipts, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
 
 export default async function WarehouseReceiptsPage({
   params,
@@ -25,7 +25,7 @@ export default async function WarehouseReceiptsPage({
   const filters = await searchParams;
   const t = await getTranslations("nav");
 
-  const [{ data, count }, agencies, warehouses] = await Promise.all([
+  const [{ data, count }, agencies, warehouses, storageSettings] = await Promise.all([
     getWarehouseReceipts({
       search: filters.search,
       status: filters.status,
@@ -38,6 +38,7 @@ export default async function WarehouseReceiptsPage({
     }),
     getAgenciesForFilter(),
     getWarehousesForFilter(),
+    getStorageSettings(),
   ]);
 
   return (
@@ -62,6 +63,8 @@ export default async function WarehouseReceiptsPage({
         locale={locale}
         agencies={agencies}
         warehouses={warehouses}
+        freeStorageDays={storageSettings.freeStorageDays}
+        storageDailyRate={storageSettings.storageDailyRate}
       />
     </div>
   );

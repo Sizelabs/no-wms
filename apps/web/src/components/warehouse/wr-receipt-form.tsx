@@ -1,6 +1,7 @@
 "use client";
 
 import { CARRIERS } from "@no-wms/shared/constants/carriers";
+import { PACKAGE_TYPES } from "@no-wms/shared/constants/package-types";
 import {
   calculateBillableWeight,
   calculateVolumetricWeight,
@@ -53,6 +54,7 @@ interface PackageData {
   damage_description: string;
   sender_name: string;
   pieces_count: string;
+  package_type: string;
 }
 
 function emptyPackage(): PackageData {
@@ -70,6 +72,7 @@ function emptyPackage(): PackageData {
     damage_description: "",
     sender_name: "",
     pieces_count: "1",
+    package_type: "Box",
   };
 }
 
@@ -352,6 +355,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
           damage_description: p.is_damaged ? p.damage_description : null,
           sender_name: p.sender_name || null,
           pieces_count: parseInt(p.pieces_count, 10) || 1,
+          package_type: p.package_type || null,
         }))));
         formData.set("photos", JSON.stringify(photos.map((p) => ({
           storage_path: p.storagePath,
@@ -863,15 +867,29 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
               </p>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Piezas</label>
-              <input
-                type="number"
-                min="1"
-                value={pkg.pieces_count}
-                onChange={(e) => updatePackage("pieces_count", e.target.value)}
-                className="mt-1 w-24 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-              />
+            <div className="flex gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Piezas</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={pkg.pieces_count}
+                  onChange={(e) => updatePackage("pieces_count", e.target.value)}
+                  className="mt-1 w-24 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Tipo de paquete</label>
+                <select
+                  value={pkg.package_type}
+                  onChange={(e) => updatePackage("package_type", e.target.value)}
+                  className="mt-1 w-36 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+                >
+                  {PACKAGE_TYPES.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {warehouseLocations.length > 0 && (
@@ -1001,6 +1019,10 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                 <div className="flex justify-between px-3 py-2">
                   <span className="text-gray-500">Piezas</span>
                   <span>{p.pieces_count}</span>
+                </div>
+                <div className="flex justify-between px-3 py-2">
+                  <span className="text-gray-500">Tipo</span>
+                  <span>{p.package_type || "—"}</span>
                 </div>
                 {p.is_damaged && (
                   <div className="flex justify-between px-3 py-2 text-red-700">

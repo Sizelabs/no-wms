@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { PACKAGE_TYPES } from "../constants/package-types";
+
 export const createPackageSchema = z.object({
   tracking_number: z.string().min(1, "Número de guía requerido"),
   carrier: z.string().min(1, "Transportista requerido"),
@@ -15,6 +17,7 @@ export const createPackageSchema = z.object({
   damage_description: z.string().optional(),
   sender_name: z.string().optional(),
   pieces_count: z.coerce.number().int().positive().default(1),
+  package_type: z.enum(PACKAGE_TYPES).optional(),
 }).refine(
   (data) => !data.is_damaged || (data.damage_description && data.damage_description.length > 0),
   { message: "Descripción de daño requerida", path: ["damage_description"] },

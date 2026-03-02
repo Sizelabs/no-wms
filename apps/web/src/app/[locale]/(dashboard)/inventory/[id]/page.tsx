@@ -81,7 +81,11 @@ export default async function WrDetailPage({
               <DtDd label="Peso real total" value={wr.total_actual_weight_lb ? `${wr.total_actual_weight_lb} lb` : "—"} />
               <DtDd label="Peso vol. total" value={wr.total_volumetric_weight_lb ? `${Number(wr.total_volumetric_weight_lb).toFixed(2)} lb` : "—"} />
               <DtDd label="Peso facturable" value={wr.total_billable_weight_lb ? `${Number(wr.total_billable_weight_lb).toFixed(2)} lb` : "—"} />
+              <DtDd label="Peso facturable (Kg)" value={wr.total_billable_weight_lb ? `${(Number(wr.total_billable_weight_lb) * 0.453592).toFixed(2)} kg` : "—"} />
               <DtDd label="Paquetes" value={String(wr.total_packages ?? wr.packages?.length ?? 0)} />
+              {wr.total_declared_value_usd != null && (
+                <DtDd label="Valor declarado total" value={`$${Number(wr.total_declared_value_usd).toFixed(2)}`} />
+              )}
             </dl>
           </Section>
 
@@ -89,7 +93,7 @@ export default async function WrDetailPage({
           {wr.packages && wr.packages.length > 0 && (
             <Section title={`Paquetes (${wr.packages.length})`}>
               <div className="space-y-3">
-                {wr.packages.map((pkg: { id: string; tracking_number: string; carrier: string | null; actual_weight_lb: number | null; billable_weight_lb: number | null; length_in: number | null; width_in: number | null; height_in: number | null; sender_name: string | null; pieces_count: number; is_damaged: boolean; damage_description: string | null; is_dgr: boolean; dgr_class: string | null }) => (
+                {wr.packages.map((pkg: { id: string; tracking_number: string; carrier: string | null; actual_weight_lb: number | null; billable_weight_lb: number | null; length_in: number | null; width_in: number | null; height_in: number | null; sender_name: string | null; pieces_count: number; is_damaged: boolean; damage_description: string | null; is_dgr: boolean; dgr_class: string | null; package_type: string | null; declared_value_usd: number | null }) => (
                   <div key={pkg.id} className="rounded-md border p-3 text-sm">
                     <div className="mb-2 flex items-center justify-between">
                       <span className="font-mono text-xs font-medium">{pkg.tracking_number}</span>
@@ -104,7 +108,9 @@ export default async function WrDetailPage({
                           : "—"
                       } />
                       <DtDd label="Piezas" value={String(pkg.pieces_count)} />
+                      {pkg.package_type && <DtDd label="Tipo" value={pkg.package_type} />}
                       {pkg.sender_name && <DtDd label="Remitente" value={pkg.sender_name} />}
+                      {pkg.declared_value_usd != null && <DtDd label="Valor declarado" value={`$${Number(pkg.declared_value_usd).toFixed(2)}`} />}
                     </dl>
                     {pkg.is_damaged && (
                       <div className="mt-2 rounded bg-red-50 p-1.5 text-xs text-red-700">

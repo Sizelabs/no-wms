@@ -82,6 +82,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
         damage_description: (formData.get("damage_description") as string) || undefined,
         sender_name: (formData.get("sender_name") as string) || undefined,
         pieces_count: formData.get("pieces_count") ? Number(formData.get("pieces_count")) : 1,
+        package_type: (formData.get("package_type") as string) || undefined,
       },
     ];
   }
@@ -189,6 +190,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       damage_description: pkg.damage_description ?? null,
       sender_name: pkg.sender_name ?? null,
       pieces_count: pkg.pieces_count,
+      package_type: pkg.package_type ?? null,
     })),
   );
 
@@ -649,6 +651,38 @@ export async function updateWarehouseReceiptStatus(
 
   revalidatePath("/warehouse-receipts");
   revalidatePath("/inventory");
+}
+
+export async function getStorageSettings(): Promise<{
+  freeStorageDays: number;
+  storageDailyRate: number;
+}> {
+  const supabase = await createClient();
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .limit(1)
+    .single();
+
+  const orgId = profile?.organization_id;
+  if (!orgId) return { freeStorageDays: 30, storageDailyRate: 0.5 };
+
+  const [{ data: freeDaysSetting }, { data: rateSetting }] = await Promise.all([
+    supabase.rpc("resolve_setting", {
+      p_org_id: orgId,
+      p_key: "free_storage_days",
+    }),
+    supabase.rpc("resolve_setting", {
+      p_org_id: orgId,
+      p_key: "storage_daily_rate",
+    }),
+  ]);
+
+  return {
+    freeStorageDays: freeDaysSetting ? parseInt(String(freeDaysSetting), 10) : 30,
+    storageDailyRate: rateSetting ? parseFloat(String(rateSetting)) : 0.5,
+  };
 }
 
 export async function bulkUpdateStatus(

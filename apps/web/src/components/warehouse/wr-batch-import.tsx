@@ -1,6 +1,7 @@
 "use client";
 
 import { CARRIERS } from "@no-wms/shared/constants/carriers";
+import { PACKAGE_TYPES } from "@no-wms/shared/constants/package-types";
 import { useCallback, useRef, useState, useTransition } from "react";
 
 import { createWarehouseReceipt } from "@/lib/actions/warehouse-receipts";
@@ -26,6 +27,7 @@ interface BatchRow {
   height_in: string;
   consignee_name: string;
   pieces_count: string;
+  package_type: string;
   notes: string;
 }
 
@@ -38,6 +40,7 @@ const EMPTY_ROW: BatchRow = {
   height_in: "",
   consignee_name: "",
   pieces_count: "1",
+  package_type: "Box",
   notes: "",
 };
 
@@ -73,7 +76,8 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
           height_in: cols[5] ?? "",
           consignee_name: cols[6] ?? "",
           pieces_count: cols[7] || "1",
-          notes: cols[8] ?? "",
+          package_type: cols[8] || "Box",
+          notes: cols[9] ?? "",
         };
       }).filter((r) => r.tracking_number);
 
@@ -126,6 +130,7 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
           if (row.width_in) formData.set("width_in", row.width_in);
           if (row.height_in) formData.set("height_in", row.height_in);
           formData.set("pieces_count", row.pieces_count || "1");
+          if (row.package_type) formData.set("package_type", row.package_type);
           if (row.notes) formData.set("notes", row.notes);
 
           await createWarehouseReceipt(formData);
@@ -189,6 +194,7 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
               <th className="px-2 py-2">Peso (lb)</th>
               <th className="px-2 py-2">L × W × H (in)</th>
               <th className="px-2 py-2">Piezas</th>
+              <th className="px-2 py-2">Tipo</th>
               <th className="px-2 py-2">Notas</th>
               <th className="px-2 py-2">Estado</th>
               <th className="px-2 py-2" />
@@ -265,6 +271,17 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
                     />
                   </td>
                   <td className="px-2 py-1.5">
+                    <select
+                      value={row.package_type}
+                      onChange={(e) => updateRow(i, "package_type", e.target.value)}
+                      className="w-20 rounded border px-1 py-1 text-xs focus:border-gray-900 focus:outline-none"
+                    >
+                      {PACKAGE_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-2 py-1.5">
                     <input
                       type="text"
                       value={row.notes}
@@ -323,7 +340,7 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
           className="hidden"
         />
         <span className="self-center text-xs text-gray-400">
-          CSV: tracking, carrier, peso, largo, ancho, alto, destinatario, piezas, notas
+          CSV: tracking, carrier, peso, largo, ancho, alto, destinatario, piezas, tipo, notas
         </span>
         <div className="flex-1" />
         <button
