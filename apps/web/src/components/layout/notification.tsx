@@ -56,21 +56,27 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   return (
     <NotificationContext.Provider value={{ notify }}>
+      {children}
       {notification && (
-        <div className="px-6 pt-4">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
           <div
             role="alert"
-            className={`flex items-center justify-between rounded-md border px-4 py-3 text-sm ${
+            className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm shadow-lg ${
               notification.type === "success"
-                ? "border-green-200 bg-green-50 text-green-700"
-                : "border-red-200 bg-red-50 text-red-700"
+                ? "border-gray-200 bg-white text-gray-800"
+                : "border-red-200 bg-white text-red-700"
             }`}
           >
-            <span>{notification.message}</span>
+            <span
+              className={`size-2 shrink-0 rounded-full ${
+                notification.type === "success" ? "bg-green-500" : "bg-red-500"
+              }`}
+            />
+            <span className="whitespace-nowrap">{notification.message}</span>
             <button
               type="button"
               onClick={dismiss}
-              className="ml-4 shrink-0 text-current opacity-60 hover:opacity-100"
+              className="ml-1 shrink-0 text-gray-400 hover:text-gray-600"
               aria-label="Cerrar"
             >
               ✕
@@ -78,7 +84,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           </div>
         </div>
       )}
-      {children}
     </NotificationContext.Provider>
   );
 }
