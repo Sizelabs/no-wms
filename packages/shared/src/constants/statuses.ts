@@ -115,3 +115,32 @@ export const PICKUP_STATUSES = {
 
 export type PickupStatus =
   (typeof PICKUP_STATUSES)[keyof typeof PICKUP_STATUSES];
+
+// ── Invoice status labels ──
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  draft: "Borrador",
+  sent: "Enviada",
+  paid: "Pagada",
+  overdue: "Vencida",
+  void: "Anulada",
+};
+
+// ── Invoice line item types ──
+export const INVOICE_LINE_ITEM_TYPES = {
+  SHIPPING: "shipping",
+  STORAGE: "storage",
+  WORK_ORDER: "work_order",
+  SURCHARGE: "surcharge",
+  OTHER: "other",
+} as const;
+
+export type InvoiceLineItemType =
+  (typeof INVOICE_LINE_ITEM_TYPES)[keyof typeof INVOICE_LINE_ITEM_TYPES];
+
+export const INVOICE_LINE_ITEM_TYPE_LABELS: Record<InvoiceLineItemType, string> = {
+  shipping: "Envío",
+  storage: "Almacenaje",
+  work_order: "Orden de Trabajo",
+  surcharge: "Recargo",
+  other: "Otro",
+};

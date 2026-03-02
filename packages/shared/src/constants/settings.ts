@@ -125,6 +125,46 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     ],
     scopes: ["platform", "organization", "warehouse"],
   },
+  {
+    key: "storage_daily_rate",
+    label: "Tarifa diaria de almacenaje",
+    description: "Tarifa diaria de almacenaje después del periodo gratuito",
+    type: "number",
+    defaultValue: 0.5,
+    scopes: ["platform", "organization", "warehouse", "destination", "agency"],
+  },
+  {
+    key: "billing_use_greater_weight",
+    label: "Facturar por mayor peso",
+    description: "Facturar por el mayor peso (real vs volumétrico)",
+    type: "boolean",
+    defaultValue: true,
+    scopes: ["platform", "organization"],
+  },
+  {
+    key: "wo_charge_default",
+    label: "Cargo base por OT",
+    description: "Cargo base por orden de trabajo",
+    type: "number",
+    defaultValue: 5.0,
+    scopes: ["platform", "organization"],
+  },
+  {
+    key: "invoice_credit_days",
+    label: "Días de crédito",
+    description: "Días de crédito para facturas",
+    type: "number",
+    defaultValue: 30,
+    scopes: ["platform", "organization", "agency"],
+  },
+  {
+    key: "invoice_tax_rate",
+    label: "Tasa de impuesto (%)",
+    description: "Tasa de impuesto para facturas (%)",
+    type: "number",
+    defaultValue: 0,
+    scopes: ["platform", "organization"],
+  },
 ];
 
 export const SCOPE_LABELS: Record<string, string> = {
