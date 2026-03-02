@@ -17,6 +17,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: "dashboard", href: "/", icon: "LayoutDashboard" },
     { label: "warehouses", href: "/warehouses", icon: "Warehouse" },
     { label: "agencies", href: "/agencies", icon: "Building2" },
+    { label: "consignees", href: "/consignees", icon: "Contact" },
     { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package" },
     { label: "inventory", href: "/inventory", icon: "Boxes" },
     { label: "workOrders", href: "/work-orders", icon: "ClipboardList" },
@@ -33,6 +34,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   warehouse_admin: [
     { label: "dashboard", href: "/", icon: "LayoutDashboard" },
     { label: "agencies", href: "/agencies", icon: "Building2" },
+    { label: "consignees", href: "/consignees", icon: "Contact" },
     { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package" },
     { label: "inventory", href: "/inventory", icon: "Boxes" },
     { label: "workOrders", href: "/work-orders", icon: "ClipboardList" },
@@ -63,6 +65,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   destination_admin: [
     { label: "dashboard", href: "/", icon: "LayoutDashboard" },
     { label: "agencies", href: "/agencies", icon: "Building2" },
+    { label: "consignees", href: "/consignees", icon: "Contact" },
     { label: "inventory", href: "/inventory", icon: "Boxes" },
     { label: "shipping", href: "/shipping", icon: "Truck" },
     { label: "manifests", href: "/manifests", icon: "FileText" },
@@ -85,6 +88,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   agency: [
     { label: "dashboard", href: "/", icon: "LayoutDashboard" },
+    { label: "consignees", href: "/consignees", icon: "Contact" },
     { label: "inventory", href: "/inventory", icon: "Boxes" },
     { label: "shipping", href: "/shipping", icon: "Truck" },
     { label: "manifests", href: "/manifests", icon: "FileText" },

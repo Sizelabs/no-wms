@@ -3,10 +3,12 @@ import { AGENCY_TYPE_LABELS } from "@no-wms/shared/constants/agency-types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AgencyDetail } from "@/components/agencies/agency-detail";
 import { AgencyDetailActions } from "@/components/agencies/agency-detail-actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { DtDd, InfoCard, Section } from "@/components/ui/detail-page";
 import { getAgency } from "@/lib/actions/agencies";
+import { getConsigneesByAgency } from "@/lib/actions/consignees";
 
 export default async function AgencyDetailPage({
   params,
@@ -14,9 +16,14 @@ export default async function AgencyDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-  const { data: agency, error } = await getAgency(id);
 
-  if (error || !agency) {
+  const [agencyResult, consigneesResult] = await Promise.all([
+    getAgency(id),
+    getConsigneesByAgency(id),
+  ]);
+
+  const agency = agencyResult.data;
+  if (agencyResult.error || !agency) {
     notFound();
   }
 
@@ -64,63 +71,65 @@ export default async function AgencyDetailPage({
         </InfoCard>
       </div>
 
-      {/* Details grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left column */}
-        <div className="space-y-6">
-          <Section title="Información de contacto">
-            <dl className="grid grid-cols-2 gap-3 text-sm">
-              <DtDd label="RUC" value={agency.ruc ?? "—"} />
-              <DtDd label="Teléfono" value={agency.phone ?? "—"} />
-              <DtDd label="Email" value={agency.email ?? "—"} />
-              <DtDd label="Dirección" value={agency.address ?? "—"} />
-            </dl>
-          </Section>
-        </div>
+      <AgencyDetail agencyId={agency.id} consignees={consigneesResult.data ?? []}>
+        {/* Details grid — original info tab content */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Left column */}
+          <div className="space-y-6">
+            <Section title="Información de contacto">
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                <DtDd label="RUC" value={agency.ruc ?? "—"} />
+                <DtDd label="Teléfono" value={agency.phone ?? "—"} />
+                <DtDd label="Email" value={agency.email ?? "—"} />
+                <DtDd label="Dirección" value={agency.address ?? "—"} />
+              </dl>
+            </Section>
+          </div>
 
-        {/* Right column: contacts */}
-        <div className="space-y-6">
-          <Section
-            title={`Contactos (${agency.agency_contacts?.length ?? 0})`}
-          >
-            {agency.agency_contacts?.length ? (
-              <div className="space-y-2">
-                {agency.agency_contacts.map(
-                  (contact: {
-                    id: string;
-                    name: string;
-                    phone: string | null;
-                    email: string | null;
-                    role: string | null;
-                  }) => (
-                    <div
-                      key={contact.id}
-                      className="rounded-md border p-2 text-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-gray-900">
-                          {contact.name}
-                        </span>
-                        {contact.role && (
-                          <span className="text-xs text-gray-500">
-                            {contact.role}
+          {/* Right column: contacts */}
+          <div className="space-y-6">
+            <Section
+              title={`Contactos (${agency.agency_contacts?.length ?? 0})`}
+            >
+              {agency.agency_contacts?.length ? (
+                <div className="space-y-2">
+                  {agency.agency_contacts.map(
+                    (contact: {
+                      id: string;
+                      name: string;
+                      phone: string | null;
+                      email: string | null;
+                      role: string | null;
+                    }) => (
+                      <div
+                        key={contact.id}
+                        className="rounded-md border p-2 text-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-900">
+                            {contact.name}
                           </span>
-                        )}
+                          {contact.role && (
+                            <span className="text-xs text-gray-500">
+                              {contact.role}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex gap-3 text-xs text-gray-500">
+                          {contact.phone && <span>{contact.phone}</span>}
+                          {contact.email && <span>{contact.email}</span>}
+                        </div>
                       </div>
-                      <div className="mt-1 flex gap-3 text-xs text-gray-500">
-                        {contact.phone && <span>{contact.phone}</span>}
-                        {contact.email && <span>{contact.email}</span>}
-                      </div>
-                    </div>
-                  ),
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400">Sin contactos registrados</p>
-            )}
-          </Section>
+                    ),
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">Sin contactos registrados</p>
+              )}
+            </Section>
+          </div>
         </div>
-      </div>
+      </AgencyDetail>
     </div>
   );
 }

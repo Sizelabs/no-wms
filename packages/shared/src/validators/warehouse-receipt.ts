@@ -1,45 +1,41 @@
 import { z } from "zod";
 
-export const createWarehouseReceiptSchema = z.object({
-  warehouse_id: z.string().uuid(),
-  agency_id: z.string().uuid().nullable().optional(),
+export const createPackageSchema = z.object({
   tracking_number: z.string().min(1, "Número de guía requerido"),
   carrier: z.string().min(1, "Transportista requerido"),
-  consignee_id: z.string().uuid().nullable().optional(),
   actual_weight_lb: z.coerce.number().positive("Peso debe ser mayor a 0").optional(),
   length_in: z.coerce.number().positive().optional(),
   width_in: z.coerce.number().positive().optional(),
   height_in: z.coerce.number().positive().optional(),
   content_description: z.string().optional(),
+  declared_value_usd: z.coerce.number().nonnegative().optional(),
   is_dgr: z.boolean().default(false),
   dgr_class: z.string().optional(),
-  dgr_checklist_completed: z.array(z.string()).optional(),
   is_damaged: z.boolean().default(false),
   damage_description: z.string().optional(),
-  warehouse_location_id: z.string().uuid().optional(),
   sender_name: z.string().optional(),
   pieces_count: z.coerce.number().int().positive().default(1),
-  notes: z.string().optional(),
-  client_id: z.string().optional(),
 }).refine(
   (data) => !data.is_damaged || (data.damage_description && data.damage_description.length > 0),
   { message: "Descripción de daño requerida", path: ["damage_description"] },
 );
 
-export type CreateWarehouseReceiptInput = z.infer<typeof createWarehouseReceiptSchema>;
+export type CreatePackageInput = z.infer<typeof createPackageSchema>;
 
-export const createConsigneeSchema = z.object({
-  agency_id: z.string().uuid(),
-  full_name: z.string().min(1, "Nombre requerido"),
-  cedula_ruc: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  address_line1: z.string().optional(),
-  city: z.string().optional(),
-  province: z.string().optional(),
+export const createWarehouseReceiptSchema = z.object({
+  warehouse_id: z.string().uuid(),
+  agency_id: z.string().uuid().nullable().optional(),
+  consignee_id: z.string().uuid().nullable().optional(),
+  warehouse_location_id: z.string().uuid().optional(),
+  notes: z.string().optional(),
+  client_id: z.string().optional(),
+  packages: z.array(createPackageSchema).min(1, "Al menos un paquete requerido"),
 });
 
-export type CreateConsigneeInput = z.infer<typeof createConsigneeSchema>;
+export type CreateWarehouseReceiptInput = z.infer<typeof createWarehouseReceiptSchema>;
+
+export { createConsigneeSchema } from "./consignee";
+export type { CreateConsigneeInput } from "./consignee";
 
 export const unknownWrClaimSchema = z.object({
   unknown_wr_id: z.string().uuid(),

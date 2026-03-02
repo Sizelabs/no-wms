@@ -34,8 +34,43 @@ interface WarehouseLocation {
 interface Consignee {
   id: string;
   full_name: string;
+  casillero: string;
   cedula_ruc: string | null;
   city: string | null;
+}
+
+interface PackageData {
+  tracking_number: string;
+  carrier: string;
+  actual_weight_lb: string;
+  length_in: string;
+  width_in: string;
+  height_in: string;
+  content_description: string;
+  is_dgr: boolean;
+  dgr_class: string;
+  is_damaged: boolean;
+  damage_description: string;
+  sender_name: string;
+  pieces_count: string;
+}
+
+function emptyPackage(): PackageData {
+  return {
+    tracking_number: "",
+    carrier: "",
+    actual_weight_lb: "",
+    length_in: "",
+    width_in: "",
+    height_in: "",
+    content_description: "",
+    is_dgr: false,
+    dgr_class: "",
+    is_damaged: false,
+    damage_description: "",
+    sender_name: "",
+    pieces_count: "1",
+  };
 }
 
 interface WrReceiptFormProps {
@@ -89,23 +124,17 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
   // Field values
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [agencyId, setAgencyId] = useState("");
-  const [trackingNumber, setTrackingNumber] = useState("");
-  const [carrier, setCarrier] = useState("");
-  const [actualWeight, setActualWeight] = useState("");
-  const [lengthIn, setLengthIn] = useState("");
-  const [widthIn, setWidthIn] = useState("");
-  const [heightIn, setHeightIn] = useState("");
   const [consigneeId, setConsigneeId] = useState("");
   const [consigneeSearch, setConsigneeSearch] = useState("");
   const [consignees, setConsignees] = useState<Consignee[]>([]);
-  const [piecesCount, setPiecesCount] = useState("1");
-  const [isDamaged, setIsDamaged] = useState(false);
-  const [damageDescription, setDamageDescription] = useState("");
-  const [isDgr, setIsDgr] = useState(false);
   const [notes, setNotes] = useState("");
-  const [senderName, setSenderName] = useState("");
   const [warehouseLocationId, setWarehouseLocationId] = useState("");
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+
+  // Packages state (1+ packages per WR)
+  const [packages, setPackages] = useState<PackageData[]>([emptyPackage()]);
+  const [currentPackageIndex, setCurrentPackageIndex] = useState(0);
+  const pkg = packages[currentPackageIndex]!;
 
   // Quick-create consignee
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -121,21 +150,45 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
   // Refs
   const trackingRef = useRef<HTMLInputElement>(null);
 
-  // Computed values
+  // Package helpers
+  const updatePackage = useCallback(
+    (field: keyof PackageData, value: string | boolean) => {
+      setPackages((prev) =>
+        prev.map((p, i) => (i === currentPackageIndex ? { ...p, [field]: value } : p)),
+      );
+    },
+    [currentPackageIndex],
+  );
+
+  const addPackage = useCallback(() => {
+    setPackages((prev) => [...prev, emptyPackage()]);
+    setCurrentPackageIndex((prev) => prev + 1);
+  }, []);
+
+  const removePackage = useCallback(
+    (index: number) => {
+      if (packages.length <= 1) return;
+      setPackages((prev) => prev.filter((_, i) => i !== index));
+      setCurrentPackageIndex((prev) => (prev >= index && prev > 0 ? prev - 1 : prev));
+    },
+    [packages.length],
+  );
+
+  // Computed values (derived from current package)
   const volumetricWeight = useMemo(() => {
-    const l = parseFloat(lengthIn);
-    const w = parseFloat(widthIn);
-    const h = parseFloat(heightIn);
+    const l = parseFloat(pkg.length_in);
+    const w = parseFloat(pkg.width_in);
+    const h = parseFloat(pkg.height_in);
     if (l > 0 && w > 0 && h > 0) {
       return calculateVolumetricWeight(l, w, h, 166);
     }
     return null;
-  }, [lengthIn, widthIn, heightIn]);
+  }, [pkg.length_in, pkg.width_in, pkg.height_in]);
 
   const billableWeight = useMemo(() => {
-    const actual = parseFloat(actualWeight) || null;
+    const actual = parseFloat(pkg.actual_weight_lb) || null;
     return calculateBillableWeight(actual, volumetricWeight);
-  }, [actualWeight, volumetricWeight]);
+  }, [pkg.actual_weight_lb, volumetricWeight]);
 
   const selectedAgency = useMemo(
     () => agencies.find((a) => a.id === agencyId),
@@ -194,15 +247,25 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     }
   }, [step, activeSteps]);
 
-  // Validate and advance from tracking step
+  // Validate and advance from tracking step (checks first package's tracking)
   const handleTrackingNext = useCallback(async () => {
-    if (!trackingNumber.trim()) {
+    const firstTracking = packages[0]?.tracking_number.trim() ?? "";
+    if (!firstTracking) {
       setError("Ingrese el número de guía");
       return;
     }
 
+    // Validate all packages have tracking numbers
+    for (let i = 0; i < packages.length; i++) {
+      if (!packages[i]!.tracking_number.trim()) {
+        setError(`Paquete ${i + 1}: ingrese el número de guía`);
+        setCurrentPackageIndex(i);
+        return;
+      }
+    }
+
     setError(null);
-    const duplicate = await checkDuplicateTracking(trackingNumber.trim());
+    const duplicate = await checkDuplicateTracking(firstTracking);
 
     if (duplicate) {
       setDuplicateInfo(duplicate);
@@ -214,7 +277,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
 
     setDuplicateInfo(null);
     goNext();
-  }, [trackingNumber, goNext]);
+  }, [packages, goNext]);
 
   // Quick-create consignee handler
   const handleQuickCreate = useCallback(async () => {
@@ -227,7 +290,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     if (result.data) {
       setConsigneeId(result.data.id);
       setConsigneeSearch(result.data.full_name);
-      setConsignees((prev) => [...prev, { id: result.data!.id, full_name: result.data!.full_name, cedula_ruc: null, city: null }]);
+      setConsignees((prev) => [...prev, { id: result.data!.id, full_name: result.data!.full_name, casillero: result.data!.casillero, cedula_ruc: null, city: null }]);
       setShowQuickCreate(false);
       setNewConsigneeName("");
     } else {
@@ -239,21 +302,12 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
   // Reset form for "Register Another Box"
   const resetForAnother = useCallback(() => {
     // Keep warehouse and agency, reset everything else
-    setTrackingNumber("");
-    setCarrier("");
-    setActualWeight("");
-    setLengthIn("");
-    setWidthIn("");
-    setHeightIn("");
+    setPackages([emptyPackage()]);
+    setCurrentPackageIndex(0);
     setConsigneeId("");
     setConsigneeSearch("");
     setConsignees([]);
-    setPiecesCount("1");
-    setIsDamaged(false);
-    setDamageDescription("");
-    setIsDgr(false);
     setNotes("");
-    setSenderName("");
     setWarehouseLocationId("");
     setPhotos([]);
     setDuplicateInfo(null);
@@ -262,12 +316,15 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     setStep("tracking");
   }, []);
 
+  // Check if any package is damaged (for photo validation)
+  const anyPackageDamaged = packages.some((p) => p.is_damaged);
+
   // Submit
   const handleSubmit = useCallback(() => {
     // Validate photo count
-    const minRequired = isDamaged ? 3 : 1;
+    const minRequired = anyPackageDamaged ? 3 : 1;
     if (photos.length < minRequired) {
-      setError(isDamaged ? "Se requieren mínimo 3 fotos para paquetes dañados" : "Se requiere al menos 1 foto");
+      setError(anyPackageDamaged ? "Se requieren mínimo 3 fotos para paquetes dañados" : "Se requiere al menos 1 foto");
       return;
     }
 
@@ -278,20 +335,24 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
         if (agencyId !== "unknown") {
           formData.set("agency_id", agencyId);
         }
-        formData.set("tracking_number", trackingNumber.trim());
-        formData.set("carrier", carrier);
         if (consigneeId) formData.set("consignee_id", consigneeId);
-        if (actualWeight) formData.set("actual_weight_lb", actualWeight);
-        if (lengthIn) formData.set("length_in", lengthIn);
-        if (widthIn) formData.set("width_in", widthIn);
-        if (heightIn) formData.set("height_in", heightIn);
-        formData.set("pieces_count", piecesCount);
-        formData.set("is_damaged", String(isDamaged));
-        if (isDamaged) formData.set("damage_description", damageDescription);
-        formData.set("is_dgr", String(isDgr));
         if (notes) formData.set("notes", notes);
-        if (senderName) formData.set("sender_name", senderName);
         if (warehouseLocationId) formData.set("warehouse_location_id", warehouseLocationId);
+        formData.set("packages", JSON.stringify(packages.map((p) => ({
+          tracking_number: p.tracking_number.trim(),
+          carrier: p.carrier,
+          actual_weight_lb: p.actual_weight_lb || null,
+          length_in: p.length_in || null,
+          width_in: p.width_in || null,
+          height_in: p.height_in || null,
+          content_description: p.content_description || null,
+          is_dgr: p.is_dgr,
+          dgr_class: p.dgr_class || null,
+          is_damaged: p.is_damaged,
+          damage_description: p.is_damaged ? p.damage_description : null,
+          sender_name: p.sender_name || null,
+          pieces_count: parseInt(p.pieces_count, 10) || 1,
+        }))));
         formData.set("photos", JSON.stringify(photos.map((p) => ({
           storage_path: p.storagePath,
           file_name: p.fileName,
@@ -305,10 +366,8 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
       }
     });
   }, [
-    warehouseId, agencyId, trackingNumber, carrier, consigneeId,
-    actualWeight, lengthIn, widthIn, heightIn, piecesCount,
-    isDamaged, damageDescription, isDgr, notes, senderName,
-    warehouseLocationId, photos,
+    warehouseId, agencyId, consigneeId, notes,
+    warehouseLocationId, packages, anyPackageDamaged, photos,
   ]);
 
   // Success state — show summary + actions
@@ -320,7 +379,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
           <h3 className="mt-2 text-lg font-semibold text-green-800">Recibo creado</h3>
           <p className="mt-1 font-mono text-sm text-green-700">{createdWr.wr_number}</p>
           <p className="text-sm text-green-600">
-            {trackingNumber} • {isUnknownAgency ? "Desconocido" : selectedAgency?.name}
+            {packages[0]?.tracking_number ?? ""}{packages.length > 1 ? ` (+${packages.length - 1} más)` : ""} • {isUnknownAgency ? "Desconocido" : selectedAgency?.name}
           </p>
         </div>
         <div className="flex gap-2">
@@ -457,14 +516,34 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
         {/* STEP: Tracking */}
         {step === "tracking" && (
           <div className="space-y-3">
+            {/* Package tabs when multiple packages */}
+            {packages.length > 1 && (
+              <div className="flex items-center gap-1 border-b pb-2">
+                {packages.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setCurrentPackageIndex(i)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      currentPackageIndex === i
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Paquete {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <label className="block text-sm font-medium text-gray-700">
-              Número de guía / Tracking
+              {packages.length > 1 ? `Paquete ${currentPackageIndex + 1} — ` : ""}Número de guía / Tracking
             </label>
             <input
               ref={trackingRef}
               type="text"
-              value={trackingNumber}
-              onChange={(e) => setTrackingNumber(e.target.value)}
+              value={pkg.tracking_number}
+              onChange={(e) => updatePackage("tracking_number", e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -478,23 +557,67 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
             <p className="text-xs text-gray-400">
               Escanee con lector de códigos o escriba manualmente. Presione Enter para continuar.
             </p>
+
+            {/* Add / Remove package buttons */}
+            <div className="flex items-center gap-2 border-t pt-2">
+              <button
+                type="button"
+                onClick={addPackage}
+                className="rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
+              >
+                + Agregar paquete
+              </button>
+              {packages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removePackage(currentPackageIndex)}
+                  className="rounded-md border border-dashed border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:border-red-300 hover:bg-red-50"
+                >
+                  Eliminar paquete {currentPackageIndex + 1}
+                </button>
+              )}
+              {packages.length > 1 && (
+                <span className="ml-auto text-xs text-gray-400">
+                  {packages.length} paquete{packages.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
           </div>
         )}
 
         {/* STEP: Carrier */}
         {step === "carrier" && (
           <div className="space-y-3">
+            {/* Package tabs when multiple packages */}
+            {packages.length > 1 && (
+              <div className="flex items-center gap-1 border-b pb-2">
+                {packages.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setCurrentPackageIndex(i)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      currentPackageIndex === i
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Paq. {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
             <label className="block text-sm font-medium text-gray-700">
-              Transportista
+              {packages.length > 1 ? `Paquete ${currentPackageIndex + 1} — ` : ""}Transportista
             </label>
             <div className="grid grid-cols-2 gap-2">
               {CARRIERS.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setCarrier(c)}
+                  onClick={() => updatePackage("carrier", c)}
                   className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
-                    carrier === c
+                    pkg.carrier === c
                       ? "border-gray-900 bg-gray-900 text-white"
                       : "border-gray-200 text-gray-700 hover:bg-gray-50"
                   }`}
@@ -509,15 +632,35 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
         {/* STEP: Weight & Dimensions */}
         {step === "weight" && (
           <div className="space-y-4">
+            {/* Package tabs when multiple packages */}
+            {packages.length > 1 && (
+              <div className="flex items-center gap-1 border-b pb-2">
+                {packages.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setCurrentPackageIndex(i)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      currentPackageIndex === i
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Paq. {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Peso real (lb)
+                {packages.length > 1 ? `Paquete ${currentPackageIndex + 1} — ` : ""}Peso real (lb)
               </label>
               <input
                 type="number"
                 step="0.01"
-                value={actualWeight}
-                onChange={(e) => setActualWeight(e.target.value)}
+                value={pkg.actual_weight_lb}
+                onChange={(e) => updatePackage("actual_weight_lb", e.target.value)}
                 placeholder="0.00"
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
               />
@@ -529,8 +672,8 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                 <input
                   type="number"
                   step="0.1"
-                  value={lengthIn}
-                  onChange={(e) => setLengthIn(e.target.value)}
+                  value={pkg.length_in}
+                  onChange={(e) => updatePackage("length_in", e.target.value)}
                   placeholder="0"
                   className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
                 />
@@ -540,8 +683,8 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                 <input
                   type="number"
                   step="0.1"
-                  value={widthIn}
-                  onChange={(e) => setWidthIn(e.target.value)}
+                  value={pkg.width_in}
+                  onChange={(e) => updatePackage("width_in", e.target.value)}
                   placeholder="0"
                   className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
                 />
@@ -551,8 +694,8 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                 <input
                   type="number"
                   step="0.1"
-                  value={heightIn}
-                  onChange={(e) => setHeightIn(e.target.value)}
+                  value={pkg.height_in}
+                  onChange={(e) => updatePackage("height_in", e.target.value)}
                   placeholder="0"
                   className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
                 />
@@ -563,7 +706,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
             <div className="rounded-md bg-gray-50 p-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500">Peso real</span>
-                <span className="font-mono">{actualWeight || "—"} lb</span>
+                <span className="font-mono">{pkg.actual_weight_lb || "—"} lb</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Peso volumétrico</span>
@@ -588,9 +731,9 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
             <PhotoUpload
               bucket="wr-photos"
               folder={`${warehouseId}/${Date.now()}`}
-              minPhotos={isDamaged ? 3 : 1}
+              minPhotos={anyPackageDamaged ? 3 : 1}
               maxPhotos={10}
-              isDamageMode={isDamaged}
+              isDamageMode={anyPackageDamaged}
               onPhotosChange={setPhotos}
             />
           </div>
@@ -606,7 +749,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
               type="text"
               value={consigneeSearch}
               onChange={(e) => setConsigneeSearch(e.target.value)}
-              placeholder="Buscar destinatario por nombre..."
+              placeholder="Buscar por nombre o casillero..."
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
             />
 
@@ -624,7 +767,10 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                       consigneeId === c.id ? "bg-gray-100" : ""
                     }`}
                   >
-                    <span className="font-medium">{c.full_name}</span>
+                    <div>
+                      <span className="font-medium">{c.full_name}</span>
+                      <span className="ml-2 font-mono text-xs text-gray-400">{c.casillero}</span>
+                    </div>
                     <span className="text-xs text-gray-400">
                       {c.cedula_ruc ?? c.city ?? ""}
                     </span>
@@ -682,6 +828,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
             {selectedConsignee && (
               <div className="rounded-md bg-gray-50 p-2 text-sm">
                 Seleccionado: <span className="font-medium">{selectedConsignee.full_name}</span>
+                <span className="ml-2 font-mono text-xs text-gray-500">{selectedConsignee.casillero}</span>
               </div>
             )}
           </div>
@@ -690,13 +837,39 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
         {/* STEP: Details */}
         {step === "details" && (
           <div className="space-y-4">
+            {/* Package tabs when multiple packages */}
+            {packages.length > 1 && (
+              <div className="flex items-center gap-1 border-b pb-2">
+                {packages.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setCurrentPackageIndex(i)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      currentPackageIndex === i
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    Paq. {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {packages.length > 1 && (
+              <p className="text-xs font-medium text-gray-500">
+                Paquete {currentPackageIndex + 1} de {packages.length}
+              </p>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Piezas</label>
               <input
                 type="number"
                 min="1"
-                value={piecesCount}
-                onChange={(e) => setPiecesCount(e.target.value)}
+                value={pkg.pieces_count}
+                onChange={(e) => updatePackage("pieces_count", e.target.value)}
                 className="mt-1 w-24 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
               />
             </div>
@@ -727,8 +900,8 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
               </label>
               <input
                 type="text"
-                value={senderName}
-                onChange={(e) => setSenderName(e.target.value)}
+                value={pkg.sender_name}
+                onChange={(e) => updatePackage("sender_name", e.target.value)}
                 placeholder="Opcional"
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
               />
@@ -738,8 +911,8 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  checked={isDamaged}
-                  onChange={(e) => setIsDamaged(e.target.checked)}
+                  checked={pkg.is_damaged}
+                  onChange={(e) => updatePackage("is_damaged", e.target.checked)}
                   className="rounded border-gray-300"
                 />
                 Paquete dañado
@@ -747,22 +920,22 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  checked={isDgr}
-                  onChange={(e) => setIsDgr(e.target.checked)}
+                  checked={pkg.is_dgr}
+                  onChange={(e) => updatePackage("is_dgr", e.target.checked)}
                   className="rounded border-gray-300"
                 />
                 Mercancía peligrosa (DGR)
               </label>
             </div>
 
-            {isDamaged && (
+            {pkg.is_damaged && (
               <div>
                 <label className="block text-sm font-medium text-red-700">
                   Descripción del daño (requerido)
                 </label>
                 <textarea
-                  value={damageDescription}
-                  onChange={(e) => setDamageDescription(e.target.value)}
+                  value={pkg.damage_description}
+                  onChange={(e) => updatePackage("damage_description", e.target.value)}
                   rows={3}
                   className="mt-1 w-full rounded-md border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none"
                 />
@@ -794,38 +967,55 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                 </span>
               </div>
               <div className="flex justify-between px-3 py-2">
-                <span className="text-gray-500">Guía</span>
-                <span className="font-mono">{trackingNumber}</span>
-              </div>
-              <div className="flex justify-between px-3 py-2">
-                <span className="text-gray-500">Transportista</span>
-                <span>{carrier}</span>
-              </div>
-              <div className="flex justify-between px-3 py-2">
-                <span className="text-gray-500">Peso facturable</span>
-                <span className="font-mono">{billableWeight.toFixed(2)} lb</span>
-              </div>
-              <div className="flex justify-between px-3 py-2">
                 <span className="text-gray-500">Destinatario</span>
                 <span>{selectedConsignee?.full_name ?? "—"}</span>
               </div>
               <div className="flex justify-between px-3 py-2">
-                <span className="text-gray-500">Piezas</span>
-                <span>{piecesCount}</span>
+                <span className="text-gray-500">Paquetes</span>
+                <span>{packages.length}</span>
               </div>
-              {isDamaged && (
-                <div className="flex justify-between px-3 py-2 text-red-700">
-                  <span>Dañado</span>
-                  <span>Sí</span>
-                </div>
-              )}
-              {isDgr && (
-                <div className="flex justify-between px-3 py-2 text-orange-700">
-                  <span>DGR</span>
-                  <span>Sí</span>
-                </div>
-              )}
             </div>
+
+            {/* Per-package summary */}
+            {packages.map((p, i) => (
+              <div key={i} className="divide-y rounded-md border text-sm">
+                {packages.length > 1 && (
+                  <div className="bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600">
+                    Paquete {i + 1}
+                  </div>
+                )}
+                <div className="flex justify-between px-3 py-2">
+                  <span className="text-gray-500">Guía</span>
+                  <span className="font-mono">{p.tracking_number}</span>
+                </div>
+                <div className="flex justify-between px-3 py-2">
+                  <span className="text-gray-500">Transportista</span>
+                  <span>{p.carrier}</span>
+                </div>
+                {(p.actual_weight_lb || p.length_in) && (
+                  <div className="flex justify-between px-3 py-2">
+                    <span className="text-gray-500">Peso</span>
+                    <span className="font-mono">{p.actual_weight_lb || "—"} lb</span>
+                  </div>
+                )}
+                <div className="flex justify-between px-3 py-2">
+                  <span className="text-gray-500">Piezas</span>
+                  <span>{p.pieces_count}</span>
+                </div>
+                {p.is_damaged && (
+                  <div className="flex justify-between px-3 py-2 text-red-700">
+                    <span>Dañado</span>
+                    <span>Sí</span>
+                  </div>
+                )}
+                {p.is_dgr && (
+                  <div className="flex justify-between px-3 py-2 text-orange-700">
+                    <span>DGR</span>
+                    <span>Sí</span>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -867,7 +1057,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
             onClick={goNext}
             disabled={
               (step === "agency" && !agencyId) ||
-              (step === "carrier" && !carrier)
+              (step === "carrier" && !pkg.carrier)
             }
             className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
           >
