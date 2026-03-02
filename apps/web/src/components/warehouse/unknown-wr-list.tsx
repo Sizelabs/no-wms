@@ -5,18 +5,21 @@ import { useCallback, useState, useTransition } from "react";
 
 import { claimUnknownWr } from "@/lib/actions/unknown-wrs";
 
+interface ClaimRecord {
+  id: string;
+  status: string;
+  claimed_by_agency_id: string | null;
+  claimed_at: string | null;
+}
+
 interface UnknownWr {
   id: string;
-  sender_name: string | null;
-  package_type: string | null;
+  wr_number: string;
+  tracking_number: string;
   carrier: string | null;
-  status: string;
-  created_at: string;
-  warehouse_receipts: {
-    wr_number: string;
-    carrier: string | null;
-    received_at: string;
-  } | null;
+  sender_name: string | null;
+  received_at: string;
+  unknown_wrs: ClaimRecord[] | ClaimRecord | null;
 }
 
 interface UnknownWrListProps {
@@ -73,8 +76,8 @@ export function UnknownWrList({ data, isAgencyRole }: UnknownWrListProps) {
         <thead>
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
             <th className="px-4 py-3">WR#</th>
+            <th className="px-4 py-3">Guía</th>
             <th className="px-4 py-3">Remitente</th>
-            <th className="px-4 py-3">Tipo</th>
             <th className="px-4 py-3">Transportista</th>
             <th className="px-4 py-3">Fecha</th>
             <th className="px-4 py-3">Estado</th>
@@ -89,35 +92,38 @@ export function UnknownWrList({ data, isAgencyRole }: UnknownWrListProps) {
               </td>
             </tr>
           ) : (
-            data.map((item) => (
+            data.map((item) => {
+              const claimRecord = Array.isArray(item.unknown_wrs) ? item.unknown_wrs[0] : item.unknown_wrs;
+              const claimStatus = claimRecord?.status ?? "unclaimed";
+              return (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="px-4 py-2.5 font-mono text-xs">
-                  {item.warehouse_receipts?.wr_number ?? "—"}
+                  {item.wr_number}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-xs text-gray-600">
+                  {item.tracking_number}
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
                   {item.sender_name ?? "—"}
                 </td>
                 <td className="px-4 py-2.5 text-gray-600">
-                  {item.package_type ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 text-gray-600">
                   {item.carrier ?? "—"}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-gray-400">
-                  {new Date(item.created_at).toLocaleDateString("es")}
+                  {new Date(item.received_at).toLocaleDateString("es")}
                 </td>
                 <td className="px-4 py-2.5">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      CLAIM_STATUS_COLORS[item.status] ?? "bg-gray-100 text-gray-600"
+                      CLAIM_STATUS_COLORS[claimStatus] ?? "bg-gray-100 text-gray-600"
                     }`}
                   >
-                    {CLAIM_STATUS_LABELS[item.status] ?? item.status}
+                    {CLAIM_STATUS_LABELS[claimStatus] ?? claimStatus}
                   </span>
                 </td>
                 {isAgencyRole && (
                   <td className="px-4 py-2.5">
-                    {item.status === "unclaimed" && (
+                    {claimStatus === "unclaimed" && (
                       <>
                         {claimingId === item.id ? (
                           <div className="flex items-center gap-1">
@@ -168,7 +174,8 @@ export function UnknownWrList({ data, isAgencyRole }: UnknownWrListProps) {
                   </td>
                 )}
               </tr>
-            ))
+              );
+            })
           )}
         </tbody>
       </table>

@@ -7,14 +7,15 @@ import { createClient } from "@/lib/supabase/server";
 export async function getUnknownWrs(filters?: { status?: string }) {
   const supabase = await createClient();
 
-  let query = supabase
-    .from("unknown_wrs")
-    .select("*, warehouse_receipts(wr_number, carrier, received_at)")
-    .order("created_at", { ascending: false });
-
-  if (filters?.status) {
-    query = query.eq("status", filters.status);
-  }
+  // Query warehouse_receipts directly where agency is not assigned,
+  // left-joining unknown_wrs for claim tracking info.
+  const query = supabase
+    .from("warehouse_receipts")
+    .select(
+      "id, wr_number, tracking_number, carrier, sender_name, received_at, unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
+    )
+    .is("agency_id", null)
+    .order("received_at", { ascending: false });
 
   const { data, error } = await query;
 
@@ -22,11 +23,21 @@ export async function getUnknownWrs(filters?: { status?: string }) {
     return { data: null, error: error.message };
   }
 
+  // Apply claim status filter in application layer since unknown_wrs record may not exist
+  if (filters?.status && data) {
+    const filtered = data.filter((wr) => {
+      const claimRecord = Array.isArray(wr.unknown_wrs) ? wr.unknown_wrs[0] : wr.unknown_wrs;
+      const effectiveStatus = claimRecord?.status ?? "unclaimed";
+      return effectiveStatus === filters.status;
+    });
+    return { data: filtered, error: null };
+  }
+
   return { data, error: null };
 }
 
 export async function claimUnknownWr(
-  unknownWrId: string,
+  warehouseReceiptId: string,
   trackingNumber: string,
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
@@ -39,27 +50,16 @@ export async function claimUnknownWr(
     return { success: false, error: "No autenticado" };
   }
 
-  // Get the unknown WR's linked warehouse receipt
-  const { data: unknownWr } = await supabase
-    .from("unknown_wrs")
-    .select("warehouse_receipt_id, organization_id")
-    .eq("id", unknownWrId)
-    .eq("status", "unclaimed")
-    .single();
-
-  if (!unknownWr) {
-    return { success: false, error: "WR desconocido no encontrado o ya reclamado" };
-  }
-
-  // Check if the tracking number matches the WR
+  // Verify the WR exists, has no agency, and the tracking number matches
   const { data: wr } = await supabase
     .from("warehouse_receipts")
-    .select("id, tracking_number")
-    .eq("id", unknownWr.warehouse_receipt_id)
+    .select("id, tracking_number, organization_id")
+    .eq("id", warehouseReceiptId)
+    .is("agency_id", null)
     .single();
 
   if (!wr) {
-    return { success: false, error: "WR no encontrado" };
+    return { success: false, error: "WR desconocido no encontrado o ya reclamado" };
   }
 
   if (wr.tracking_number.toLowerCase() !== trackingNumber.toLowerCase()) {
@@ -79,29 +79,46 @@ export async function claimUnknownWr(
     return { success: false, error: "No tiene agencia asignada" };
   }
 
-  // Update unknown WR status
-  const { error: updateError } = await supabase
+  // Update or create the unknown_wrs claim record
+  const { data: existingClaim } = await supabase
     .from("unknown_wrs")
-    .update({
+    .select("id")
+    .eq("warehouse_receipt_id", warehouseReceiptId)
+    .maybeSingle();
+
+  if (existingClaim) {
+    await supabase
+      .from("unknown_wrs")
+      .update({
+        status: "claimed",
+        claimed_by_agency_id: userRole.agency_id,
+        claimed_at: new Date().toISOString(),
+        claim_tracking_match: trackingNumber,
+      })
+      .eq("id", existingClaim.id);
+  } else {
+    await supabase.from("unknown_wrs").insert({
+      organization_id: wr.organization_id,
+      warehouse_receipt_id: warehouseReceiptId,
       status: "claimed",
       claimed_by_agency_id: userRole.agency_id,
       claimed_at: new Date().toISOString(),
       claim_tracking_match: trackingNumber,
-    })
-    .eq("id", unknownWrId);
-
-  if (updateError) {
-    return { success: false, error: updateError.message };
+    });
   }
 
   // Assign the WR to the agency
-  await supabase
+  const { error: updateError } = await supabase
     .from("warehouse_receipts")
     .update({
       agency_id: userRole.agency_id,
       is_unknown: false,
     })
-    .eq("id", unknownWr.warehouse_receipt_id);
+    .eq("id", warehouseReceiptId);
+
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
 
   revalidatePath("/unknown-wrs");
   revalidatePath("/inventory");
