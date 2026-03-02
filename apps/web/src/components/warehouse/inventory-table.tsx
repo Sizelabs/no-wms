@@ -93,6 +93,14 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const grouped = groupByConsignee(data);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapse = useCallback((key: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
 
   // Deduplicate WR IDs from selected packages
   const selectedWrIds = new Set(
@@ -303,7 +311,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
               <th className="px-3 py-3">Recibido</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody>
             {data.length === 0 ? (
               <tr>
                 <td colSpan={canSelect ? 9 : 8} className="px-3 py-8 text-center text-gray-400">
@@ -312,30 +320,44 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
               </tr>
             ) : (
               grouped.map(([consignee, packages]) => {
+                const groupKey = consignee || "__none";
+                const isCollapsed = collapsed.has(groupKey);
                 const casillero = packages[0]?.warehouse_receipts.consignees?.casillero;
                 const totalPieces = packages.reduce((sum, p) => sum + p.pieces_count, 0);
                 const totalWeight = packages.reduce((sum, p) => sum + (Number(p.billable_weight_lb) || 0), 0);
                 return (
-                <React.Fragment key={consignee || "__none"}>
-                  <tr className="bg-gray-50">
-                    <td
-                      colSpan={canSelect ? 9 : 8}
-                      className="px-3 py-2 text-xs font-semibold text-gray-700"
-                    >
-                      {consignee || "Sin destinatario"}
-                      {casillero && (
-                        <span className="ml-1.5 font-mono font-normal text-gray-500">#{casillero}</span>
-                      )}
-                      <span className="ml-2 font-normal text-gray-400">
-                        — {packages.length} {packages.length === 1 ? "paq" : "paqs"}, {totalPieces} pzs, {totalWeight.toFixed(1)} lb
-                      </span>
+                <React.Fragment key={groupKey}>
+                  {/* Group header */}
+                  <tr
+                    className="border-t-2 border-gray-200 bg-gray-50 cursor-pointer select-none"
+                    onClick={() => toggleCollapse(groupKey)}
+                  >
+                    <td colSpan={canSelect ? 5 : 4} className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400 text-xs">{isCollapsed ? "▸" : "▾"}</span>
+                        <span className="text-sm font-semibold text-gray-800">
+                          {consignee || "Sin destinatario"}
+                        </span>
+                        {casillero && (
+                          <span className="inline-flex rounded-full bg-gray-200 px-2 py-0.5 font-mono text-[11px] text-gray-600">
+                            {casillero}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
+                      {totalWeight.toFixed(1)} lb
+                    </td>
+                    <td colSpan={3} className="px-3 py-2.5 text-right text-xs text-gray-400">
+                      {packages.length} {packages.length === 1 ? "paq" : "paqs"} &middot; {totalPieces} pzs
                     </td>
                   </tr>
-                  {packages.map((pkg) => {
+                  {/* Group rows */}
+                  {!isCollapsed && packages.map((pkg) => {
                     const wr = pkg.warehouse_receipts;
                     const days = storageDays(wr.received_at);
                     return (
-                      <tr key={pkg.id} className="hover:bg-gray-50">
+                      <tr key={pkg.id} className="border-t border-gray-100 hover:bg-gray-50">
                         {canSelect && (
                           <td className="px-3 py-2.5">
                             <input
