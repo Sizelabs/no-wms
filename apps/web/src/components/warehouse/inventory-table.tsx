@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
+import { useUserRoles } from "@/components/auth/role-provider";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
 interface PackageRow {
@@ -64,6 +65,8 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const roles = useUserRoles();
+  const canSelect = !roles.includes("agency");
   const [isPending, startTransition] = useTransition();
   const [showFilters, setShowFilters] = useState(false);
 
@@ -223,7 +226,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
       )}
 
       {/* Bulk actions */}
-      {selected.size > 0 && (
+      {canSelect && selected.size > 0 && (
         <div className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm">
           <span className="font-medium">
             {selected.size} paquete(s) — {selectedWrIds.size} WR(s)
@@ -259,14 +262,16 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-3 py-3">
-                <input
-                  type="checkbox"
-                  checked={selected.size === data.length && data.length > 0}
-                  onChange={toggleAll}
-                  className="rounded border-gray-300"
-                />
-              </th>
+              {canSelect && (
+                <th className="px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === data.length && data.length > 0}
+                    onChange={toggleAll}
+                    className="rounded border-gray-300"
+                  />
+                </th>
+              )}
               <th className="px-3 py-3">Guía</th>
               <th className="px-3 py-3">WR#</th>
               <th className="px-3 py-3">Transportista</th>
@@ -281,7 +286,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
           <tbody className="divide-y">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-3 py-8 text-center text-gray-400">
+                <td colSpan={canSelect ? 10 : 9} className="px-3 py-8 text-center text-gray-400">
                   No se encontraron paquetes.
                 </td>
               </tr>
@@ -291,14 +296,16 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                 const days = storageDays(wr.received_at);
                 return (
                   <tr key={pkg.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2.5">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(pkg.id)}
-                        onChange={() => toggleSelect(pkg.id)}
-                        className="rounded border-gray-300"
-                      />
-                    </td>
+                    {canSelect && (
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(pkg.id)}
+                          onChange={() => toggleSelect(pkg.id)}
+                          className="rounded border-gray-300"
+                        />
+                      </td>
+                    )}
                     <td className="px-3 py-2.5">
                       <span className="font-mono text-xs font-medium text-gray-900">
                         {pkg.tracking_number}
