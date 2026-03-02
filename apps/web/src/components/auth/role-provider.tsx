@@ -1,5 +1,6 @@
 "use client";
 
+import type { RolePermissionMap } from "@no-wms/shared/constants/permissions";
 import type { Role } from "@no-wms/shared/constants/roles";
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
@@ -8,27 +9,31 @@ interface RoleContextValue {
   roles: Role[];
   warehouseIds: string[] | null;
   agencyIds: string[] | null;
+  permissions: RolePermissionMap | null;
 }
 
 const RoleContext = createContext<RoleContextValue>({
   roles: [],
   warehouseIds: null,
   agencyIds: null,
+  permissions: null,
 });
 
 export function RoleProvider({
   roles,
   warehouseIds,
   agencyIds,
+  permissions,
   children,
 }: {
   roles: Role[];
   warehouseIds: string[] | null;
   agencyIds: string[] | null;
+  permissions: RolePermissionMap;
   children: ReactNode;
 }) {
   return (
-    <RoleContext.Provider value={{ roles, warehouseIds, agencyIds }}>
+    <RoleContext.Provider value={{ roles, warehouseIds, agencyIds, permissions }}>
       {children}
     </RoleContext.Provider>
   );
@@ -54,4 +59,12 @@ export function useWarehouseScope(): string[] | null {
  */
 export function useAgencyScope(): string[] | null {
   return useContext(RoleContext).agencyIds;
+}
+
+/**
+ * Returns the resolved permission map for the current user's primary role.
+ * Merges DB overrides with defaults.
+ */
+export function usePermissions(): RolePermissionMap | null {
+  return useContext(RoleContext).permissions;
 }

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useState, useTransition } from "react";
 
-import { useUserRoles } from "@/components/auth/role-provider";
+import { usePermissions } from "@/components/auth/role-provider";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
 interface PackageRow {
@@ -84,8 +84,8 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const roles = useUserRoles();
-  const canSelect = !roles.includes("agency");
+  const permissions = usePermissions();
+  const canSelect = permissions?.inventory.update ?? false;
   const [isPending, startTransition] = useTransition();
   const [showFilters, setShowFilters] = useState(false);
 

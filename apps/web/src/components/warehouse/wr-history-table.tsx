@@ -4,7 +4,9 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useTransition } from "react";
+
+import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
 interface WrPackage {
   tracking_number: string;
@@ -70,8 +72,54 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const grouped = groupByConsignee(data);
+
+  // Selection state — tracks WR IDs
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    if (selected.size === data.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(data.map((wr) => wr.id)));
+    }
+  }, [data, selected.size]);
+
+  const toggleGroup = useCallback((receipts: WarehouseReceipt[]) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const groupIds = receipts.map((r) => r.id);
+      const allSelected = groupIds.every((id) => next.has(id));
+      if (allSelected) {
+        for (const id of groupIds) next.delete(id);
+      } else {
+        for (const id of groupIds) next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkStatus = useCallback(
+    (status: string) => {
+      startTransition(async () => {
+        await bulkUpdateStatus(Array.from(selected), status);
+        setSelected(new Set());
+      });
+    },
+    [selected],
+  );
+
+  // Collapse state
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const toggleCollapse = useCallback((key: string) => {
     setCollapsed((prev) => {
@@ -190,11 +238,51 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
         </div>
       )}
 
+      {/* Bulk actions */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm">
+          <span className="font-medium">
+            {selected.size} recibo(s) seleccionado(s)
+          </span>
+          <button
+            type="button"
+            onClick={() => handleBulkStatus("in_warehouse")}
+            disabled={isPending}
+            className="rounded border bg-white px-2 py-1 text-xs hover:bg-gray-50"
+          >
+            En bodega
+          </button>
+          <button
+            type="button"
+            onClick={() => handleBulkStatus("dispatched")}
+            disabled={isPending}
+            className="rounded border bg-white px-2 py-1 text-xs hover:bg-gray-50"
+          >
+            Despachado
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="ml-auto text-xs text-gray-500 hover:text-gray-700"
+          >
+            Deseleccionar
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border bg-white">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3">
+                <input
+                  type="checkbox"
+                  checked={selected.size === data.length && data.length > 0}
+                  onChange={toggleAll}
+                  className="rounded border-gray-300"
+                />
+              </th>
               <th className="px-3 py-3">WR#</th>
               <th className="px-3 py-3">Guía</th>
               <th className="px-3 py-3">Transportista</th>
@@ -208,7 +296,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-gray-400">
+                <td colSpan={9} className="px-3 py-8 text-center text-gray-400">
                   No se encontraron recibos.
                 </td>
               </tr>
@@ -219,14 +307,27 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                 const casillero = receipts[0]?.consignees?.casillero;
                 const totalPieces = receipts.reduce((sum, r) => sum + r.total_pieces, 0);
                 const totalWeight = receipts.reduce((sum, r) => sum + (Number(r.total_billable_weight_lb) || 0), 0);
+                const groupIds = receipts.map((r) => r.id);
+                const allGroupSelected = groupIds.every((id) => selected.has(id));
+                const someGroupSelected = !allGroupSelected && groupIds.some((id) => selected.has(id));
                 return (
                 <React.Fragment key={groupKey}>
                   {/* Group header */}
-                  <tr
-                    className="border-t-2 border-gray-200 bg-gray-50 cursor-pointer select-none"
-                    onClick={() => toggleCollapse(groupKey)}
-                  >
-                    <td colSpan={4} className="px-3 py-2.5">
+                  <tr className="border-t-2 border-gray-200 bg-gray-50">
+                    <td className="px-3 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={allGroupSelected}
+                        ref={(el) => { if (el) el.indeterminate = someGroupSelected; }}
+                        onChange={() => toggleGroup(receipts)}
+                        className="rounded border-gray-300"
+                      />
+                    </td>
+                    <td
+                      colSpan={4}
+                      className="px-3 py-2.5 cursor-pointer select-none"
+                      onClick={() => toggleCollapse(groupKey)}
+                    >
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400 text-xs">{isCollapsed ? "▸" : "▾"}</span>
                         <span className="text-sm font-semibold text-gray-800">
@@ -252,6 +353,14 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                   {/* Group rows */}
                   {!isCollapsed && receipts.map((wr) => (
                     <tr key={wr.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(wr.id)}
+                          onChange={() => toggleSelect(wr.id)}
+                          className="rounded border-gray-300"
+                        />
+                      </td>
                       <td className="px-3 py-2.5">
                         <Link
                           href={`/${locale}/inventory/${wr.id}`}

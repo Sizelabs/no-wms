@@ -48,7 +48,7 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar userName={userName} userRole={userRole} />
         <NotificationProvider>
-          <RoleProvider roles={roles} warehouseIds={warehouseIds} agencyIds={agencyIds}>
+          <RoleProvider roles={roles} warehouseIds={warehouseIds} agencyIds={agencyIds} permissions={permissions}>
             <main className="flex-1 overflow-y-auto p-6">{children}</main>
           </RoleProvider>
         </NotificationProvider>
