@@ -27,10 +27,27 @@ export default async function NewUserPage({
 
   if (!profile) redirect(`/${locale}/login`);
 
+  const [warehousesResult, agenciesResult] = await Promise.all([
+    supabase
+      .from("warehouses")
+      .select("id, name, code")
+      .eq("is_active", true)
+      .order("name"),
+    supabase
+      .from("agencies")
+      .select("id, name, code")
+      .eq("is_active", true)
+      .order("name"),
+  ]);
+
   return (
     <div className="space-y-6">
       <PageHeader title={`${t("users")} — Invitar`} />
-      <InviteUserForm organizationId={profile.organization_id} />
+      <InviteUserForm
+        organizationId={profile.organization_id}
+        warehouses={warehousesResult.data ?? []}
+        agencies={agenciesResult.data ?? []}
+      />
     </div>
   );
 }

@@ -7,9 +7,6 @@ export interface UserRoleAssignment {
   agency_id: string | null;
 }
 
-/** Roles that can see all warehouses and all agencies */
-const UNSCOPED_ROLES: Role[] = ["super_admin", "company_admin"];
-
 /** Roles scoped to a specific agency */
 const AGENCY_ROLES: Role[] = ["agency"];
 
@@ -37,16 +34,25 @@ export async function getUserRoleAssignments(
   return [{ role: "agency", warehouse_id: null, agency_id: null }];
 }
 
+/** Roles that don't filter by warehouse (they filter by agency or destination instead, or not at all) */
+const WAREHOUSE_UNSCOPED_ROLES: Role[] = [
+  "super_admin",
+  "company_admin",
+  "agency",
+  "destination_admin",
+  "destination_operator",
+];
+
 /**
  * Extract unique warehouse IDs from role assignments.
- * Returns null for unscoped users (super_admin, company_admin) meaning "all warehouses".
+ * Returns null for unscoped users (super_admin, company_admin, agency) meaning "all warehouses".
  * Returns string[] for warehouse-scoped users.
  */
 export function getScopedWarehouseIds(
   assignments: UserRoleAssignment[],
 ): string[] | null {
   const hasUnscopedRole = assignments.some((a) =>
-    UNSCOPED_ROLES.includes(a.role),
+    WAREHOUSE_UNSCOPED_ROLES.includes(a.role),
   );
 
   if (hasUnscopedRole) {
