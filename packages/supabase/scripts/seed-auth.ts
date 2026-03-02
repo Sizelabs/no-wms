@@ -9,7 +9,7 @@
  *
  * Requires env vars (reads from apps/web/.env.staging by default):
  *   NEXT_PUBLIC_SUPABASE_URL
- *   NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
+ *   SUPABASE_SERVICE_ROLE_KEY
  */
 
 const SUPABASE_URL =
