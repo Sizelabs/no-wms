@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WoCreateForm } from "@/components/work-orders/wo-create-form";
-import { getUserWarehouseScope } from "@/lib/auth/scope";
+import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewWorkOrderPage({
@@ -21,10 +21,19 @@ export default async function NewWorkOrderPage({
     redirect(`/${locale}/login`);
   }
 
-  const warehouseScope = await getUserWarehouseScope();
+  const [warehouseScope, agencyScope] = await Promise.all([
+    getUserWarehouseScope(),
+    getUserAgencyScope(),
+  ]);
 
   let warehousesQuery = supabase
     .from("warehouses")
+    .select("id, name, code")
+    .eq("is_active", true)
+    .order("name");
+
+  let agenciesQuery = supabase
+    .from("agencies")
     .select("id, name, code")
     .eq("is_active", true)
     .order("name");
@@ -41,11 +50,18 @@ export default async function NewWorkOrderPage({
     wrsQuery = wrsQuery.in("warehouse_id", warehouseScope);
   }
 
+  if (agencyScope !== null && agencyScope.length > 0) {
+    agenciesQuery = agenciesQuery.in("id", agencyScope);
+    wrsQuery = wrsQuery.in("agency_id", agencyScope);
+  }
+
   const emptyResult = Promise.resolve({ data: [] });
-  const isEmpty = warehouseScope !== null && warehouseScope.length === 0;
+  const isEmpty =
+    (warehouseScope !== null && warehouseScope.length === 0) ||
+    (agencyScope !== null && agencyScope.length === 0);
 
   const [agenciesResult, warehousesResult, wrsResult] = await Promise.all([
-    supabase.from("agencies").select("id, name, code").eq("is_active", true).order("name"),
+    isEmpty ? emptyResult : agenciesQuery,
     isEmpty ? emptyResult : warehousesQuery,
     isEmpty ? emptyResult : wrsQuery,
   ]);

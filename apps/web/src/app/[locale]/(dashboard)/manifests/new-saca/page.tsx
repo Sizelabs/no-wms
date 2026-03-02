@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { SacaCreateForm } from "@/components/manifests/saca-create-form";
-import { getUserWarehouseScope } from "@/lib/auth/scope";
+import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewSacaPage({
@@ -21,7 +21,10 @@ export default async function NewSacaPage({
     redirect(`/${locale}/login`);
   }
 
-  const warehouseScope = await getUserWarehouseScope();
+  const [warehouseScope, agencyScope] = await Promise.all([
+    getUserWarehouseScope(),
+    getUserAgencyScope(),
+  ]);
 
   let warehousesQuery = supabase
     .from("warehouses")
@@ -41,8 +44,14 @@ export default async function NewSacaPage({
     wrsQuery = wrsQuery.in("warehouse_id", warehouseScope);
   }
 
+  if (agencyScope !== null && agencyScope.length > 0) {
+    wrsQuery = wrsQuery.in("agency_id", agencyScope);
+  }
+
   const emptyResult = Promise.resolve({ data: [] });
-  const isEmpty = warehouseScope !== null && warehouseScope.length === 0;
+  const isEmpty =
+    (warehouseScope !== null && warehouseScope.length === 0) ||
+    (agencyScope !== null && agencyScope.length === 0);
 
   const [warehousesResult, mawbsResult, wrsResult] = await Promise.all([
     isEmpty ? emptyResult : warehousesQuery,

@@ -8,7 +8,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getUserWarehouseScope } from "@/lib/auth/scope";
+import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export async function checkDuplicateTracking(trackingNumber: string) {
@@ -270,7 +270,10 @@ export async function getWarehouseReceipts(filters?: {
 }) {
   const supabase = await createClient();
 
-  const warehouseScope = await getUserWarehouseScope();
+  const [warehouseScope, agencyScope] = await Promise.all([
+    getUserWarehouseScope(),
+    getUserAgencyScope(),
+  ]);
 
   let query = supabase
     .from("warehouse_receipts")
@@ -281,7 +284,13 @@ export async function getWarehouseReceipts(filters?: {
   if (warehouseScope !== null && warehouseScope.length > 0) {
     query = query.in("warehouse_id", warehouseScope);
   } else if (warehouseScope !== null && warehouseScope.length === 0) {
-    // No warehouses assigned — return empty
+    return { data: [], error: null, count: 0 };
+  }
+
+  // Apply agency scope for agency users
+  if (agencyScope !== null && agencyScope.length > 0) {
+    query = query.in("agency_id", agencyScope);
+  } else if (agencyScope !== null && agencyScope.length === 0) {
     return { data: [], error: null, count: 0 };
   }
 
@@ -397,11 +406,23 @@ export async function processAutoAbandon(): Promise<{ count: number; error?: str
 
 export async function getAgenciesForFilter() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const agencyScope = await getUserAgencyScope();
+
+  if (agencyScope !== null && agencyScope.length === 0) {
+    return [];
+  }
+
+  let query = supabase
     .from("agencies")
     .select("id, name, code")
     .eq("is_active", true)
     .order("name");
+
+  if (agencyScope !== null) {
+    query = query.in("id", agencyScope);
+  }
+
+  const { data } = await query;
   return data ?? [];
 }
 
