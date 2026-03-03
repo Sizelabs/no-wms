@@ -4,8 +4,10 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useMemo, useState, useTransition } from "react";
 
+import { usePermissions } from "@/components/auth/role-provider";
+import { WrActionBar } from "@/components/warehouse/wr-action-bar";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
 interface WrPackage {
@@ -21,6 +23,8 @@ interface WrPackage {
 interface WarehouseReceipt {
   id: string;
   wr_number: string;
+  warehouse_id: string;
+  agency_id: string | null;
   packages: WrPackage[];
   total_billable_weight_lb: number | null;
   total_declared_value_usd: number | null;
@@ -110,6 +114,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const permissions = usePermissions();
   const [showFilters, setShowFilters] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -117,6 +122,25 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
 
   // Selection state — tracks WR IDs
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Compute selected WR objects for the action bar
+  const selectedWrs = useMemo(
+    () => data.filter((wr) => selected.has(wr.id)),
+    [data, selected],
+  );
+
+  // Count WRs that have active work orders (status = in_work_order)
+  const wrsWithActiveWo = useMemo(
+    () => selectedWrs.filter((wr) => wr.status === "in_work_order").length,
+    [selectedWrs],
+  );
+
+  // Derive a warehouse_id and agency_id from the first selected WR for work order creation
+  const firstSelected = selectedWrs[0];
+  const actionWarehouseId = firstSelected?.warehouse_id ?? "";
+  const actionAgencyId = firstSelected?.agency_id ?? "";
+
+  const canCreateWorkOrders = permissions?.work_orders.create === true;
 
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
@@ -277,8 +301,8 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
         </div>
       )}
 
-      {/* Bulk actions */}
-      {selected.size > 0 && (
+      {/* Bulk status actions (warehouse staff) */}
+      {selected.size > 0 && permissions?.warehouse_receipts.update && (
         <div className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm">
           <span className="font-medium">
             {selected.size} recibo(s) seleccionado(s)
@@ -510,6 +534,20 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
           )}
         </div>
       </div>
+
+      {/* Bottom padding when action bar is visible */}
+      {selected.size > 0 && canCreateWorkOrders && <div className="h-16" />}
+
+      {/* Floating action bar for service requests */}
+      {canCreateWorkOrders && actionWarehouseId && actionAgencyId && (
+        <WrActionBar
+          selectedWrs={selectedWrs}
+          warehouseId={actionWarehouseId}
+          agencyId={actionAgencyId}
+          onClearSelection={() => setSelected(new Set())}
+          wrsWithActiveWo={wrsWithActiveWo}
+        />
+      )}
     </div>
   );
 }

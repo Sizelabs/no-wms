@@ -55,6 +55,9 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
       modality: formData.get("modality") as string,
       courier_category: (formData.get("courier_category") as string) || null,
       consignee_id: formData.get("consignee_id") as string,
+      destination_city: (formData.get("destination_city") as string) || null,
+      insure_cargo: formData.get("insure_cargo") === "true",
+      is_dgr: formData.get("is_dgr") === "true",
       cedula_ruc: (formData.get("cedula_ruc") as string) || null,
       cupo_4x4_used: formData.get("cupo_4x4_used") === "true",
       special_instructions: (formData.get("special_instructions") as string) || null,
@@ -291,6 +294,33 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
 
   revalidatePath("/shipping");
   return { hawb_number: hawbNumber };
+}
+
+export async function getDestinationCountries() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("destination_countries")
+    .select("id, name, code")
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) return { data: null, error: error.message };
+  return { data, error: null };
+}
+
+export async function getCourierCategories(countryId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("courier_categories")
+    .select("id, code, name, max_weight_lb, max_value_usd, description")
+    .eq("destination_country_id", countryId)
+    .eq("is_active", true)
+    .order("code");
+
+  if (error) return { data: null, error: error.message };
+  return { data, error: null };
 }
 
 export async function addAdditionalCharges(

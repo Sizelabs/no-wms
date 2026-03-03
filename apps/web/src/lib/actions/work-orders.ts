@@ -19,6 +19,8 @@ export async function createWorkOrder(formData: FormData): Promise<{ id: string 
   const agencyId = formData.get("agency_id") as string;
   const instructions = formData.get("instructions") as string | null;
   const wrIds = JSON.parse(formData.get("warehouse_receipt_ids") as string) as string[];
+  const metadataRaw = formData.get("metadata") as string | null;
+  const metadata = metadataRaw ? JSON.parse(metadataRaw) as Record<string, unknown> : null;
 
   if (!wrIds.length) return { error: "Seleccione al menos un WR" };
 
@@ -67,6 +69,7 @@ export async function createWorkOrder(formData: FormData): Promise<{ id: string 
     requested_by: user.id,
     agency_id: agencyId,
     instructions: instructions || null,
+    metadata: metadata || null,
   };
 
   // Pickup fields
@@ -115,6 +118,7 @@ export async function createWorkOrder(formData: FormData): Promise<{ id: string 
   });
 
   revalidatePath("/work-orders");
+  revalidatePath("/warehouse-receipts");
   revalidatePath("/inventory");
 
   return { id: wo.id };

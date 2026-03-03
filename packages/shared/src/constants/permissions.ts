@@ -170,6 +170,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
   agency: makePermMap({
     consignees: READ,
     inventory: READ,
+    work_orders: crud(true, true, false, false),
     shipping: crud(true, true, false, false),
     manifests: READ,
     invoicing: READ,

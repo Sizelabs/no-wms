@@ -17,6 +17,9 @@ export const createShippingInstructionSchema = z.object({
   courier_category: z.string().optional(),
   consignee_id: z.string().uuid(),
   warehouse_receipt_ids: z.array(z.string().uuid()).min(1, "Seleccione al menos un WR"),
+  destination_city: z.string().min(1, "Ciudad de destino requerida"),
+  insure_cargo: z.boolean().default(false),
+  is_dgr: z.boolean().default(false),
   // Ecuador-specific
   cedula_ruc: cedulaRucSchema.optional(),
   cupo_4x4_used: z.boolean().default(false),
