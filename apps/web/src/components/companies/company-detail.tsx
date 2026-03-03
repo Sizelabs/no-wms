@@ -28,6 +28,20 @@ interface Warehouse {
   is_active: boolean;
 }
 
+interface CourrierCoverage {
+  id: string;
+  destination_countries: { name: string } | null;
+}
+
+interface Courrier {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  is_active: boolean;
+  courrier_coverage: CourrierCoverage[];
+}
+
 interface Agency {
   id: string;
   name: string;
@@ -46,15 +60,17 @@ interface User {
 interface CompanyDetailProps {
   company: Organization;
   warehouses: Warehouse[];
+  courriers: Courrier[];
   agencies: Agency[];
   users: User[];
 }
 
-type Tab = "warehouses" | "agencies" | "users";
+type Tab = "warehouses" | "courriers" | "agencies" | "users";
 
 export function CompanyDetail({
   company,
   warehouses,
+  courriers,
   agencies,
   users,
 }: CompanyDetailProps) {
@@ -93,6 +109,7 @@ export function CompanyDetail({
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "warehouses", label: "Bodegas", count: warehouses.length },
+    { key: "courriers", label: "Courriers", count: courriers.length },
     { key: "agencies", label: "Agencias", count: agencies.length },
     { key: "users", label: "Usuarios", count: users.length },
   ];
@@ -161,6 +178,14 @@ export function CompanyDetail({
             + Nueva Bodega
           </Link>
         )}
+        {activeTab === "courriers" && (
+          <Link
+            href={`/${locale}/courriers/new`}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nuevo Courrier
+          </Link>
+        )}
         {activeTab === "users" && (
           <Link
             href={`/${locale}/companies/${company.id}/users/new`}
@@ -219,6 +244,73 @@ export function CompanyDetail({
                     </td>
                   </tr>
                 ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === "courriers" && (
+        <div className="rounded-lg border bg-white">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3">Código</th>
+                <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Tipo</th>
+                <th className="px-4 py-3">Cobertura</th>
+                <th className="px-4 py-3">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {courriers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-8 text-center text-gray-400"
+                  >
+                    Sin courriers.
+                  </td>
+                </tr>
+              ) : (
+                courriers.map((c) => {
+                  const countries = c.courrier_coverage
+                    .map((cc) => cc.destination_countries?.name)
+                    .filter(Boolean);
+                  const uniqueCountries = [...new Set(countries)];
+                  return (
+                    <tr key={c.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-xs">{c.code}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        <Link
+                          href={`/${locale}/courriers/${c.id}`}
+                          className="hover:underline"
+                        >
+                          {c.name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {c.type === "corporativo" ? "Corporativo" : "Box"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {uniqueCountries.length > 0
+                          ? uniqueCountries.join(", ")
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            c.is_active
+                              ? "bg-green-50 text-green-700"
+                              : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {c.is_active ? "Activo" : "Inactivo"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

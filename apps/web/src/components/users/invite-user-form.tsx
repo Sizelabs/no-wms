@@ -19,15 +19,17 @@ const ASSIGNABLE_ROLES = [
 ] as const;
 
 const WAREHOUSE_ROLES = ["warehouse_admin", "warehouse_operator", "shipping_clerk"];
+const COURRIER_ROLES = ["destination_admin", "destination_operator"];
 const AGENCY_ROLES = ["agency"];
 
 interface InviteUserFormProps {
   organizationId: string;
   warehouses?: { id: string; name: string; code: string }[];
+  courriers?: { id: string; name: string; code: string }[];
   agencies?: { id: string; name: string; code: string }[];
 }
 
-export function InviteUserForm({ organizationId, warehouses = [], agencies = [] }: InviteUserFormProps) {
+export function InviteUserForm({ organizationId, warehouses = [], courriers = [], agencies = [] }: InviteUserFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
   const { notify } = useNotification();
@@ -35,6 +37,7 @@ export function InviteUserForm({ organizationId, warehouses = [], agencies = [] 
   const [selectedRole, setSelectedRole] = useState<string>(ASSIGNABLE_ROLES[0]);
 
   const showWarehouse = WAREHOUSE_ROLES.includes(selectedRole);
+  const showCourrier = COURRIER_ROLES.includes(selectedRole);
   const showAgency = AGENCY_ROLES.includes(selectedRole);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -44,11 +47,13 @@ export function InviteUserForm({ organizationId, warehouses = [], agencies = [] 
     const email = fd.get("email") as string;
     const role = fd.get("role") as string;
     const warehouseId = fd.get("warehouse_id") as string | null;
+    const courrierId = fd.get("courrier_id") as string | null;
     const agencyId = fd.get("agency_id") as string | null;
 
     startTransition(async () => {
       const result = await inviteUser(organizationId, fullName, email, role, {
         warehouse_id: warehouseId || undefined,
+        courrier_id: courrierId || undefined,
         agency_id: agencyId || undefined,
       });
       if (result?.error) {
@@ -135,6 +140,30 @@ export function InviteUserForm({ organizationId, warehouses = [], agencies = [] 
             {warehouses.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name} ({w.code})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {showCourrier && (
+        <div>
+          <label
+            htmlFor="courrier_id"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Courrier asignado
+          </label>
+          <select
+            id="courrier_id"
+            name="courrier_id"
+            required
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+          >
+            <option value="">Seleccionar courrier...</option>
+            {courriers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.code})
               </option>
             ))}
           </select>

@@ -1544,6 +1544,67 @@ ON CONFLICT (id) DO NOTHING;
 -- This keeps the seed lean and avoids 7 roles × 16 resources = 112 rows
 -- that would duplicate what the code already provides.
 
+-- ============================================================================
+-- 41. COURRIERS
+-- ============================================================================
+
+INSERT INTO courriers (id, organization_id, name, code, type, ruc, city, country, phone, email, is_active, created_at, updated_at)
+VALUES
+  -- ACME: 3 courriers
+  ('f5000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Rapientrega EC',  'REC', 'corporativo', '0992001001001', 'Guayaquil', 'Ecuador',  '+593991110001', 'info@rapientrega.ec',  true, '2025-11-20T10:00:00Z', '2025-11-20T10:00:00Z'),
+  ('f5000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'EnvioCo',         'ECO', 'corporativo', '900123456',     'Bogota',    'Colombia', '+573001112233', 'info@envioco.co',      true, '2025-11-20T10:10:00Z', '2025-11-20T10:10:00Z'),
+  ('f5000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'CasilleroBox PE', 'CBP', 'box',         '20100001001',   'Lima',      'Peru',     '+51999333444',  'info@casillerobox.pe', true, '2025-11-20T10:20:00Z', '2025-11-20T10:20:00Z'),
+  -- Globex: 1 courrier
+  ('f5000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000002', 'GlobexCourier',   'GXC', 'corporativo', NULL,            'Guayaquil', 'Ecuador',  '+593992223344', NULL,                   true, '2025-11-20T10:30:00Z', '2025-11-20T10:30:00Z'),
+  -- Pinnacle: 1 courrier
+  ('f5000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000003', 'PinnacleExpress', 'PXP', 'corporativo', NULL,            'Guayaquil', 'Ecuador',  '+593993334455', NULL,                   true, '2025-11-20T10:40:00Z', '2025-11-20T10:40:00Z')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- 42. COURRIER COVERAGE
+-- ============================================================================
+
+INSERT INTO courrier_coverage (id, organization_id, courrier_id, destination_country_id, city, is_active, created_at)
+VALUES
+  -- Rapientrega EC covers Ecuador (all)
+  ('f5100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', NULL, true, '2025-11-20T11:00:00Z'),
+  -- EnvioCo covers Colombia (all)
+  ('f5100000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000002', NULL, true, '2025-11-20T11:10:00Z'),
+  -- CasilleroBox PE covers Peru (all)
+  ('f5100000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-000000000003', 'f0000000-0000-0000-0000-000000000003', NULL, true, '2025-11-20T11:20:00Z'),
+  -- GlobexCourier covers Ecuador (Globex org)
+  ('f5100000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000002', 'f5000000-0000-0000-0000-000000000004', 'f0000000-0000-0000-0000-000000000004', NULL, true, '2025-11-20T11:30:00Z'),
+  -- GlobexCourier also covers Chile (Globex org)
+  ('f5100000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000002', 'f5000000-0000-0000-0000-000000000004', 'f0000000-0000-0000-0000-000000000005', NULL, true, '2025-11-20T11:35:00Z'),
+  -- PinnacleExpress covers Ecuador (Pinnacle org)
+  ('f5100000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000003', 'f5000000-0000-0000-0000-000000000005', 'f0000000-0000-0000-0000-000000000006', NULL, true, '2025-11-20T11:40:00Z')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- 43. UPDATE AGENCIES WITH courrier_id
+-- ============================================================================
+
+-- ACME agencies: Ecuador agencies → Rapientrega EC, Colombia agency → EnvioCo, Peru agency → CasilleroBox PE
+UPDATE agencies SET courrier_id = 'f5000000-0000-0000-0000-000000000001' WHERE id IN ('f2000000-0000-0000-0000-000000000001', 'f2000000-0000-0000-0000-000000000002', 'f2000000-0000-0000-0000-000000000005');
+UPDATE agencies SET courrier_id = 'f5000000-0000-0000-0000-000000000002' WHERE id = 'f2000000-0000-0000-0000-000000000003';
+UPDATE agencies SET courrier_id = 'f5000000-0000-0000-0000-000000000003' WHERE id = 'f2000000-0000-0000-0000-000000000004';
+-- Globex agencies → GlobexCourier
+UPDATE agencies SET courrier_id = 'f5000000-0000-0000-0000-000000000004' WHERE id IN ('f2000000-0000-0000-0000-000000000006', 'f2000000-0000-0000-0000-000000000007');
+-- Pinnacle agency → PinnacleExpress
+UPDATE agencies SET courrier_id = 'f5000000-0000-0000-0000-000000000005' WHERE id = 'f2000000-0000-0000-0000-000000000008';
+
+-- ============================================================================
+-- 44. UPDATE DESTINATION ROLE user_roles WITH courrier_id
+-- ============================================================================
+
+-- destination_admin for Ecuador → Rapientrega EC
+UPDATE user_roles SET courrier_id = 'f5000000-0000-0000-0000-000000000001'
+WHERE user_id = 'b0000000-0000-0000-0000-000000000008' AND role = 'destination_admin';
+
+-- destination_admin for Colombia → EnvioCo
+UPDATE user_roles SET courrier_id = 'f5000000-0000-0000-0000-000000000002'
+WHERE user_id = 'b0000000-0000-0000-0000-000000000009' AND role = 'destination_admin';
+
 -- Re-enable FK checks
 SET session_replication_role = 'origin';
 

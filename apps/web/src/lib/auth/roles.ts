@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export interface UserRoleAssignment {
   role: Role;
   warehouse_id: string | null;
+  courrier_id: string | null;
   agency_id: string | null;
 }
 
@@ -20,18 +21,19 @@ export async function getUserRoleAssignments(
 ): Promise<UserRoleAssignment[]> {
   const { data } = await supabase
     .from("user_roles")
-    .select("role, warehouse_id, agency_id")
+    .select("role, warehouse_id, courrier_id, agency_id")
     .eq("user_id", userId);
 
   if (data?.length) {
     return data.map((r) => ({
       role: r.role as Role,
       warehouse_id: r.warehouse_id as string | null,
+      courrier_id: r.courrier_id as string | null,
       agency_id: r.agency_id as string | null,
     }));
   }
 
-  return [{ role: "agency", warehouse_id: null, agency_id: null }];
+  return [{ role: "agency", warehouse_id: null, courrier_id: null, agency_id: null }];
 }
 
 /** Roles that don't filter by warehouse (they filter by agency or destination instead, or not at all) */
@@ -84,6 +86,32 @@ export function getScopedAgencyIds(
 
   const ids = assignments
     .map((a) => a.agency_id)
+    .filter((id): id is string => id != null);
+
+  return [...new Set(ids)];
+}
+
+/** Roles scoped to a specific courrier */
+const COURRIER_SCOPED_ROLES: Role[] = ["destination_admin", "destination_operator"];
+
+/**
+ * Extract unique courrier IDs from role assignments.
+ * Returns null for non-courrier-scoped users (they don't filter by courrier).
+ * Returns string[] for destination roles scoped to specific courriers.
+ */
+export function getScopedCourrierIds(
+  assignments: UserRoleAssignment[],
+): string[] | null {
+  const hasNonCourrierRole = assignments.some(
+    (a) => !COURRIER_SCOPED_ROLES.includes(a.role),
+  );
+
+  if (hasNonCourrierRole) {
+    return null;
+  }
+
+  const ids = assignments
+    .map((a) => a.courrier_id)
     .filter((id): id is string => id != null);
 
   return [...new Set(ids)];

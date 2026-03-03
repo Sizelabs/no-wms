@@ -9,7 +9,7 @@ export async function getAgencies() {
 
   const { data, error } = await supabase
     .from("agencies")
-    .select("*, destination_countries(name)")
+    .select("*, destination_countries(name), courriers(name, code)")
     .order("name");
 
   if (error) {
@@ -41,6 +41,7 @@ export async function createAgency(formData: FormData): Promise<void> {
   const { error } = await supabase.from("agencies").insert({
     organization_id: formData.get("organization_id") as string,
     destination_country_id: formData.get("destination_country_id") as string,
+    courrier_id: (formData.get("courrier_id") as string) || null,
     name: formData.get("name") as string,
     code: formData.get("code") as string,
     type: formData.get("type") as string,

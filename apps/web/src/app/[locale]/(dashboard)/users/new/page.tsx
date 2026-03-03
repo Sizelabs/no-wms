@@ -27,9 +27,14 @@ export default async function NewUserPage({
 
   if (!profile) redirect(`/${locale}/login`);
 
-  const [warehousesResult, agenciesResult] = await Promise.all([
+  const [warehousesResult, courriersResult, agenciesResult] = await Promise.all([
     supabase
       .from("warehouses")
+      .select("id, name, code")
+      .eq("is_active", true)
+      .order("name"),
+    supabase
+      .from("courriers")
       .select("id, name, code")
       .eq("is_active", true)
       .order("name"),
@@ -46,6 +51,7 @@ export default async function NewUserPage({
       <InviteUserForm
         organizationId={profile.organization_id}
         warehouses={warehousesResult.data ?? []}
+        courriers={courriersResult.data ?? []}
         agencies={agenciesResult.data ?? []}
       />
     </div>

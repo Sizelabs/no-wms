@@ -23,10 +23,13 @@ function storageDays(receivedAt: string): number {
 
 export default async function WrDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { locale, id } = await params;
+  const { from } = await searchParams;
   const { data: wr, error } = await getWarehouseReceipt(id);
 
   if (error || !wr) {
@@ -39,10 +42,10 @@ export default async function WrDetailPage({
     <div className="space-y-6">
       <PageHeader title={`WR ${wr.wr_number}`}>
         <Link
-          href={`/${locale}/inventory`}
+          href={from === "history" ? `/${locale}/history` : `/${locale}/inventory`}
           className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
         >
-          Volver al inventario
+          {from === "history" ? "Volver al historial" : "Volver al inventario"}
         </Link>
       </PageHeader>
 

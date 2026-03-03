@@ -39,9 +39,13 @@ export async function getOrganization(id: string) {
 export async function getOrganizationCounts(orgId: string) {
   const supabase = await createClient();
 
-  const [warehouses, agencies, users] = await Promise.all([
+  const [warehouses, courriers, agencies, users] = await Promise.all([
     supabase
       .from("warehouses")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId),
+    supabase
+      .from("courriers")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId),
     supabase
@@ -56,6 +60,7 @@ export async function getOrganizationCounts(orgId: string) {
 
   return {
     warehouses: warehouses.count ?? 0,
+    courriers: courriers.count ?? 0,
     agencies: agencies.count ?? 0,
     users: users.count ?? 0,
   };
@@ -67,6 +72,22 @@ export async function getOrganizationWarehouses(orgId: string) {
   const { data, error } = await supabase
     .from("warehouses")
     .select("*")
+    .eq("organization_id", orgId)
+    .order("name");
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+export async function getOrganizationCourriers(orgId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("courriers")
+    .select("*, courrier_coverage(id, destination_countries(name))")
     .eq("organization_id", orgId)
     .order("name");
 

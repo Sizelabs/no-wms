@@ -18,9 +18,14 @@ export default async function CompanyInviteUserPage({
   const { data: company } = await getOrganization(id);
   if (!company) notFound();
 
-  const [warehousesResult, agenciesResult] = await Promise.all([
+  const [warehousesResult, courriersResult, agenciesResult] = await Promise.all([
     supabase
       .from("warehouses")
+      .select("id, name, code")
+      .eq("is_active", true)
+      .order("name"),
+    supabase
+      .from("courriers")
       .select("id, name, code")
       .eq("is_active", true)
       .order("name"),
@@ -40,6 +45,7 @@ export default async function CompanyInviteUserPage({
       <InviteUserForm
         organizationId={id}
         warehouses={warehousesResult.data ?? []}
+        courriers={courriersResult.data ?? []}
         agencies={agenciesResult.data ?? []}
       />
     </div>

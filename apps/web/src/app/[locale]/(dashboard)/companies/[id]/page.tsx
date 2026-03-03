@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import {
   getOrganization,
   getOrganizationAgencies,
+  getOrganizationCourriers,
   getOrganizationUsers,
   getOrganizationWarehouses,
 } from "@/lib/actions/organizations";
@@ -21,8 +22,9 @@ export default async function CompanyDetailPage({
   const { data: company } = await getOrganization(id);
   if (!company) notFound();
 
-  const [warehousesResult, agenciesResult, usersResult] = await Promise.all([
+  const [warehousesResult, courriersResult, agenciesResult, usersResult] = await Promise.all([
     getOrganizationWarehouses(id),
+    getOrganizationCourriers(id),
     getOrganizationAgencies(id),
     getOrganizationUsers(id),
   ]);
@@ -33,6 +35,7 @@ export default async function CompanyDetailPage({
       <CompanyDetail
         company={company}
         warehouses={warehousesResult.data ?? []}
+        courriers={courriersResult.data ?? []}
         agencies={agenciesResult.data ?? []}
         users={usersResult.data ?? []}
       />

@@ -286,6 +286,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
 
   revalidatePath("/warehouse-receipts");
   revalidatePath("/inventory");
+  revalidatePath("/history");
   if (!input.agency_id) {
     revalidatePath("/unknown-wrs");
   }
@@ -651,6 +652,7 @@ export async function updateWarehouseReceiptStatus(
 
   revalidatePath("/warehouse-receipts");
   revalidatePath("/inventory");
+  revalidatePath("/history");
 }
 
 export async function getStorageSettings(): Promise<{
@@ -710,4 +712,101 @@ export async function bulkUpdateStatus(
 
   revalidatePath("/warehouse-receipts");
   revalidatePath("/inventory");
+  revalidatePath("/history");
+}
+
+export async function getWarehouseReceiptsForHistory(filters?: {
+  warehouse_id?: string;
+  status?: string;
+  agency_id?: string;
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const supabase = await createClient();
+
+  const [warehouseScope, agencyScope] = await Promise.all([
+    getUserWarehouseScope(),
+    getUserAgencyScope(),
+  ]);
+
+  let query = supabase
+    .from("warehouse_receipts")
+    .select(
+      "*, agencies(name, code, type), consignees(full_name, casillero), packages(*), wr_status_history(id, old_status, new_status, created_at, reason, profiles:changed_by(full_name))",
+      { count: "exact" },
+    )
+    .order("received_at", { ascending: false });
+
+  // Apply warehouse scope
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    query = query.in("warehouse_id", warehouseScope);
+  } else if (warehouseScope !== null && warehouseScope.length === 0) {
+    return { data: [], error: null, count: 0 };
+  }
+
+  // Apply agency scope
+  if (agencyScope !== null && agencyScope.length > 0) {
+    query = query.in("agency_id", agencyScope);
+  } else if (agencyScope !== null && agencyScope.length === 0) {
+    return { data: [], error: null, count: 0 };
+  }
+
+  if (filters?.warehouse_id) {
+    query = query.eq("warehouse_id", filters.warehouse_id);
+  }
+
+  if (filters?.status) {
+    query = query.eq("status", filters.status);
+  }
+
+  if (filters?.agency_id) {
+    query = query.eq("agency_id", filters.agency_id);
+  }
+
+  if (filters?.date_from) {
+    query = query.gte("received_at", filters.date_from);
+  }
+
+  if (filters?.date_to) {
+    query = query.lte("received_at", `${filters.date_to}T23:59:59`);
+  }
+
+  if (filters?.search) {
+    query = query.or(
+      `wr_number.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`,
+    );
+  }
+
+  const limit = filters?.limit ?? 50;
+  const offset = filters?.offset ?? 0;
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    return { data: null, error: error.message, count: 0 };
+  }
+
+  // Client-side search through packages (tracking, carrier, sender)
+  if (filters?.search && data) {
+    const search = filters.search.toLowerCase();
+    const filtered = data.filter((wr: Record<string, unknown>) => {
+      const wrNumber = (wr.wr_number as string) || "";
+      const notes = (wr.notes as string) || "";
+      if (wrNumber.toLowerCase().includes(search) || notes.toLowerCase().includes(search)) return true;
+      const pkgs = wr.packages as Array<Record<string, unknown>> | null;
+      return pkgs?.some((p) => {
+        const tn = (p.tracking_number as string) || "";
+        const carrier = (p.carrier as string) || "";
+        const sender = (p.sender_name as string) || "";
+        return tn.toLowerCase().includes(search) || carrier.toLowerCase().includes(search) || sender.toLowerCase().includes(search);
+      });
+    });
+    return { data: filtered, error: null, count: filtered.length };
+  }
+
+  return { data, error: null, count: count ?? 0 };
 }

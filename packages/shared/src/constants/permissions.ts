@@ -3,6 +3,7 @@ import type { Role } from "./roles";
 export const RESOURCES = [
   "companies",
   "warehouses",
+  "courriers",
   "agencies",
   "users",
   "warehouse_receipts",
@@ -17,6 +18,7 @@ export const RESOURCES = [
   "unknown_wrs",
   "settings",
   "consignees",
+  "history",
 ] as const;
 
 export type Resource = (typeof RESOURCES)[number];
@@ -35,6 +37,7 @@ export type RolePermissionMap = Record<Resource, ResourcePermissions>;
 export const RESOURCE_LABELS: Record<Resource, string> = {
   companies: "Empresas",
   warehouses: "Bodegas",
+  courriers: "Courriers",
   agencies: "Agencias",
   users: "Usuarios",
   warehouse_receipts: "Recibos de Bodega",
@@ -49,12 +52,14 @@ export const RESOURCE_LABELS: Record<Resource, string> = {
   unknown_wrs: "WRs Desconocidos",
   settings: "Configuración",
   consignees: "Consignatarios",
+  history: "Historial",
 };
 
 /** Maps nav item labels (i18n keys) to resource names for nav filtering */
 export const NAV_RESOURCE_MAP: Record<string, Resource> = {
   companies: "companies",
   warehouses: "warehouses",
+  courriers: "courriers",
   agencies: "agencies",
   users: "users",
   consignees: "consignees",
@@ -69,6 +74,7 @@ export const NAV_RESOURCE_MAP: Record<string, Resource> = {
   reports: "reports",
   unknownWrs: "unknown_wrs",
   settings: "settings",
+  history: "history",
 };
 
 function crud(c: boolean, r: boolean, u: boolean, d: boolean): ResourcePermissions {
@@ -95,6 +101,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
   company_admin: makePermMap({
     companies: crud(false, true, true, false),
     warehouses: FULL,
+    courriers: FULL,
     agencies: FULL,
     users: FULL,
     warehouse_receipts: crud(true, true, true, false),
@@ -109,10 +116,12 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     unknown_wrs: crud(false, true, true, false),
     settings: crud(false, true, true, false),
     consignees: FULL,
+    history: READ,
   }),
 
   warehouse_admin: makePermMap({
     warehouses: crud(false, true, true, false),
+    courriers: READ,
     agencies: READ,
     warehouse_receipts: crud(true, true, true, false),
     inventory: READ,
@@ -124,6 +133,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     unknown_wrs: crud(false, true, true, false),
     settings: crud(false, true, true, false),
     consignees: FULL,
+    history: READ,
   }),
 
   warehouse_operator: makePermMap({
@@ -133,6 +143,8 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     manifests: READ,
     tickets: crud(true, true, false, false),
     unknown_wrs: crud(false, true, true, false),
+    consignees: READ,
+    history: READ,
   }),
 
   shipping_clerk: makePermMap({
@@ -141,12 +153,16 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     manifests: crud(true, true, true, false),
     tickets: crud(true, true, false, false),
     reports: READ,
+    history: READ,
   }),
 
   destination_admin: makePermMap({
-    agencies: READ,
-    consignees: READ,
+    courriers: crud(false, true, true, false),
+    agencies: FULL,
+    consignees: FULL,
+    warehouse_receipts: READ,
     inventory: READ,
+    work_orders: READ,
     shipping: crud(false, true, true, false),
     manifests: crud(false, true, true, false),
     tariffs: crud(false, true, true, false),
@@ -155,9 +171,11 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     reports: READ,
     unknown_wrs: crud(false, true, true, false),
     settings: crud(false, true, true, false),
+    history: READ,
   }),
 
   destination_operator: makePermMap({
+    courriers: READ,
     agencies: READ,
     inventory: READ,
     shipping: READ,
@@ -165,10 +183,11 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     tickets: crud(true, true, false, false),
     reports: READ,
     unknown_wrs: crud(false, true, true, false),
+    history: READ,
   }),
 
   agency: makePermMap({
-    consignees: READ,
+    consignees: crud(true, true, true, false),
     inventory: READ,
     work_orders: crud(true, true, false, false),
     shipping: crud(true, true, false, false),
@@ -177,5 +196,6 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     tariffs: READ,
     tickets: crud(true, true, false, false),
     unknown_wrs: crud(false, true, true, false),
+    history: READ,
   }),
 };

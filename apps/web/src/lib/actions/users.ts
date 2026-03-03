@@ -107,7 +107,7 @@ export async function inviteUser(
   fullName: string,
   email: string,
   role: string,
-  opts?: { warehouse_id?: string; agency_id?: string },
+  opts?: { warehouse_id?: string; courrier_id?: string; agency_id?: string },
 ): Promise<{ error: string } | null> {
   const admin = createAdminClient();
 
@@ -142,6 +142,7 @@ export async function inviteUser(
     organization_id: organizationId,
     role,
     warehouse_id: opts?.warehouse_id || null,
+    courrier_id: opts?.courrier_id || null,
     agency_id: opts?.agency_id || null,
   });
 
