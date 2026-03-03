@@ -18,6 +18,7 @@ interface Agency {
   address: string | null;
   phone: string | null;
   email: string | null;
+  allow_multi_package: boolean;
 }
 
 interface AgencyEditFormProps {
@@ -162,6 +163,18 @@ export function AgencyEditForm({ agency }: AgencyEditFormProps) {
           defaultValue={agency.email ?? ""}
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
         />
+      </div>
+      <div className="flex items-center gap-2 pt-2">
+        <label htmlFor="allow_multi_package" className="flex items-center gap-2 text-sm">
+          <input
+            id="allow_multi_package"
+            name="allow_multi_package"
+            type="checkbox"
+            defaultChecked={agency.allow_multi_package}
+            className="rounded border-gray-300"
+          />
+          Permitir múltiples paquetes por recibo
+        </label>
       </div>
       <div className="flex gap-2 pt-2">
         <button

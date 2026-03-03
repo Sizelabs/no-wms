@@ -48,6 +48,7 @@ export async function createAgency(formData: FormData): Promise<void> {
     address: (formData.get("address") as string) || null,
     phone: (formData.get("phone") as string) || null,
     email: (formData.get("email") as string) || null,
+    allow_multi_package: formData.get("allow_multi_package") === "on",
   });
 
   if (error) {
@@ -73,6 +74,40 @@ export async function deleteAgency(
   return null;
 }
 
+export async function getAgencySettings(agencyIds: string[]) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("agencies")
+    .select("id, name, code, allow_multi_package")
+    .in("id", agencyIds)
+    .order("name");
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+export async function updateAgencySettings(
+  id: string,
+  settings: { allow_multi_package: boolean },
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("agencies")
+    .update({ allow_multi_package: settings.allow_multi_package })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/settings");
+}
+
 export async function updateAgency(id: string, formData: FormData): Promise<void> {
   const supabase = await createClient();
 
@@ -86,6 +121,7 @@ export async function updateAgency(id: string, formData: FormData): Promise<void
       address: (formData.get("address") as string) || null,
       phone: (formData.get("phone") as string) || null,
       email: (formData.get("email") as string) || null,
+      allow_multi_package: formData.get("allow_multi_package") === "on",
     })
     .eq("id", id);
 

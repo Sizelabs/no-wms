@@ -35,7 +35,7 @@ export default async function NewWarehouseReceiptPage({
   }
 
   const [agenciesResult, warehousesResult] = await Promise.all([
-    supabase.from("agencies").select("id, name, code").eq("is_active", true).order("name"),
+    supabase.from("agencies").select("id, name, code, allow_multi_package").eq("is_active", true).order("name"),
     warehouseScope !== null && warehouseScope.length === 0
       ? Promise.resolve({ data: [] })
       : warehousesQuery,

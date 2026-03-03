@@ -84,6 +84,14 @@ export default async function AgencyDetailPage({
                 <DtDd label="Dirección" value={agency.address ?? "—"} />
               </dl>
             </Section>
+            <Section title="Configuración">
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                <DtDd
+                  label="Múltiples paquetes por recibo"
+                  value={agency.allow_multi_package ? "Sí" : "No"}
+                />
+              </dl>
+            </Section>
           </div>
 
           {/* Right column: contacts */}

@@ -18,6 +18,7 @@ interface Agency {
   id: string;
   name: string;
   code: string;
+  allow_multi_package: boolean;
 }
 
 interface Warehouse {
@@ -198,6 +199,8 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     [agencies, agencyId],
   );
 
+  const allowMultiPackage = selectedAgency?.allow_multi_package ?? true;
+
   const selectedConsignee = useMemo(
     () => consignees.find((c) => c.id === consigneeId),
     [consignees, consigneeId],
@@ -209,6 +212,14 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     [isUnknownAgency],
   );
   const stepIndex = activeSteps.indexOf(step);
+
+  // Trim to single package when agency disallows multi-package
+  useEffect(() => {
+    if (!allowMultiPackage && packages.length > 1) {
+      setPackages((prev) => [prev[0]!]);
+      setCurrentPackageIndex(0);
+    }
+  }, [allowMultiPackage, packages.length]);
 
   // Consignee search
   useEffect(() => {
@@ -563,29 +574,31 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
             </p>
 
             {/* Add / Remove package buttons */}
-            <div className="flex items-center gap-2 border-t pt-2">
-              <button
-                type="button"
-                onClick={addPackage}
-                className="rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
-              >
-                + Agregar paquete
-              </button>
-              {packages.length > 1 && (
+            {allowMultiPackage && (
+              <div className="flex items-center gap-2 border-t pt-2">
                 <button
                   type="button"
-                  onClick={() => removePackage(currentPackageIndex)}
-                  className="rounded-md border border-dashed border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:border-red-300 hover:bg-red-50"
+                  onClick={addPackage}
+                  className="rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
                 >
-                  Eliminar paquete {currentPackageIndex + 1}
+                  + Agregar paquete
                 </button>
-              )}
-              {packages.length > 1 && (
-                <span className="ml-auto text-xs text-gray-400">
-                  {packages.length} paquete{packages.length > 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
+                {packages.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removePackage(currentPackageIndex)}
+                    className="rounded-md border border-dashed border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:border-red-300 hover:bg-red-50"
+                  >
+                    Eliminar paquete {currentPackageIndex + 1}
+                  </button>
+                )}
+                {packages.length > 1 && (
+                  <span className="ml-auto text-xs text-gray-400">
+                    {packages.length} paquete{packages.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
 
