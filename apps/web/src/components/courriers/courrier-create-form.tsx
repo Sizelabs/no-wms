@@ -35,7 +35,12 @@ export function CourrierCreateForm({ organizationId }: CourrierCreateFormProps) 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
+    <form onSubmit={handleSubmit} className="max-w-lg space-y-6">
+      {/* Courrier info */}
+      <fieldset className="space-y-4">
+        <legend className="text-sm font-semibold text-gray-900">
+          Datos del Courrier
+        </legend>
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">
           Nombre
@@ -143,13 +148,49 @@ export function CourrierCreateForm({ organizationId }: CourrierCreateFormProps) 
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
         />
       </div>
+      </fieldset>
+
+      {/* Admin user */}
+      <fieldset className="space-y-4">
+        <legend className="text-sm font-semibold text-gray-900">
+          Administrador del Courrier
+        </legend>
+        <div>
+          <label htmlFor="admin_name" className="block text-sm font-medium text-gray-700">
+            Nombre completo
+          </label>
+          <input
+            id="admin_name"
+            name="admin_name"
+            type="text"
+            required
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+          />
+        </div>
+        <div>
+          <label htmlFor="admin_email" className="block text-sm font-medium text-gray-700">
+            Correo electrónico
+          </label>
+          <input
+            id="admin_email"
+            name="admin_email"
+            type="email"
+            required
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Se le enviará una invitación para configurar su contraseña.
+          </p>
+        </div>
+      </fieldset>
+
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
           disabled={isPending}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
         >
-          {isPending ? t("loading") : t("save")}
+          {isPending ? t("loading") : t("create")}
         </button>
         <button
           type="button"

@@ -20,12 +20,12 @@ export function AgencyDetailActions({ agencyId }: { agencyId: string }) {
     {
       label: "Editar",
       href: `/${locale}/agencies/${agencyId}/edit`,
-      roles: ["company_admin"],
+      roles: ["super_admin", "company_admin", "destination_admin", "agency"],
     },
     {
       label: "Eliminar",
       variant: "danger",
-      roles: ["company_admin"],
+      roles: ["super_admin", "company_admin", "destination_admin"],
       onClick: () => {
         if (!confirm("¿Eliminar esta agencia? Esta acción no se puede deshacer.")) return;
         startTransition(async () => {

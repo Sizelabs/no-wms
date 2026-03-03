@@ -73,7 +73,7 @@ export function CourrierDetail({ courrier }: CourrierDetailProps) {
     {
       label: "Editar",
       href: `/${locale}/courriers/${courrier.id}/edit`,
-      roles: ["super_admin", "company_admin"],
+      roles: ["super_admin", "company_admin", "destination_admin"],
     },
     {
       label: "Eliminar",
@@ -137,6 +137,15 @@ export function CourrierDetail({ courrier }: CourrierDetailProps) {
             </button>
           ))}
         </nav>
+        {activeTab === "agencies" &&
+          userRoles.some((r) => ["super_admin", "company_admin", "destination_admin"].includes(r)) && (
+          <Link
+            href={`/${locale}/agencies/new?courrier_id=${courrier.id}`}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva Agencia
+          </Link>
+        )}
       </div>
 
       {activeTab === "info" && (

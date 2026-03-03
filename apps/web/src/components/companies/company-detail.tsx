@@ -186,6 +186,14 @@ export function CompanyDetail({
             + Nuevo Courrier
           </Link>
         )}
+        {activeTab === "agencies" && (
+          <Link
+            href={`/${locale}/agencies/new`}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva Agencia
+          </Link>
+        )}
         {activeTab === "users" && (
           <Link
             href={`/${locale}/companies/${company.id}/users/new`}

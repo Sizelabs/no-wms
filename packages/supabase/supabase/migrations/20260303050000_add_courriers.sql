@@ -66,42 +66,78 @@ language sql stable security definer as $$
     and courrier_id is not null;
 $$;
 
--- 9. RLS on courriers (org-scoped + super_admin bypass)
+-- 9. RLS on courriers — courrier-scoped for destination roles
 alter table courriers enable row level security;
 
 create policy courriers_select on courriers for select using (
-  organization_id = auth_org_id() or auth_has_role('super_admin')
+  auth_has_role('super_admin')
+  or (
+    organization_id = auth_org_id()
+    and (
+      -- Non-destination roles see all org courriers
+      not (auth_has_role('destination_admin') or auth_has_role('destination_operator'))
+      -- Destination roles only see their assigned courrier(s)
+      or id = any(auth_courrier_ids())
+    )
+  )
 );
 create policy courriers_insert on courriers for insert with check (
   organization_id = auth_org_id() or auth_has_role('super_admin')
 );
 create policy courriers_update on courriers for update using (
-  organization_id = auth_org_id() or auth_has_role('super_admin')
+  auth_has_role('super_admin')
+  or (
+    organization_id = auth_org_id()
+    and (
+      not (auth_has_role('destination_admin') or auth_has_role('destination_operator'))
+      or id = any(auth_courrier_ids())
+    )
+  )
 );
 create policy courriers_delete on courriers for delete using (
   organization_id = auth_org_id() or auth_has_role('super_admin')
 );
 
--- 10. RLS on courrier_coverage (org-scoped + super_admin bypass)
+-- 10. RLS on courrier_coverage — courrier-scoped for destination roles
 alter table courrier_coverage enable row level security;
 
 create policy courrier_coverage_select on courrier_coverage for select using (
-  organization_id = auth_org_id() or auth_has_role('super_admin')
+  auth_has_role('super_admin')
+  or (
+    organization_id = auth_org_id()
+    and (
+      not (auth_has_role('destination_admin') or auth_has_role('destination_operator'))
+      or courrier_id = any(auth_courrier_ids())
+    )
+  )
 );
 create policy courrier_coverage_insert on courrier_coverage for insert with check (
   organization_id = auth_org_id() or auth_has_role('super_admin')
 );
 create policy courrier_coverage_update on courrier_coverage for update using (
-  organization_id = auth_org_id() or auth_has_role('super_admin')
+  auth_has_role('super_admin')
+  or (
+    organization_id = auth_org_id()
+    and (
+      not (auth_has_role('destination_admin') or auth_has_role('destination_operator'))
+      or courrier_id = any(auth_courrier_ids())
+    )
+  )
 );
 create policy courrier_coverage_delete on courrier_coverage for delete using (
   organization_id = auth_org_id() or auth_has_role('super_admin')
 );
 
--- 11. Courrier-scoped policies on agencies for destination roles
--- Destination roles should only see agencies under their assigned courrier(s)
-create policy agency_courrier_select on agencies for select using (
-  auth_has_role('super_admin')
-  or not (auth_has_role('destination_admin') or auth_has_role('destination_operator'))
-  or courrier_id = any(auth_courrier_ids())
+-- 11. Fix agencies RLS for courrier scoping
+-- The initial migration created a generic "org_select" on agencies that lets ALL org users
+-- see ALL agencies. We need to replace it so destination roles only see their courrier's agencies.
+drop policy "org_select" on agencies;
+create policy "org_select" on agencies for select using (
+  organization_id = auth_org_id()
+  and (
+    -- Non-destination roles see all org agencies
+    not (auth_has_role('destination_admin') or auth_has_role('destination_operator'))
+    -- Destination roles only see agencies under their courrier(s)
+    or courrier_id = any(auth_courrier_ids())
+  )
 );

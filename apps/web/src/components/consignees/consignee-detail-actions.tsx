@@ -20,12 +20,12 @@ export function ConsigneeDetailActions({ consigneeId }: { consigneeId: string })
     {
       label: "Editar",
       href: `/${locale}/consignees/${consigneeId}/edit`,
-      roles: ["company_admin", "agency"],
+      roles: ["company_admin", "destination_admin", "agency"],
     },
     {
       label: "Desactivar",
       variant: "danger",
-      roles: ["company_admin", "agency"],
+      roles: ["company_admin", "destination_admin", "agency"],
       onClick: () => {
         if (!confirm("¿Desactivar este consignatario?")) return;
         startTransition(async () => {

@@ -40,7 +40,7 @@ export default async function AgencyDetailPage({
       </PageHeader>
 
       {/* Key info cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <InfoCard label="Código">
           <span className="font-mono text-sm">{agency.code}</span>
         </InfoCard>
@@ -54,6 +54,9 @@ export default async function AgencyDetailPage({
           >
             {AGENCY_TYPE_LABELS[agency.type as AgencyType]}
           </span>
+        </InfoCard>
+        <InfoCard label="Courrier">
+          {agency.courriers ? `${agency.courriers.name} (${agency.courriers.code})` : "—"}
         </InfoCard>
         <InfoCard label="País destino">
           {agency.destination_countries?.name ?? "—"}
