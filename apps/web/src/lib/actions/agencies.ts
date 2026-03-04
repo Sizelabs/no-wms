@@ -134,7 +134,21 @@ export async function createAgencyWithAdmin(formData: FormData): Promise<void> {
   const adminName = formData.get("admin_name") as string;
   const adminEmail = formData.get("admin_email") as string;
 
-  // 1. Create agency
+  // 1. Invite auth user first (failure-prone external call — nothing to clean up if it fails)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const { data: authData, error: authError } =
+    await admin.auth.admin.inviteUserByEmail(adminEmail, {
+      data: { full_name: adminName },
+      redirectTo: `${siteUrl}/auth/callback`,
+    });
+
+  if (authError) {
+    throw new Error(authError.message);
+  }
+
+  const userId = authData.user.id;
+
+  // 2. Create agency
   const { data: agency, error: agencyError } = await admin
     .from("agencies")
     .insert({
@@ -154,23 +168,9 @@ export async function createAgencyWithAdmin(formData: FormData): Promise<void> {
     .single();
 
   if (agencyError) {
+    await admin.auth.admin.deleteUser(userId);
     throw new Error(agencyError.message);
   }
-
-  // 2. Invite admin user
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const { data: authData, error: authError } =
-    await admin.auth.admin.inviteUserByEmail(adminEmail, {
-      data: { full_name: adminName },
-      redirectTo: `${siteUrl}/auth/callback`,
-    });
-
-  if (authError) {
-    await admin.from("agencies").delete().eq("id", agency.id);
-    throw new Error(authError.message);
-  }
-
-  const userId = authData.user.id;
 
   // 3. Create profile
   const { error: profileError } = await admin.from("profiles").insert({

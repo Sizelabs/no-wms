@@ -145,7 +145,23 @@ export async function createOrganization(formData: FormData): Promise<void> {
   const adminName = formData.get("admin_name") as string;
   const adminEmail = formData.get("admin_email") as string;
 
-  // 1. Create the organization
+  // 1. Invite auth user first (failure-prone external call — nothing to clean up if it fails)
+  const siteUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+    : "http://localhost:3000";
+  const { data: authData, error: authError } =
+    await admin.auth.admin.inviteUserByEmail(adminEmail, {
+      data: { full_name: adminName },
+      redirectTo: `${siteUrl}/auth/callback`,
+    });
+
+  if (authError) {
+    throw new Error(authError.message);
+  }
+
+  const userId = authData.user.id;
+
+  // 2. Create the organization
   const { data: org, error: orgError } = await admin
     .from("organizations")
     .insert({
@@ -157,26 +173,9 @@ export async function createOrganization(formData: FormData): Promise<void> {
     .single();
 
   if (orgError) {
+    await admin.auth.admin.deleteUser(userId);
     throw new Error(orgError.message);
   }
-
-  // 2. Create the auth user (invites them — they'll set their password via email)
-  const siteUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
-    : "http://localhost:3000";
-  const { data: authData, error: authError } =
-    await admin.auth.admin.inviteUserByEmail(adminEmail, {
-      data: { full_name: adminName },
-      redirectTo: `${siteUrl}/auth/callback`,
-    });
-
-  if (authError) {
-    // Roll back the org
-    await admin.from("organizations").delete().eq("id", org.id);
-    throw new Error(authError.message);
-  }
-
-  const userId = authData.user.id;
 
   // 3. Create the profile
   const { error: profileError } = await admin.from("profiles").insert({
