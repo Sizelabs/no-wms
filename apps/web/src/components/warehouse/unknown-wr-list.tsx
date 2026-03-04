@@ -209,6 +209,16 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
         </tbody>
       </table>
     </div>
+
+      {isAgencyRole && (
+        <ClaimUnknownWrModal
+          wr={reportingWr}
+          onClose={() => {
+            setReportingWr(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
