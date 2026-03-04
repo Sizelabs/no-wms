@@ -125,6 +125,7 @@ export const TICKET_CATEGORIES = [
   "Consulta general",
   "Reclamo de facturacion",
   "Solicitud de informacion",
+  "Reclamo de desconocido",
   "Otro",
 ] as const;
 

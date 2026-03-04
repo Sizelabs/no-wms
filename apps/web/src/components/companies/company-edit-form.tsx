@@ -1,10 +1,20 @@
 "use client";
 
+import { Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import {
+  Field,
+  FormActions,
+  FormCard,
+  FormSection,
+  inputClass,
+  primaryBtnClass,
+  secondaryBtnClass,
+} from "@/components/ui/form-section";
 import { updateOrganization } from "@/lib/actions/organizations";
 
 interface Company {
@@ -40,54 +50,42 @@ export function CompanyEditForm({ company }: CompanyEditFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
-      <div>
-        <label
-          htmlFor="name"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Nombre de la Empresa
-        </label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          required
-          defaultValue={company.name}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="logo_url"
-          className="block text-sm font-medium text-gray-700"
-        >
-          URL del Logo (opcional)
-        </label>
-        <input
-          id="logo_url"
-          name="logo_url"
-          type="url"
-          defaultValue={company.logo_url ?? ""}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        />
-      </div>
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-        >
-          {isPending ? t("loading") : t("save")}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          {t("cancel")}
-        </button>
-      </div>
-    </form>
+    <FormCard>
+      <form onSubmit={handleSubmit}>
+        <FormSection title="Empresa" icon={Building2}>
+          <Field label="Nombre de la Empresa" htmlFor="name" required>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              required
+              defaultValue={company.name}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="URL del Logo" htmlFor="logo_url">
+            <input
+              id="logo_url"
+              name="logo_url"
+              type="url"
+              defaultValue={company.logo_url ?? ""}
+              className={inputClass}
+            />
+          </Field>
+        </FormSection>
+        <FormActions>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className={secondaryBtnClass}
+          >
+            {t("cancel")}
+          </button>
+          <button type="submit" disabled={isPending} className={primaryBtnClass}>
+            {isPending ? t("loading") : t("save")}
+          </button>
+        </FormActions>
+      </form>
+    </FormCard>
   );
 }

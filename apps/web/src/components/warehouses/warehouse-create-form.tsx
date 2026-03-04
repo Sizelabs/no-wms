@@ -1,10 +1,21 @@
 "use client";
 
+import { Warehouse } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import {
+  Field,
+  FormActions,
+  FormCard,
+  FormSection,
+  inputClass,
+  primaryBtnClass,
+  secondaryBtnClass,
+  selectClass,
+} from "@/components/ui/form-section";
 import {
   getCitiesOfState,
   getStatesOfCountry,
@@ -114,146 +125,112 @@ export function WarehouseCreateForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
-      <div>
-        <label
-          htmlFor="name"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Nombre
-        </label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          required
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="code"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Código
-        </label>
-        <input
-          id="code"
-          name="code"
-          type="text"
-          required
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-          placeholder="MIA"
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="country"
-          className="block text-sm font-medium text-gray-700"
-        >
-          País
-        </label>
-        <select
-          id="country"
-          value={countryCode}
-          onChange={(e) => handleCountryChange(e.target.value)}
-          required
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        >
-          <option value="">Seleccionar...</option>
-          {countries.map((c) => (
-            <option key={c.isoCode} value={c.isoCode}>
-              {c.flag} {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      {states.length > 0 && (
-        <div>
-          <label
-            htmlFor="state"
-            className="block text-sm font-medium text-gray-700"
+    <FormCard>
+      <form onSubmit={handleSubmit}>
+        <FormSection title="Bodega" icon={Warehouse}>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Nombre" htmlFor="name" required>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Código" htmlFor="code" required>
+              <input
+                id="code"
+                name="code"
+                type="text"
+                required
+                placeholder="MIA"
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <Field label="País" htmlFor="country" required>
+            <select
+              id="country"
+              value={countryCode}
+              onChange={(e) => handleCountryChange(e.target.value)}
+              required
+              className={selectClass}
+            >
+              <option value="">Seleccionar...</option>
+              {countries.map((c) => (
+                <option key={c.isoCode} value={c.isoCode}>
+                  {c.flag} {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {states.length > 0 && (
+            <Field label="Estado / Provincia" htmlFor="state" required>
+              <select
+                id="state"
+                value={stateCode}
+                onChange={(e) => handleStateChange(e.target.value)}
+                required
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                {states.map((s) => (
+                  <option key={s.isoCode} value={s.isoCode}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {(cities.length > 0 || (countryCode && states.length === 0)) && (
+            <Field label="Ciudad" htmlFor="city" required>
+              <select
+                id="city"
+                value={cityName}
+                onChange={(e) => setCityName(e.target.value)}
+                required
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                {cities.map((ci, i) => (
+                  <option key={`${ci.name}-${i}`} value={ci.name}>
+                    {ci.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <Field label="Zona Horaria" htmlFor="timezone" required>
+            <select
+              id="timezone"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              required
+              disabled={!countryCode}
+              className={`${selectClass} disabled:border-gray-100 disabled:bg-gray-50 disabled:text-gray-500`}
+            >
+              {timezones.map((tz) => (
+                <option key={tz.zoneName} value={tz.zoneName}>
+                  {tz.zoneName} ({tz.gmtOffsetName})
+                </option>
+              ))}
+            </select>
+          </Field>
+        </FormSection>
+        <FormActions>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className={secondaryBtnClass}
           >
-            Estado / Provincia
-          </label>
-          <select
-            id="state"
-            value={stateCode}
-            onChange={(e) => handleStateChange(e.target.value)}
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-          >
-            <option value="">Seleccionar...</option>
-            {states.map((s) => (
-              <option key={s.isoCode} value={s.isoCode}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      {(cities.length > 0 || (countryCode && states.length === 0)) && (
-        <div>
-          <label
-            htmlFor="city"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Ciudad
-          </label>
-          <select
-            id="city"
-            value={cityName}
-            onChange={(e) => setCityName(e.target.value)}
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-          >
-            <option value="">Seleccionar...</option>
-            {cities.map((ci, i) => (
-              <option key={`${ci.name}-${i}`} value={ci.name}>
-                {ci.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      <div>
-        <label
-          htmlFor="timezone"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Zona Horaria
-        </label>
-        <select
-          id="timezone"
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          required
-          disabled={!countryCode}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 disabled:bg-gray-100"
-        >
-          {timezones.map((tz) => (
-            <option key={tz.zoneName} value={tz.zoneName}>
-              {tz.zoneName} ({tz.gmtOffsetName})
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-        >
-          {isPending ? t("loading") : t("create")}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          {t("cancel")}
-        </button>
-      </div>
-    </form>
+            {t("cancel")}
+          </button>
+          <button type="submit" disabled={isPending} className={primaryBtnClass}>
+            {isPending ? t("loading") : t("create")}
+          </button>
+        </FormActions>
+      </form>
+    </FormCard>
   );
 }

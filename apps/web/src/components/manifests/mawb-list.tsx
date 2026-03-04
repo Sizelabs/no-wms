@@ -53,9 +53,20 @@ const STATUS_ACTION_LABELS: Record<string, string> = {
 
 export function MawbList({ data }: MawbListProps) {
   const [isPending, startTransition] = useTransition();
+  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
 
   const filtered = data.filter((m) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const matches =
+        m.mawb_number.toLowerCase().includes(q) ||
+        m.airline.toLowerCase().includes(q) ||
+        m.flight_number?.toLowerCase().includes(q) ||
+        m.destination_countries?.name?.toLowerCase().includes(q) ||
+        m.hawbs.some((h) => h.hawb_number.toLowerCase().includes(q));
+      if (!matches) return false;
+    }
     if (filter && m.status !== filter) return false;
     return true;
   });
@@ -69,12 +80,19 @@ export function MawbList({ data }: MawbListProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar MAWB, aerolínea, vuelo, HAWB..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         >
           <option value="">Todos los estados</option>
           {Object.entries(MAWB_STATUS_LABELS).map(([k, v]) => (

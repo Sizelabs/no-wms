@@ -1,11 +1,22 @@
 "use client";
 
 import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
+import { UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import {
+  Field,
+  FormActions,
+  FormCard,
+  FormSection,
+  inputClass,
+  primaryBtnClass,
+  secondaryBtnClass,
+  selectClass,
+} from "@/components/ui/form-section";
 import { inviteUser } from "@/lib/actions/users";
 
 const ASSIGNABLE_ROLES = [
@@ -65,151 +76,118 @@ export function InviteUserForm({ organizationId, warehouses = [], courriers = []
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
-      <div>
-        <label
-          htmlFor="full_name"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Nombre completo
-        </label>
-        <input
-          id="full_name"
-          name="full_name"
-          type="text"
-          required
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="email"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Correo electrónico
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          Se le enviará una invitación para configurar su contraseña.
-        </p>
-      </div>
-      <div>
-        <label
-          htmlFor="role"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Rol
-        </label>
-        <select
-          id="role"
-          name="role"
-          required
-          value={selectedRole}
-          onChange={(e) => setSelectedRole(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        >
-          {ASSIGNABLE_ROLES.map((r) => (
-            <option key={r} value={r}>
-              {ROLE_LABELS[r]}
-            </option>
-          ))}
-        </select>
-      </div>
+    <FormCard>
+      <form onSubmit={handleSubmit}>
+        <FormSection title="Usuario" icon={UserPlus}>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Nombre completo" htmlFor="full_name" required>
+              <input
+                id="full_name"
+                name="full_name"
+                type="text"
+                required
+                className={inputClass}
+              />
+            </Field>
+            <Field
+              label="Correo electrónico"
+              htmlFor="email"
+              required
+              hint="Se le enviará una invitación para configurar su contraseña."
+            >
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <Field label="Rol" htmlFor="role" required>
+            <select
+              id="role"
+              name="role"
+              required
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className={selectClass}
+            >
+              {ASSIGNABLE_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          </Field>
 
-      {showWarehouse && (
-        <div>
-          <label
-            htmlFor="warehouse_id"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Almacén asignado
-          </label>
-          <select
-            id="warehouse_id"
-            name="warehouse_id"
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-          >
-            <option value="">Seleccionar almacén...</option>
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.code})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+          {showWarehouse && (
+            <Field label="Almacén asignado" htmlFor="warehouse_id" required>
+              <select
+                id="warehouse_id"
+                name="warehouse_id"
+                required
+                className={selectClass}
+              >
+                <option value="">Seleccionar almacén...</option>
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.code})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
-      {showCourrier && (
-        <div>
-          <label
-            htmlFor="courrier_id"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Courrier asignado
-          </label>
-          <select
-            id="courrier_id"
-            name="courrier_id"
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-          >
-            <option value="">Seleccionar courrier...</option>
-            {courriers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.code})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+          {showCourrier && (
+            <Field label="Courrier asignado" htmlFor="courrier_id" required>
+              <select
+                id="courrier_id"
+                name="courrier_id"
+                required
+                className={selectClass}
+              >
+                <option value="">Seleccionar courrier...</option>
+                {courriers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.code})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
-      {showAgency && (
-        <div>
-          <label
-            htmlFor="agency_id"
-            className="block text-sm font-medium text-gray-700"
+          {showAgency && (
+            <Field label="Agencia asignada" htmlFor="agency_id" required>
+              <select
+                id="agency_id"
+                name="agency_id"
+                required
+                className={selectClass}
+              >
+                <option value="">Seleccionar agencia...</option>
+                {agencies.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.code})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+        </FormSection>
+        <FormActions>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className={secondaryBtnClass}
           >
-            Agencia asignada
-          </label>
-          <select
-            id="agency_id"
-            name="agency_id"
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-          >
-            <option value="">Seleccionar agencia...</option>
-            {agencies.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.code})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-        >
-          {isPending ? t("loading") : "Enviar Invitación"}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          {t("cancel")}
-        </button>
-      </div>
-    </form>
+            {t("cancel")}
+          </button>
+          <button type="submit" disabled={isPending} className={primaryBtnClass}>
+            {isPending ? t("loading") : "Enviar Invitación"}
+          </button>
+        </FormActions>
+      </form>
+    </FormCard>
   );
 }

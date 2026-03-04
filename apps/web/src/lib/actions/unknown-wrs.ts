@@ -154,6 +154,140 @@ export async function claimUnknownWr(
   return { success: true };
 }
 
+// ---------------------------------------------------------------------------
+// Claim unknown WR via ticket (sin guía)
+// ---------------------------------------------------------------------------
+export async function createUnknownWrClaimTicket(
+  warehouseReceiptId: string,
+  description: string,
+  attachments: Array<{ storagePath: string; fileName: string; contentType: string }>,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!description || description.trim().length < 10) {
+    return { success: false, error: "La descripción debe tener al menos 10 caracteres" };
+  }
+
+  // Get profile + org
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) return { success: false, error: "Perfil no encontrado" };
+
+  // Get agency from user role
+  const { data: userRole } = await supabase
+    .from("user_roles")
+    .select("agency_id")
+    .eq("profile_id", user.id)
+    .not("agency_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (!userRole?.agency_id) {
+    return { success: false, error: "No tiene agencia asignada" };
+  }
+
+  // Verify WR exists and has no agency
+  const { data: wr } = await supabase
+    .from("warehouse_receipts")
+    .select("id, wr_number, organization_id")
+    .eq("id", warehouseReceiptId)
+    .is("agency_id", null)
+    .single();
+
+  if (!wr) {
+    return { success: false, error: "WR no encontrado o ya reclamado" };
+  }
+
+  // Generate ticket number
+  const { count } = await supabase
+    .from("tickets")
+    .select("*", { count: "exact", head: true });
+
+  const ticketNumber = `TK${String((count ?? 0) + 1).padStart(5, "0")}`;
+
+  // Create ticket
+  const { data: ticket, error: ticketError } = await supabase
+    .from("tickets")
+    .insert({
+      organization_id: profile.organization_id,
+      ticket_number: ticketNumber,
+      agency_id: userRole.agency_id,
+      category: "Reclamo de desconocido",
+      subject: `Reclamo sin guía — ${wr.wr_number}`,
+      description: description.trim(),
+      priority: "normal",
+      status: "open",
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (ticketError || !ticket) {
+    return { success: false, error: ticketError?.message ?? "Error al crear ticket" };
+  }
+
+  // Link ticket to WR
+  await supabase.from("ticket_wrs").insert({
+    ticket_id: ticket.id,
+    warehouse_receipt_id: warehouseReceiptId,
+  });
+
+  // Insert attachment records
+  if (attachments.length > 0) {
+    await supabase.from("ticket_attachments").insert(
+      attachments.map((a) => ({
+        organization_id: profile.organization_id,
+        ticket_id: ticket.id,
+        storage_path: a.storagePath,
+        file_name: a.fileName,
+        content_type: a.contentType,
+        uploaded_by: user.id,
+      })),
+    );
+  }
+
+  // Update or create unknown_wrs record with "claimed" status
+  const { data: existingClaim } = await supabase
+    .from("unknown_wrs")
+    .select("id")
+    .eq("warehouse_receipt_id", warehouseReceiptId)
+    .maybeSingle();
+
+  if (existingClaim) {
+    await supabase
+      .from("unknown_wrs")
+      .update({
+        status: "claimed",
+        claimed_by_agency_id: userRole.agency_id,
+        claimed_at: new Date().toISOString(),
+      })
+      .eq("id", existingClaim.id);
+  } else {
+    await supabase.from("unknown_wrs").insert({
+      organization_id: wr.organization_id,
+      warehouse_receipt_id: warehouseReceiptId,
+      status: "claimed",
+      claimed_by_agency_id: userRole.agency_id,
+      claimed_at: new Date().toISOString(),
+    });
+  }
+
+  revalidatePath("/unknown-wrs");
+  revalidatePath("/tickets");
+
+  return { success: true };
+}
+
 export async function uploadClaimInvoice(
   unknownWrId: string,
   storagePath: string,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 interface Organization {
   id: string;
@@ -18,8 +19,29 @@ interface CompanyListProps {
 
 export function CompanyList({ companies, counts }: CompanyListProps) {
   const { locale } = useParams<{ locale: string }>();
+  const [search, setSearch] = useState("");
+
+  const filtered = companies.filter((c) => {
+    if (search) {
+      const q = search.toLowerCase();
+      return c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q);
+    }
+    return true;
+  });
 
   return (
+    <div className="space-y-3">
+      {/* Search row */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar empresa, slug..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
+      </div>
+
     <div className="rounded-lg border bg-white">
       <table className="w-full text-left text-sm">
         <thead>
@@ -33,14 +55,14 @@ export function CompanyList({ companies, counts }: CompanyListProps) {
           </tr>
         </thead>
         <tbody className="divide-y">
-          {companies.length === 0 ? (
+          {filtered.length === 0 ? (
             <tr>
               <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                 No hay empresas registradas.
               </td>
             </tr>
           ) : (
-            companies.map((company) => {
+            filtered.map((company) => {
               const c = counts[company.id] ?? {
                 warehouses: 0,
                 agencies: 0,
@@ -71,6 +93,7 @@ export function CompanyList({ companies, counts }: CompanyListProps) {
           )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

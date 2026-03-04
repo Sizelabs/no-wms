@@ -1,20 +1,30 @@
 "use client";
 
+import { User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import {
+  Field,
+  FormActions,
+  FormCard,
+  FormSection,
+  inputClass,
+  primaryBtnClass,
+  secondaryBtnClass,
+} from "@/components/ui/form-section";
 import { updateUserProfile } from "@/lib/actions/users";
 
-interface User {
+interface UserData {
   id: string;
   full_name: string;
   phone: string | null;
 }
 
 interface UserEditFormProps {
-  user: User;
+  user: UserData;
 }
 
 export function UserEditForm({ user }: UserEditFormProps) {
@@ -40,54 +50,44 @@ export function UserEditForm({ user }: UserEditFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
-      <div>
-        <label
-          htmlFor="full_name"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Nombre completo
-        </label>
-        <input
-          id="full_name"
-          name="full_name"
-          type="text"
-          required
-          defaultValue={user.full_name}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        />
-      </div>
-      <div>
-        <label
-          htmlFor="phone"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Teléfono
-        </label>
-        <input
-          id="phone"
-          name="phone"
-          type="tel"
-          defaultValue={user.phone ?? ""}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
-        />
-      </div>
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-        >
-          {isPending ? t("loading") : t("save")}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          {t("cancel")}
-        </button>
-      </div>
-    </form>
+    <FormCard>
+      <form onSubmit={handleSubmit}>
+        <FormSection title="Usuario" icon={User}>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Nombre completo" htmlFor="full_name" required>
+              <input
+                id="full_name"
+                name="full_name"
+                type="text"
+                required
+                defaultValue={user.full_name}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Teléfono" htmlFor="phone">
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                defaultValue={user.phone ?? ""}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+        </FormSection>
+        <FormActions>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className={secondaryBtnClass}
+          >
+            {t("cancel")}
+          </button>
+          <button type="submit" disabled={isPending} className={primaryBtnClass}>
+            {isPending ? t("loading") : t("save")}
+          </button>
+        </FormActions>
+      </form>
+    </FormCard>
   );
 }

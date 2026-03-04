@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 interface CourrierCoverage {
   id: string;
@@ -23,8 +24,46 @@ interface CourrierListProps {
 
 export function CourrierList({ courriers }: CourrierListProps) {
   const { locale } = useParams<{ locale: string }>();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const filtered = courriers.filter((c) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const countries = c.courrier_coverage.map((cv) => cv.destination_countries?.name ?? "").join(" ");
+      const matches =
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q) ||
+        countries.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    if (statusFilter === "active" && !c.is_active) return false;
+    if (statusFilter === "inactive" && c.is_active) return false;
+    return true;
+  });
 
   return (
+    <div className="space-y-3">
+      {/* Search + status row */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar courrier, código, país..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        >
+          <option value="">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="inactive">Inactivo</option>
+        </select>
+      </div>
+
     <div className="rounded-lg border bg-white">
       <table className="w-full text-left text-sm">
         <thead>
@@ -37,14 +76,14 @@ export function CourrierList({ courriers }: CourrierListProps) {
           </tr>
         </thead>
         <tbody className="divide-y">
-          {courriers.length === 0 ? (
+          {filtered.length === 0 ? (
             <tr>
               <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                 No hay courriers registrados.
               </td>
             </tr>
           ) : (
-            courriers.map((courrier) => {
+            filtered.map((courrier) => {
               const countries = courrier.courrier_coverage
                 .map((c) => c.destination_countries?.name)
                 .filter(Boolean);
@@ -94,6 +133,7 @@ export function CourrierList({ courriers }: CourrierListProps) {
           )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

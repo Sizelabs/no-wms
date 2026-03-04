@@ -4,7 +4,7 @@ import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
 import type { Role } from "@no-wms/shared/constants/roles";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import {
@@ -34,6 +34,8 @@ export function UserList({ users }: UserListProps) {
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const handleAction = useCallback(
     (action: () => Promise<{ error: string } | null>, successMessage: string) => {
@@ -50,7 +52,42 @@ export function UserList({ users }: UserListProps) {
     [router, notify],
   );
 
+  const filtered = users.filter((u) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const roleNames = u.user_roles.map((r) => (ROLE_LABELS[r.role as Role] ?? r.role).toLowerCase()).join(" ");
+      const matches =
+        u.full_name.toLowerCase().includes(q) ||
+        roleNames.includes(q);
+      if (!matches) return false;
+    }
+    if (statusFilter === "active" && !u.is_active) return false;
+    if (statusFilter === "inactive" && u.is_active) return false;
+    return true;
+  });
+
   return (
+    <div className="space-y-3">
+      {/* Search + status row */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar usuario, rol..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        >
+          <option value="">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="inactive">Inactivo</option>
+        </select>
+      </div>
+
     <div className="rounded-lg border bg-white">
       <table className="w-full text-left text-sm">
         <thead>
@@ -62,7 +99,7 @@ export function UserList({ users }: UserListProps) {
           </tr>
         </thead>
         <tbody className="divide-y">
-          {users.length === 0 ? (
+          {filtered.length === 0 ? (
             <tr>
               <td
                 colSpan={4}
@@ -72,7 +109,7 @@ export function UserList({ users }: UserListProps) {
               </td>
             </tr>
           ) : (
-            users.map((u) => (
+            filtered.map((u) => (
               <tr key={u.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">
                   <Link
@@ -155,6 +192,7 @@ export function UserList({ users }: UserListProps) {
           )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

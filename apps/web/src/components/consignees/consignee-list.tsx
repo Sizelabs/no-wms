@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 interface Consignee {
   id: string;
@@ -27,8 +28,47 @@ function getAgencyName(agencies: unknown): string {
 
 export function ConsigneeList({ consignees }: ConsigneeListProps) {
   const { locale } = useParams<{ locale: string }>();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const filtered = consignees.filter((c) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const matches =
+        c.full_name.toLowerCase().includes(q) ||
+        c.casillero.toLowerCase().includes(q) ||
+        c.cedula_ruc?.toLowerCase().includes(q) ||
+        c.city?.toLowerCase().includes(q) ||
+        getAgencyName(c.agencies).toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    if (statusFilter === "active" && !c.is_active) return false;
+    if (statusFilter === "inactive" && c.is_active) return false;
+    return true;
+  });
 
   return (
+    <div className="space-y-3">
+      {/* Search + status row */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar consignatario, casillero, cédula..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        >
+          <option value="">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="inactive">Inactivo</option>
+        </select>
+      </div>
+
     <div className="rounded-lg border bg-white">
       <table className="w-full text-left text-sm">
         <thead>
@@ -42,14 +82,14 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
           </tr>
         </thead>
         <tbody className="divide-y">
-          {consignees.length === 0 ? (
+          {filtered.length === 0 ? (
             <tr>
               <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                 No hay consignatarios registrados.
               </td>
             </tr>
           ) : (
-            consignees.map((c) => (
+            filtered.map((c) => (
               <tr key={c.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-mono text-xs">{c.casillero}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
@@ -81,6 +121,7 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
           )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

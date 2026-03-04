@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
+import { ClaimUnknownWrModal } from "@/components/warehouse/claim-unknown-wr-modal";
 import { claimUnknownWr } from "@/lib/actions/unknown-wrs";
 
 interface ClaimRecord {
@@ -34,6 +35,8 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [trackingInput, setTrackingInput] = useState("");
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [reportingWr, setReportingWr] = useState<UnknownWr | null>(null);
 
   const handleClaim = useCallback(
     (unknownWrId: string) => {
@@ -57,7 +60,33 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
     [trackingInput, router],
   );
 
+  const filtered = data.filter((item) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const consigneeName = (Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? "";
+      const matches =
+        item.wr_number.toLowerCase().includes(q) ||
+        item.packages?.[0]?.sender_name?.toLowerCase().includes(q) ||
+        item.packages?.[0]?.carrier?.toLowerCase().includes(q) ||
+        consigneeName.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    return true;
+  });
+
   return (
+    <div className="space-y-3">
+      {/* Search row */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar WR, remitente, destinatario..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
+      </div>
+
     <div className="rounded-lg border bg-white">
       <table className="w-full text-left text-sm">
         <thead>
@@ -72,14 +101,14 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
           </tr>
         </thead>
         <tbody className="divide-y">
-          {data.length === 0 ? (
+          {filtered.length === 0 ? (
             <tr>
               <td colSpan={isAgencyRole ? 7 : 6} className="px-4 py-8 text-center text-gray-400">
                 No hay paquetes desconocidos.
               </td>
             </tr>
           ) : (
-            data.map((item) => {
+            filtered.map((item) => {
               const claimRecord = Array.isArray(item.unknown_wrs) ? item.unknown_wrs[0] : item.unknown_wrs;
               const claimStatus = claimRecord?.status ?? "unclaimed";
               return (
@@ -144,17 +173,27 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
                             </button>
                           </div>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setClaimingId(item.id);
-                              setTrackingInput("");
-                              setClaimError(null);
-                            }}
-                            className="text-xs font-medium text-gray-600 hover:text-gray-900"
-                          >
-                            Reclamar
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setClaimingId(item.id);
+                                setTrackingInput("");
+                                setClaimError(null);
+                              }}
+                              className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                            >
+                              Reclamar
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              type="button"
+                              onClick={() => setReportingWr(item)}
+                              className="text-xs font-medium text-amber-600 hover:text-amber-800"
+                            >
+                              Sin guía
+                            </button>
+                          </div>
                         )}
                         {claimError && claimingId === item.id && (
                           <p className="mt-1 text-xs text-red-500">{claimError}</p>
@@ -169,6 +208,7 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
           )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

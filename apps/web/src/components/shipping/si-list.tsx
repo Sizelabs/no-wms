@@ -41,13 +41,27 @@ const STATUS_COLORS: Record<string, string> = {
 export function SiList({ data }: SiListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
+  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: "", modality: "" });
+  const [showFilters, setShowFilters] = useState(false);
 
   const filtered = data.filter((si) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const matches =
+        si.si_number.toLowerCase().includes(q) ||
+        si.agencies?.name?.toLowerCase().includes(q) ||
+        si.agencies?.code?.toLowerCase().includes(q) ||
+        si.consignees?.name?.toLowerCase().includes(q) ||
+        si.hawbs.some((h) => h.hawb_number.toLowerCase().includes(q));
+      if (!matches) return false;
+    }
     if (filter.status && si.status !== filter.status) return false;
     if (filter.modality && si.modality !== filter.modality) return false;
     return true;
   });
+
+  const activeFilterCount = [filter.modality].filter(Boolean).length;
 
   const handleApprove = (id: string) => {
     startTransition(async () => {
@@ -75,29 +89,61 @@ export function SiList({ data }: SiListProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-3">
+    <div className="space-y-3">
+      {/* Search + primary filter row */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar SI, agencia, consignatario, HAWB..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
         <select
           value={filter.status}
           onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         >
           <option value="">Todos los estados</option>
           {Object.entries(SI_STATUS_LABELS).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
-        <select
-          value={filter.modality}
-          onChange={(e) => setFilter((f) => ({ ...f, modality: e.target.value }))}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`rounded-md border px-3 py-2 text-sm ${
+            activeFilterCount > 0
+              ? "border-gray-900 bg-gray-900 text-white"
+              : "border-gray-300 text-gray-700 hover:bg-gray-50"
+          }`}
         >
-          <option value="">Todas las modalidades</option>
-          {Object.entries(MODALITY_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
+          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </button>
       </div>
+
+      {/* Expanded filters */}
+      {showFilters && (
+        <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
+          <select
+            value={filter.modality}
+            onChange={(e) => setFilter((f) => ({ ...f, modality: e.target.value }))}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">Todas las modalidades</option>
+            {Object.entries(MODALITY_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+          {activeFilterCount > 0 && (
+            <button
+              onClick={() => setFilter((f) => ({ ...f, modality: "" }))}
+              className="text-xs text-red-600 hover:text-red-800"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-lg border bg-white">
         <table className="w-full text-sm">

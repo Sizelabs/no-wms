@@ -26,25 +26,45 @@ interface TicketListProps {
 }
 
 export function TicketList({ data, agencies }: TicketListProps) {
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [agencyFilter, setAgencyFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   const filtered = data.filter((t) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const matches =
+        t.ticket_number.toLowerCase().includes(q) ||
+        t.subject.toLowerCase().includes(q) ||
+        t.agencies?.name?.toLowerCase().includes(q) ||
+        t.creator?.full_name?.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
     if (statusFilter && t.status !== statusFilter) return false;
     if (priorityFilter && t.priority !== priorityFilter) return false;
-    if (agencyFilter && !t.agencies?.code?.includes(agencyFilter)) return false;
+    if (agencyFilter && !t.agencies?.name?.includes(agencyFilter)) return false;
     return true;
   });
 
+  const activeFilterCount = [priorityFilter, agencyFilter].filter(Boolean).length;
+
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+    <div className="space-y-3">
+      {/* Search + primary filter row */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar ticket, asunto, agencia..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded border px-2 py-1.5 text-sm text-gray-700"
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         >
           <option value="">Todos los estados</option>
           {Object.values(TICKET_STATUSES).map((s) => (
@@ -53,32 +73,59 @@ export function TicketList({ data, agencies }: TicketListProps) {
             </option>
           ))}
         </select>
-        <select
-          value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value)}
-          className="rounded border px-2 py-1.5 text-sm text-gray-700"
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`rounded-md border px-3 py-2 text-sm ${
+            activeFilterCount > 0
+              ? "border-gray-900 bg-gray-900 text-white"
+              : "border-gray-300 text-gray-700 hover:bg-gray-50"
+          }`}
         >
-          <option value="">Todas las prioridades</option>
-          <option value="low">Baja</option>
-          <option value="normal">Normal</option>
-          <option value="high">Alta</option>
-          <option value="urgent">Urgente</option>
-        </select>
-        {agencies && agencies.length > 0 && (
-          <select
-            value={agencyFilter}
-            onChange={(e) => setAgencyFilter(e.target.value)}
-            className="rounded border px-2 py-1.5 text-sm text-gray-700"
-          >
-            <option value="">Todas las agencias</option>
-            {agencies.map((a) => (
-              <option key={a.id} value={a.name}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        )}
+          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </button>
       </div>
+
+      {/* Expanded filters */}
+      {showFilters && (
+        <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">Todas las prioridades</option>
+            <option value="low">Baja</option>
+            <option value="normal">Normal</option>
+            <option value="high">Alta</option>
+            <option value="urgent">Urgente</option>
+          </select>
+          {agencies && agencies.length > 0 && (
+            <select
+              value={agencyFilter}
+              onChange={(e) => setAgencyFilter(e.target.value)}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            >
+              <option value="">Todas las agencias</option>
+              {agencies.map((a) => (
+                <option key={a.id} value={a.name}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {activeFilterCount > 0 && (
+            <button
+              onClick={() => {
+                setPriorityFilter("");
+                setAgencyFilter("");
+              }}
+              className="text-xs text-red-600 hover:text-red-800"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border bg-white">

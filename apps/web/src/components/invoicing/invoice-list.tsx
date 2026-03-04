@@ -26,40 +26,83 @@ interface InvoiceListProps {
 }
 
 export function InvoiceList({ data }: InvoiceListProps) {
+  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: "", agency: "" });
+  const [showFilters, setShowFilters] = useState(false);
 
   const filtered = data.filter((inv) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const matches =
+        inv.invoice_number.toLowerCase().includes(q) ||
+        inv.agencies?.name?.toLowerCase().includes(q) ||
+        inv.agencies?.code?.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
     if (filter.status && inv.status !== filter.status) return false;
     if (filter.agency && inv.agencies?.code !== filter.agency) return false;
     return true;
   });
 
   const agencies = [...new Set(data.map((inv) => inv.agencies?.code).filter(Boolean))];
+  const activeFilterCount = [filter.agency].filter(Boolean).length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-3">
+    <div className="space-y-3">
+      {/* Search + primary filter row */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar factura, agencia..."
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        />
         <select
           value={filter.status}
           onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         >
           <option value="">Todos los estados</option>
           {Object.entries(INVOICE_STATUS_LABELS).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
-        <select
-          value={filter.agency}
-          onChange={(e) => setFilter((f) => ({ ...f, agency: e.target.value }))}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`rounded-md border px-3 py-2 text-sm ${
+            activeFilterCount > 0
+              ? "border-gray-900 bg-gray-900 text-white"
+              : "border-gray-300 text-gray-700 hover:bg-gray-50"
+          }`}
         >
-          <option value="">Todas las agencias</option>
-          {agencies.map((code) => (
-            <option key={code} value={code}>{code}</option>
-          ))}
-        </select>
+          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </button>
       </div>
+
+      {/* Expanded filters */}
+      {showFilters && (
+        <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
+          <select
+            value={filter.agency}
+            onChange={(e) => setFilter((f) => ({ ...f, agency: e.target.value }))}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">Todas las agencias</option>
+            {agencies.map((code) => (
+              <option key={code} value={code}>{code}</option>
+            ))}
+          </select>
+          {activeFilterCount > 0 && (
+            <button
+              onClick={() => setFilter((f) => ({ ...f, agency: "" }))}
+              className="text-xs text-red-600 hover:text-red-800"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-lg border bg-white">
         <table className="w-full text-sm">
