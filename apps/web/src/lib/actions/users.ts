@@ -159,6 +159,7 @@ export async function inviteUser(
 
 /**
  * Resend the invite email to a user who hasn't set their password yet.
+ * Uses generateLink (works for existing users, unlike inviteUserByEmail).
  */
 export async function resendInvite(
   userId: string,
@@ -176,10 +177,30 @@ export async function resendInvite(
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  const { error } = await admin.auth.admin.inviteUserByEmail(
-    authUser.user.email,
-    { redirectTo: `${siteUrl}/auth/callback` },
-  );
+  // generateLink with type "invite" works for existing unconfirmed users
+  // (inviteUserByEmail rejects them with "already registered")
+  const { data: linkData, error: linkError } =
+    await admin.auth.admin.generateLink({
+      type: "invite",
+      email: authUser.user.email,
+      options: {
+        redirectTo: `${siteUrl}/auth/callback`,
+      },
+    });
+
+  if (linkError) {
+    return { error: linkError.message };
+  }
+
+  // generateLink refreshes the invite token but doesn't send the email,
+  // so trigger the send via resend() which emails the current token
+  const { error } = await admin.auth.resend({
+    type: "signup",
+    email: authUser.user.email,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/callback`,
+    },
+  });
 
   if (error) {
     return { error: error.message };
