@@ -103,6 +103,10 @@ export const createWorkOrderSchema = z.object({
     });
   }
 
+  if (data.type === "photos" && !data.instructions) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["instructions"], message: "Instrucciones requeridas para fotos" });
+  }
+
   if (data.type === "authorize_pickup") {
     if (!data.pickup_date) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pickup_date"], message: "Fecha de retiro requerida" });

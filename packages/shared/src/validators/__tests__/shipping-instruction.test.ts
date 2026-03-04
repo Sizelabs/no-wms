@@ -12,6 +12,7 @@ const validSI = {
   modality: "courier_a" as const,
   consignee_id: "a0000000-0000-0000-0000-000000000004",
   warehouse_receipt_ids: ["a0000000-0000-0000-0000-000000000010"],
+  destination_city: "Guayaquil",
 };
 
 describe("createShippingInstructionSchema", () => {
