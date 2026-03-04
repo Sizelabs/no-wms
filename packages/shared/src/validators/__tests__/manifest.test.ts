@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   createMawbSchema,
   createPickupRequestSchema,
-  createSacaSchema,
   createTransferRequestSchema,
 } from "../manifest";
 
@@ -46,33 +45,6 @@ describe("createMawbSchema", () => {
       flight_number: "LA-601",
       flight_date: "2026-03-15",
       destination_country_id: "a0000000-0000-0000-0000-000000000003",
-    });
-    expect(result.success).toBe(true);
-  });
-});
-
-describe("createSacaSchema", () => {
-  it("accepts valid saca", () => {
-    const result = createSacaSchema.safeParse({
-      warehouse_id: "a0000000-0000-0000-0000-000000000001",
-      warehouse_receipt_ids: ["a0000000-0000-0000-0000-000000000010"],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects empty warehouse_receipt_ids", () => {
-    const result = createSacaSchema.safeParse({
-      warehouse_id: "a0000000-0000-0000-0000-000000000001",
-      warehouse_receipt_ids: [],
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts optional mawb_id", () => {
-    const result = createSacaSchema.safeParse({
-      warehouse_id: "a0000000-0000-0000-0000-000000000001",
-      mawb_id: "a0000000-0000-0000-0000-000000000099",
-      warehouse_receipt_ids: ["a0000000-0000-0000-0000-000000000010"],
     });
     expect(result.success).toBe(true);
   });

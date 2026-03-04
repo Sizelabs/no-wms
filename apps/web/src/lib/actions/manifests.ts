@@ -78,7 +78,7 @@ export async function getMawb(id: string) {
 
   const { data, error } = await supabase
     .from("mawbs")
-    .select("*, destination_countries(name), hawbs(*, shipping_instructions(si_number, agency_id, agencies(name, code))), sacas(*, saca_items(warehouse_receipt_id))")
+    .select("*, destination_countries(name), hawbs(*, shipping_instructions(si_number, agency_id, agencies(name, code)))")
     .eq("id", id)
     .single();
 
@@ -146,95 +146,6 @@ export async function assignHawbToMawb(hawbId: string, mawbId: string): Promise<
     .from("hawbs")
     .update({ mawb_id: mawbId })
     .eq("id", hawbId);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/manifests");
-  return {};
-}
-
-// ── Sacas ──
-
-export async function createSaca(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) return { error: "Perfil no encontrado" };
-
-  const wrIds = JSON.parse(formData.get("warehouse_receipt_ids") as string) as string[];
-  if (!wrIds.length) return { error: "Seleccione al menos un WR" };
-
-  // Generate saca number
-  const { count } = await supabase
-    .from("sacas")
-    .select("*", { count: "exact", head: true });
-
-  const sacaNumber = `SC${String((count ?? 0) + 1).padStart(5, "0")}`;
-
-  const { data: saca, error } = await supabase
-    .from("sacas")
-    .insert({
-      organization_id: profile.organization_id,
-      warehouse_id: formData.get("warehouse_id") as string,
-      saca_number: sacaNumber,
-      mawb_id: (formData.get("mawb_id") as string) || null,
-    })
-    .select("id")
-    .single();
-
-  if (error) return { error: error.message };
-
-  const items = wrIds.map((wrId) => ({
-    saca_id: saca.id,
-    warehouse_receipt_id: wrId,
-  }));
-
-  await supabase.from("saca_items").insert(items);
-
-  revalidatePath("/manifests");
-  return { id: saca.id };
-}
-
-export async function getSacas(filters?: { status?: string; mawb_id?: string }) {
-  const supabase = await createClient();
-  const warehouseScope = await getUserWarehouseScope();
-
-  if (warehouseScope !== null && warehouseScope.length === 0) {
-    return { data: [], error: null };
-  }
-
-  let query = supabase
-    .from("sacas")
-    .select("*, saca_items(warehouse_receipt_id, warehouse_receipts(wr_number, packages(tracking_number))), mawbs(mawb_number)")
-    .order("created_at", { ascending: false });
-
-  if (warehouseScope !== null) {
-    query = query.in("warehouse_id", warehouseScope);
-  }
-
-  if (filters?.status) query = query.eq("status", filters.status);
-  if (filters?.mawb_id) query = query.eq("mawb_id", filters.mawb_id);
-
-  const { data, error } = await query;
-  if (error) return { data: null, error: error.message };
-  return { data, error: null };
-}
-
-export async function updateSacaStatus(id: string, newStatus: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("sacas")
-    .update({ status: newStatus })
-    .eq("id", id);
 
   if (error) return { error: error.message };
 

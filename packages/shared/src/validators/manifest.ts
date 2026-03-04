@@ -9,12 +9,6 @@ export const createMawbSchema = z.object({
   destination_country_id: z.string().uuid(),
 });
 
-export const createSacaSchema = z.object({
-  warehouse_id: z.string().uuid(),
-  mawb_id: z.string().uuid().optional(),
-  warehouse_receipt_ids: z.array(z.string().uuid()).min(1, "Seleccione al menos un WR"),
-});
-
 export const createAirlineReservationSchema = z.object({
   airline: z.string().min(1, "Aerolínea requerida"),
   reserved_mawb_numbers: z.array(z.string()).min(1, "Al menos un número reservado"),
@@ -43,7 +37,6 @@ export const createTransferRequestSchema = z.object({
 });
 
 export type CreateMawbInput = z.infer<typeof createMawbSchema>;
-export type CreateSacaInput = z.infer<typeof createSacaSchema>;
 export type CreateAirlineReservationInput = z.infer<typeof createAirlineReservationSchema>;
 export type CreatePickupRequestInput = z.infer<typeof createPickupRequestSchema>;
 export type CreateTransferRequestInput = z.infer<typeof createTransferRequestSchema>;
