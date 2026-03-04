@@ -158,8 +158,10 @@ export async function inviteUser(
 }
 
 /**
- * Resend the invite email to a user who hasn't confirmed yet.
- * Uses auth.resend (inviteUserByEmail and generateLink both reject existing users).
+ * Resend the invite email to a user who hasn't set their password yet.
+ * Uses signInWithOtp which reliably sends an email to existing users
+ * (inviteUserByEmail/generateLink reject existing users, and
+ * auth.resend silently skips invited users).
  */
 export async function resendInvite(
   userId: string,
@@ -176,10 +178,10 @@ export async function resendInvite(
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  const { error } = await admin.auth.resend({
-    type: "signup",
+  const { error } = await admin.auth.signInWithOtp({
     email: authUser.user.email,
     options: {
+      shouldCreateUser: false,
       emailRedirectTo: `${siteUrl}/auth/callback`,
     },
   });
