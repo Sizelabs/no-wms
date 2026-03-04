@@ -1,10 +1,54 @@
 "use client";
 
+import {
+  BarChart3,
+  Boxes,
+  Building,
+  Building2,
+  ClipboardList,
+  Contact,
+  DollarSign,
+  FileText,
+  HelpCircle,
+  History,
+  LayoutDashboard,
+  Package,
+  PackageCheck,
+  Receipt,
+  Settings,
+  TicketCheck,
+  Truck,
+  Users,
+  Warehouse,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import type { NavItem } from "@/lib/navigation";
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  BarChart3,
+  Boxes,
+  Building,
+  Building2,
+  ClipboardList,
+  Contact,
+  DollarSign,
+  FileText,
+  HelpCircle,
+  History,
+  LayoutDashboard,
+  Package,
+  PackageCheck,
+  Receipt,
+  Settings,
+  TicketCheck,
+  Truck,
+  Users,
+  Warehouse,
+};
 
 interface SidebarProps {
   items: NavItem[];
@@ -33,17 +77,19 @@ export function Sidebar({ items, locale }: SidebarProps) {
               item.href === "/"
                 ? pathname === `/${locale}` || pathname === `/${locale}/`
                 : pathname.startsWith(`/${locale}${item.href}`);
+            const Icon = ICON_MAP[item.icon];
 
             return (
               <li key={item.href}>
                 <Link
                   href={fullHref}
-                  className={`flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
                       ? "bg-gray-100 text-gray-900"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >
+                  {Icon && <Icon className="size-4 shrink-0" />}
                   {t(item.label)}
                 </Link>
               </li>
@@ -51,6 +97,11 @@ export function Sidebar({ items, locale }: SidebarProps) {
           })}
         </ul>
       </nav>
+
+      {/* Version */}
+      <div className="border-t px-4 py-3">
+        <span className="text-xs font-mono text-gray-400">v0.1.0</span>
+      </div>
     </aside>
   );
 }
