@@ -2469,4 +2469,108 @@ INSERT INTO notification_preferences (
 
 ON CONFLICT (id) DO NOTHING;
 
+-- ============================================================================
+-- 40. ROLE PERMISSIONS (default CRUD permissions per role per resource)
+-- ============================================================================
+
+INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, can_delete) VALUES
+-- forwarder_admin
+('forwarder_admin', 'forwarders',          false, true,  true,  false),
+('forwarder_admin', 'warehouses',          true,  true,  true,  true),
+('forwarder_admin', 'couriers',            true,  true,  true,  true),
+('forwarder_admin', 'agencies',            true,  true,  true,  true),
+('forwarder_admin', 'users',               true,  true,  true,  true),
+('forwarder_admin', 'warehouse_receipts',  true,  true,  true,  false),
+('forwarder_admin', 'inventory',           false, true,  false, false),
+('forwarder_admin', 'work_orders',         true,  true,  true,  false),
+('forwarder_admin', 'shipping',            true,  true,  true,  false),
+('forwarder_admin', 'manifests',           true,  true,  true,  false),
+('forwarder_admin', 'tariffs',             false, true,  true,  false),
+('forwarder_admin', 'invoicing',           true,  true,  true,  false),
+('forwarder_admin', 'tickets',             true,  true,  true,  false),
+('forwarder_admin', 'reports',             false, true,  false, false),
+('forwarder_admin', 'unknown_wrs',         false, true,  true,  false),
+('forwarder_admin', 'settings',            false, true,  true,  false),
+('forwarder_admin', 'consignees',          true,  true,  true,  true),
+('forwarder_admin', 'history',             false, true,  false, false),
+('forwarder_admin', 'charge_types',        true,  true,  true,  true),
+
+-- warehouse_admin
+('warehouse_admin', 'warehouses',          false, true,  true,  false),
+('warehouse_admin', 'couriers',            false, true,  false, false),
+('warehouse_admin', 'agencies',            false, true,  false, false),
+('warehouse_admin', 'warehouse_receipts',  true,  true,  true,  false),
+('warehouse_admin', 'inventory',           false, true,  false, false),
+('warehouse_admin', 'work_orders',         true,  true,  true,  false),
+('warehouse_admin', 'shipping',            true,  true,  true,  false),
+('warehouse_admin', 'manifests',           true,  true,  true,  false),
+('warehouse_admin', 'tickets',             true,  true,  true,  false),
+('warehouse_admin', 'reports',             false, true,  false, false),
+('warehouse_admin', 'unknown_wrs',         false, true,  true,  false),
+('warehouse_admin', 'settings',            false, true,  true,  false),
+('warehouse_admin', 'consignees',          true,  true,  true,  true),
+('warehouse_admin', 'history',             false, true,  false, false),
+
+-- warehouse_operator
+('warehouse_operator', 'warehouse_receipts', true,  true,  true,  false),
+('warehouse_operator', 'inventory',          false, true,  false, false),
+('warehouse_operator', 'work_orders',        false, true,  true,  false),
+('warehouse_operator', 'manifests',          false, true,  false, false),
+('warehouse_operator', 'tickets',            true,  true,  false, false),
+('warehouse_operator', 'unknown_wrs',        false, true,  true,  false),
+('warehouse_operator', 'consignees',         false, true,  false, false),
+('warehouse_operator', 'history',            false, true,  false, false),
+
+-- shipping_clerk
+('shipping_clerk', 'inventory',           false, true,  false, false),
+('shipping_clerk', 'shipping',            true,  true,  true,  false),
+('shipping_clerk', 'manifests',           true,  true,  true,  false),
+('shipping_clerk', 'tickets',             true,  true,  false, false),
+('shipping_clerk', 'reports',             false, true,  false, false),
+('shipping_clerk', 'history',             false, true,  false, false),
+
+-- destination_admin
+('destination_admin', 'couriers',            false, true,  true,  false),
+('destination_admin', 'agencies',            true,  true,  true,  true),
+('destination_admin', 'consignees',          true,  true,  true,  true),
+('destination_admin', 'warehouse_receipts',  false, true,  false, false),
+('destination_admin', 'inventory',           false, true,  false, false),
+('destination_admin', 'work_orders',         false, true,  false, false),
+('destination_admin', 'shipping',            false, true,  true,  false),
+('destination_admin', 'manifests',           false, true,  true,  false),
+('destination_admin', 'tariffs',             false, true,  true,  false),
+('destination_admin', 'invoicing',           true,  true,  true,  false),
+('destination_admin', 'tickets',             true,  true,  true,  false),
+('destination_admin', 'reports',             false, true,  false, false),
+('destination_admin', 'unknown_wrs',         false, true,  true,  false),
+('destination_admin', 'settings',            false, true,  true,  false),
+('destination_admin', 'history',             false, true,  false, false),
+('destination_admin', 'charge_types',        false, true,  false, false),
+
+-- destination_operator
+('destination_operator', 'couriers',         false, true,  false, false),
+('destination_operator', 'agencies',         false, true,  false, false),
+('destination_operator', 'inventory',        false, true,  false, false),
+('destination_operator', 'shipping',         false, true,  false, false),
+('destination_operator', 'manifests',        false, true,  false, false),
+('destination_operator', 'tickets',          true,  true,  false, false),
+('destination_operator', 'reports',          false, true,  false, false),
+('destination_operator', 'unknown_wrs',      false, true,  true,  false),
+('destination_operator', 'history',          false, true,  false, false),
+
+-- agency
+('agency', 'consignees',          true,  true,  true,  false),
+('agency', 'inventory',           false, true,  false, false),
+('agency', 'work_orders',         true,  true,  false, false),
+('agency', 'shipping',            true,  true,  false, false),
+('agency', 'manifests',           false, true,  false, false),
+('agency', 'tariffs',             false, true,  false, false),
+('agency', 'invoicing',           false, true,  false, false),
+('agency', 'tickets',             true,  true,  false, false),
+('agency', 'unknown_wrs',         false, true,  true,  false),
+('agency', 'history',             false, true,  false, false),
+('agency', 'charge_types',        false, true,  false, false)
+
+ON CONFLICT (role, resource) DO NOTHING;
+
 SET session_replication_role = 'origin';
