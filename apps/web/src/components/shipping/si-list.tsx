@@ -2,7 +2,7 @@
 
 import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
@@ -46,7 +46,7 @@ export function SiList({ data }: SiListProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: "", modality: "" });
   const [showFilters, setShowFilters] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = data.filter((si) => {
     if (search) {
@@ -148,7 +148,7 @@ export function SiList({ data }: SiListProps) {
         </div>
       )}
 
-      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+      <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -166,7 +166,7 @@ export function SiList({ data }: SiListProps) {
           </thead>
           <VirtualTableBody
             items={filtered}
-            scrollRef={scrollRef}
+            scrollElement={scrollEl}
             colSpan={10}
             emptyMessage="No hay instrucciones de embarque"
             renderRow={(si) => (

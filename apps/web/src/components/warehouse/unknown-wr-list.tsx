@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { ClaimUnknownWrModal } from "@/components/warehouse/claim-unknown-wr-modal";
@@ -38,7 +38,7 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
   const [claimError, setClaimError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [reportingWr, setReportingWr] = useState<UnknownWr | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const handleClaim = useCallback(
     (unknownWrId: string) => {
@@ -89,7 +89,7 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
         />
       </div>
 
-    <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+    <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
       <table className="w-full text-left text-sm">
         <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -104,7 +104,7 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
         </thead>
         <VirtualTableBody
           items={filtered}
-          scrollRef={scrollRef}
+          scrollElement={scrollEl}
           colSpan={isAgencyRole ? 7 : 6}
           emptyMessage="No hay paquetes desconocidos."
           renderRow={(item) => {

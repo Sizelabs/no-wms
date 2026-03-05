@@ -217,19 +217,19 @@ export function HistoryWrTable({ data, count, locale, agencies = [], warehouses 
 
       {/* Table */}
       <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
-        <table className="w-full text-left text-sm">
+        <table className="w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
-            <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-3 py-3">WR#</th>
-              <th className="px-3 py-3">Tracking</th>
-              <th className="px-3 py-3">Agencia</th>
-              <th className="px-3 py-3">Consignatario</th>
-              <th className="px-3 py-3">Piezas</th>
-              <th className="px-3 py-3">Peso (lb)</th>
-              <th className="px-3 py-3">Valor</th>
-              <th className="px-3 py-3">Recibido</th>
-              <th className="px-3 py-3">Ultimo cambio</th>
-              <th className="px-3 py-3">Estado</th>
+            <tr className="text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="border-b border-gray-200 px-3 py-3">WR#</th>
+              <th className="border-b border-gray-200 px-3 py-3">Tracking</th>
+              <th className="border-b border-gray-200 px-3 py-3">Agencia</th>
+              <th className="border-b border-gray-200 px-3 py-3">Consignatario</th>
+              <th className="border-b border-gray-200 px-3 py-3">Piezas</th>
+              <th className="border-b border-gray-200 px-3 py-3">Peso (lb)</th>
+              <th className="border-b border-gray-200 px-3 py-3">Valor</th>
+              <th className="border-b border-gray-200 px-3 py-3">Recibido</th>
+              <th className="border-b border-gray-200 px-3 py-3">Ultimo cambio</th>
+              <th className="border-b border-gray-200 px-3 py-3">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -250,7 +250,7 @@ export function HistoryWrTable({ data, count, locale, agencies = [], warehouses 
                   <React.Fragment key={groupKey}>
                     {/* Group header */}
                     <tr
-                      className="sticky top-[41px] z-[5] border-t-2 border-gray-200 bg-gray-50 cursor-pointer select-none"
+                      className="border-t-2 border-gray-200 bg-gray-50 cursor-pointer select-none"
                       onClick={() => toggleCollapse(groupKey)}
                     >
                       <td colSpan={4} className="px-3 py-2.5">

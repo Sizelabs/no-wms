@@ -2,7 +2,7 @@
 
 import { TICKET_STATUSES } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { TicketPriorityBadge } from "@/components/tickets/ticket-priority-badge";
 import { TicketStatusBadge } from "@/components/tickets/ticket-status-badge";
@@ -33,7 +33,7 @@ export function TicketList({ data, agencies }: TicketListProps) {
   const [priorityFilter, setPriorityFilter] = useState("");
   const [agencyFilter, setAgencyFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = data.filter((t) => {
     if (search) {
@@ -131,7 +131,7 @@ export function TicketList({ data, agencies }: TicketListProps) {
       )}
 
       {/* Table */}
-      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+      <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -146,7 +146,7 @@ export function TicketList({ data, agencies }: TicketListProps) {
           </thead>
           <VirtualTableBody
             items={filtered}
-            scrollRef={scrollRef}
+            scrollElement={scrollEl}
             colSpan={7}
             emptyMessage="No hay tickets"
             renderRow={(ticket) => (

@@ -1,11 +1,11 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode } from "react";
 
 interface VirtualTableBodyProps<T> {
   items: T[];
-  scrollRef: RefObject<HTMLDivElement | null>;
+  scrollElement: HTMLDivElement | null;
   estimateSize?: number;
   renderRow: (item: T, index: number) => ReactNode;
   colSpan: number;
@@ -14,7 +14,7 @@ interface VirtualTableBodyProps<T> {
 
 export function VirtualTableBody<T>({
   items,
-  scrollRef,
+  scrollElement,
   estimateSize = 41,
   renderRow,
   colSpan,
@@ -22,7 +22,7 @@ export function VirtualTableBody<T>({
 }: VirtualTableBodyProps<T>) {
   const virtualizer = useVirtualizer({
     count: items.length,
-    getScrollElement: () => scrollRef.current,
+    getScrollElement: () => scrollElement,
     estimateSize: () => estimateSize,
     overscan: 10,
   });

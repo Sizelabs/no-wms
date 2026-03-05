@@ -9,10 +9,11 @@ interface TopbarProps {
   userName: string;
   userRole: string;
   userEmail: string;
+  orgName: string;
   locale: string;
 }
 
-export function Topbar({ userName, userRole, userEmail, locale }: TopbarProps) {
+export function Topbar({ userName, userRole, userEmail, orgName, locale }: TopbarProps) {
   const t = useTranslations("common");
 
   return (
@@ -32,12 +33,20 @@ export function Topbar({ userName, userRole, userEmail, locale }: TopbarProps) {
 
       <div className="flex items-center gap-3">
         <NotificationBell />
-        <UserMenu
-          userName={userName}
-          userRole={userRole}
-          userEmail={userEmail}
-          locale={locale}
-        />
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-sm font-medium leading-tight text-gray-900">{userName}</p>
+            {orgName && (
+              <p className="text-xs leading-tight text-gray-500">{orgName}</p>
+            )}
+          </div>
+          <UserMenu
+            userName={userName}
+            userRole={userRole}
+            userEmail={userEmail}
+            locale={locale}
+          />
+        </div>
       </div>
     </header>
   );

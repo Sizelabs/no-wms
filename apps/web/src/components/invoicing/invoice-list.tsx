@@ -2,7 +2,7 @@
 
 import { INVOICE_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { InvoiceStatusBadge } from "@/components/invoicing/invoice-status-badge";
 import { filterSelectClass } from "@/components/ui/form-section";
@@ -31,7 +31,7 @@ export function InvoiceList({ data }: InvoiceListProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: "", agency: "" });
   const [showFilters, setShowFilters] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = data.filter((inv) => {
     if (search) {
@@ -107,7 +107,7 @@ export function InvoiceList({ data }: InvoiceListProps) {
         </div>
       )}
 
-      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+      <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -125,7 +125,7 @@ export function InvoiceList({ data }: InvoiceListProps) {
           </thead>
           <VirtualTableBody
             items={filtered}
-            scrollRef={scrollRef}
+            scrollElement={scrollEl}
             colSpan={10}
             emptyMessage="No hay facturas"
             renderRow={(inv) => (

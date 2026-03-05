@@ -29,8 +29,8 @@ const SETTINGS_GROUPS: SettingsNavGroup[] = [
   {
     id: "groupInfrastructure",
     items: [
-      { label: "warehouses", href: "/settings/warehouses", resource: "warehouses" },
       { label: "forwarders", href: "/settings/forwarders", resource: "forwarders" },
+      { label: "warehouses", href: "/settings/warehouses", resource: "warehouses" },
       { label: "couriers", href: "/settings/couriers", resource: "couriers" },
     ],
   },

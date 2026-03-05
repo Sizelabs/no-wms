@@ -45,6 +45,15 @@ export default async function DashboardLayout({
   const userRole = ROLE_LABELS[primaryRole];
   const userEmail = user.email ?? "";
 
+  // Fetch the user's organization name
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organizations(name)")
+    .eq("id", user.id)
+    .single();
+  const orgs = profile?.organizations as unknown as { name: string } | { name: string }[] | null;
+  const orgName = Array.isArray(orgs) ? (orgs[0]?.name ?? "") : (orgs?.name ?? "");
+
   // Read sidebar collapse cookie for SSR (avoid layout shift)
   const cookieStore = await cookies();
   const defaultCollapsed = cookieStore.get("sidebar-collapsed")?.value === "true";
@@ -61,6 +70,7 @@ export default async function DashboardLayout({
           userName={userName}
           userRole={userRole}
           userEmail={userEmail}
+          orgName={orgName}
           locale={locale}
         />
         <NotificationProvider>
