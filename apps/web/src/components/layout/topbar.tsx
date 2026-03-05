@@ -2,15 +2,17 @@
 
 import { useTranslations } from "next-intl";
 
+import { UserMenu } from "@/components/layout/user-menu";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { logout } from "@/lib/actions/auth";
 
 interface TopbarProps {
   userName: string;
   userRole: string;
+  userEmail: string;
+  locale: string;
 }
 
-export function Topbar({ userName, userRole }: TopbarProps) {
+export function Topbar({ userName, userRole, userEmail, locale }: TopbarProps) {
   const t = useTranslations("common");
 
   return (
@@ -28,21 +30,14 @@ export function Topbar({ userName, userRole }: TopbarProps) {
         </button>
       </div>
 
-      {/* User menu */}
       <div className="flex items-center gap-3">
         <NotificationBell />
-        <div className="text-right">
-          <p className="text-sm font-medium text-gray-900">{userName}</p>
-          <p className="text-xs text-gray-500">{userRole}</p>
-        </div>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-          >
-            {t("appName") === "no-wms" ? "Salir" : "Logout"}
-          </button>
-        </form>
+        <UserMenu
+          userName={userName}
+          userRole={userRole}
+          userEmail={userEmail}
+          locale={locale}
+        />
       </div>
     </header>
   );

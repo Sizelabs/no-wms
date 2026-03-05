@@ -1,4 +1,5 @@
 import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -8,7 +9,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { getRolePermissions } from "@/lib/actions/permissions";
 import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds, getUserRoleAssignments } from "@/lib/auth/roles";
-import { getNavForPermissions, getPrimaryRole } from "@/lib/navigation";
+import { getFilteredNavConfig, getPrimaryRole } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -36,18 +37,32 @@ export default async function DashboardLayout({
   const agencyIds = getScopedAgencyIds(assignments);
   const primaryRole = getPrimaryRole(roles);
   const permissions = await getRolePermissions(primaryRole);
-  const navItems = getNavForPermissions(permissions);
+  const navConfig = getFilteredNavConfig(permissions);
   const userName =
     user.user_metadata?.full_name ??
     user.email ??
     "Usuario";
   const userRole = ROLE_LABELS[primaryRole];
+  const userEmail = user.email ?? "";
+
+  // Read sidebar collapse cookie for SSR (avoid layout shift)
+  const cookieStore = await cookies();
+  const defaultCollapsed = cookieStore.get("sidebar-collapsed")?.value === "true";
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar items={navItems} locale={locale} />
+      <Sidebar
+        navConfig={navConfig}
+        locale={locale}
+        defaultCollapsed={defaultCollapsed}
+      />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar userName={userName} userRole={userRole} />
+        <Topbar
+          userName={userName}
+          userRole={userRole}
+          userEmail={userEmail}
+          locale={locale}
+        />
         <NotificationProvider>
           <RoleProvider roles={roles} warehouseIds={warehouseIds} courierIds={courierIds} agencyIds={agencyIds} permissions={permissions}>
             <main className="flex-1 overflow-y-auto p-6">{children}</main>
