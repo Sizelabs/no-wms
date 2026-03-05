@@ -147,7 +147,6 @@ export function HandlingCostList({ data, selectedCourierId }: HandlingCostListPr
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-4 py-3">#</th>
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Tarifa</th>
               <th className="px-4 py-3">Unidad</th>
@@ -159,11 +158,10 @@ export function HandlingCostList({ data, selectedCourierId }: HandlingCostListPr
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={7}
+            colSpan={6}
             emptyMessage="No hay costos de manejo registrados."
             renderRow={(hc) => (
               <tr key={hc.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-xs text-gray-400">{hc.display_order}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
                   {hc.name}
                   {selectedCourierId && hc.is_custom && (
