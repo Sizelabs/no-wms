@@ -31,57 +31,72 @@ export function useNotification() {
   return ctx;
 }
 
+const DURATION = 5000;
+const EXIT_MS = 200;
+
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notification, setNotification] = useState<Notification | null>(null);
+  const [phase, setPhase] = useState<"in" | "out" | null>(null);
+  const [key, setKey] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (exitRef.current) clearTimeout(exitRef.current);
+  }, []);
 
   const dismiss = useCallback(() => {
-    setNotification(null);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setPhase("out");
+    exitRef.current = setTimeout(() => {
+      setNotification(null);
+      setPhase(null);
+    }, EXIT_MS);
   }, []);
 
   const notify = useCallback(
     (message: string, type: NotificationType) => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      clearTimers();
       setNotification({ message, type });
-      timerRef.current = setTimeout(dismiss, 5000);
+      setPhase("in");
+      setKey((k) => k + 1);
+      timerRef.current = setTimeout(dismiss, DURATION);
     },
-    [dismiss],
+    [clearTimers, dismiss],
   );
 
   useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+    return clearTimers;
+  }, [clearTimers]);
 
   return (
     <NotificationContext.Provider value={{ notify }}>
       {children}
-      {notification && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
-          <div
-            role="alert"
-            className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm shadow-lg ${
-              notification.type === "success"
-                ? "border-gray-200 bg-white text-gray-800"
-                : "border-red-200 bg-white text-red-700"
+      {notification && phase && (
+        <div
+          key={key}
+          role="alert"
+          className={`fixed bottom-6 left-1/2 z-50 flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm shadow-lg ${
+            notification.type === "success"
+              ? "border-gray-200 bg-white text-gray-800"
+              : "border-red-200 bg-white text-red-700"
+          } ${phase === "in" ? "animate-toast-in" : "animate-toast-out"}`}
+        >
+          <span
+            className={`size-2 shrink-0 rounded-full ${
+              notification.type === "success" ? "bg-green-500" : "bg-red-500"
             }`}
+          />
+          <span className="whitespace-nowrap">{notification.message}</span>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="ml-1 shrink-0 text-gray-400 hover:text-gray-600"
+            aria-label="Cerrar"
           >
-            <span
-              className={`size-2 shrink-0 rounded-full ${
-                notification.type === "success" ? "bg-green-500" : "bg-red-500"
-              }`}
-            />
-            <span className="whitespace-nowrap">{notification.message}</span>
-            <button
-              type="button"
-              onClick={dismiss}
-              className="ml-1 shrink-0 text-gray-400 hover:text-gray-600"
-              aria-label="Cerrar"
-            >
-              ✕
-            </button>
-          </div>
+            ✕
+          </button>
         </div>
       )}
     </NotificationContext.Provider>
