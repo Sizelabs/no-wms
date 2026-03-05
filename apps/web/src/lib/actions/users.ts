@@ -1,9 +1,40 @@
 "use server";
 
+import type { Role } from "@no-wms/shared/constants/roles";
 import { revalidatePath } from "next/cache";
 
+import { getUserRoles } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+const ADMIN_ROLES: Role[] = ["super_admin", "forwarder_admin"];
+
+/**
+ * Verify the current user has admin privileges (super_admin or forwarder_admin).
+ * Returns the caller's roles and organization_id, or an error.
+ */
+async function requireUserAdmin(): Promise<
+  { ok: true; roles: Role[]; orgId: string | null; userId: string } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  const roles = await getUserRoles(supabase, user.id);
+  if (!roles.some((r) => ADMIN_ROLES.includes(r))) {
+    return { ok: false, error: "Sin permisos" };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  return { ok: true, roles, orgId: profile?.organization_id ?? null, userId: user.id };
+}
 
 export async function getCourierUsers(courierId: string) {
   const supabase = await createClient();
@@ -89,8 +120,8 @@ export async function updateUserProfile(
   }
 
   revalidatePath("/settings");
-  revalidatePath("/forwarders");
-  revalidatePath("/users");
+  revalidatePath("/settings/forwarders");
+  revalidatePath("/settings/users");
 }
 
 export async function assignRole(formData: FormData): Promise<void> {
@@ -111,8 +142,8 @@ export async function assignRole(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/settings");
-  revalidatePath("/forwarders");
-  revalidatePath("/users");
+  revalidatePath("/settings/forwarders");
+  revalidatePath("/settings/users");
 }
 
 export async function removeRole(roleId: string): Promise<void> {
@@ -128,8 +159,8 @@ export async function removeRole(roleId: string): Promise<void> {
   }
 
   revalidatePath("/settings");
-  revalidatePath("/forwarders");
-  revalidatePath("/users");
+  revalidatePath("/settings/forwarders");
+  revalidatePath("/settings/users");
 }
 
 /**
@@ -186,8 +217,8 @@ export async function inviteUser(
   }
 
   revalidatePath("/settings");
-  revalidatePath("/forwarders");
-  revalidatePath("/users");
+  revalidatePath("/settings/forwarders");
+  revalidatePath("/settings/users");
   return null;
 }
 
@@ -200,7 +231,22 @@ export async function inviteUser(
 export async function resendInvite(
   userId: string,
 ): Promise<{ error: string } | null> {
+  const auth = await requireUserAdmin();
+  if (!auth.ok) return { error: auth.error };
+
   const admin = createAdminClient();
+
+  // Verify target is in same org (unless super_admin)
+  const { data: targetProfile } = await admin
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", userId)
+    .single();
+
+  if (!targetProfile) return { error: "Usuario no encontrado" };
+  if (!auth.roles.includes("super_admin") && targetProfile.organization_id !== auth.orgId) {
+    return { error: "Sin permisos" };
+  }
 
   const { data: authUser, error: fetchError } =
     await admin.auth.admin.getUserById(userId);
@@ -224,8 +270,8 @@ export async function resendInvite(
     return { error: error.message };
   }
 
-  revalidatePath("/users");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/users");
+  revalidatePath("/settings/forwarders");
   return null;
 }
 
@@ -235,7 +281,22 @@ export async function resendInvite(
 export async function resetUserPassword(
   userId: string,
 ): Promise<{ error: string } | null> {
+  const auth = await requireUserAdmin();
+  if (!auth.ok) return { error: auth.error };
+
   const admin = createAdminClient();
+
+  // Verify target is in same org (unless super_admin)
+  const { data: targetProfile } = await admin
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", userId)
+    .single();
+
+  if (!targetProfile) return { error: "Usuario no encontrado" };
+  if (!auth.roles.includes("super_admin") && targetProfile.organization_id !== auth.orgId) {
+    return { error: "Sin permisos" };
+  }
 
   const { data: authUser, error: fetchError } =
     await admin.auth.admin.getUserById(userId);
@@ -256,8 +317,8 @@ export async function resetUserPassword(
     return { error: error.message };
   }
 
-  revalidatePath("/users");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/users");
+  revalidatePath("/settings/forwarders");
   return null;
 }
 
@@ -268,7 +329,29 @@ export async function toggleUserActive(
   userId: string,
   isActive: boolean,
 ): Promise<{ error: string } | null> {
+  const auth = await requireUserAdmin();
+  if (!auth.ok) return { error: auth.error };
+
   const admin = createAdminClient();
+
+  // Verify target is in same org (unless super_admin)
+  const { data: targetProfile } = await admin
+    .from("profiles")
+    .select("organization_id, user_roles(role)")
+    .eq("id", userId)
+    .single();
+
+  if (!targetProfile) return { error: "Usuario no encontrado" };
+  if (!auth.roles.includes("super_admin")) {
+    if (targetProfile.organization_id !== auth.orgId) {
+      return { error: "Sin permisos" };
+    }
+    // Prevent forwarder_admin from disabling super_admin users
+    const targetRoles = (targetProfile.user_roles as { role: string }[]) ?? [];
+    if (targetRoles.some((r) => r.role === "super_admin")) {
+      return { error: "Sin permisos" };
+    }
+  }
 
   const { error } = await admin
     .from("profiles")
@@ -280,7 +363,7 @@ export async function toggleUserActive(
   }
 
   revalidatePath("/settings");
-  revalidatePath("/forwarders");
-  revalidatePath("/users");
+  revalidatePath("/settings/forwarders");
+  revalidatePath("/settings/users");
   return null;
 }

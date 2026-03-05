@@ -107,7 +107,7 @@ export function ChargeTypeList({ data }: ChargeTypeListProps) {
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     <Link
-                      href={`/${locale}/tariffs/charge-types/${ct.id}/edit`}
+                      href={`/${locale}/settings/charge-types/${ct.id}/edit`}
                       className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                     >
                       Editar

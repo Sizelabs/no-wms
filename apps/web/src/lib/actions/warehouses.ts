@@ -62,8 +62,8 @@ export async function createWarehouse(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/settings");
-  revalidatePath("/warehouses");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/warehouses");
+  revalidatePath("/settings/forwarders");
 }
 
 export async function deleteWarehouse(
@@ -77,8 +77,8 @@ export async function deleteWarehouse(
     return { error: error.message };
   }
 
-  revalidatePath("/warehouses");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/warehouses");
+  revalidatePath("/settings/forwarders");
   return null;
 }
 
@@ -101,6 +101,6 @@ export async function updateWarehouse(id: string, formData: FormData): Promise<v
   }
 
   revalidatePath("/settings");
-  revalidatePath("/warehouses");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/warehouses");
+  revalidatePath("/settings/forwarders");
 }

@@ -51,6 +51,36 @@
     "consignees": "Consignees",
     "history": "History"
   },
+  "navGroups": {
+    "operations": "Operations",
+    "commercial": "Commercial",
+    "finance": "Finance",
+    "reports": "Reports"
+  },
+  "userMenu": {
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+  "settingsNav": {
+    "title": "Settings",
+    "general": "General",
+    "warehouses": "Warehouses",
+    "forwarders": "Freight Forwarders",
+    "couriers": "Couriers",
+    "users": "Users & Roles",
+    "chargeTypes": "Charge Types",
+    "modalities": "Modalities",
+    "destinations": "Destinations",
+    "integrations": "Integrations",
+    "billing": "Billing & Plan",
+    "notifications": "Notifications",
+    "permissions": "Permissions",
+    "groupOrganization": "Organization",
+    "groupInfrastructure": "Infrastructure",
+    "groupUsers": "Users",
+    "groupOperations": "Operations",
+    "groupSystem": "System"
+  },
   "couriers": {
     "title": "Couriers",
     "new": "New Courier",

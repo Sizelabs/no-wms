@@ -60,8 +60,8 @@ export function Sidebar({ navConfig, locale, defaultCollapsed }: SidebarProps) {
   const t = useTranslations("nav");
   const tGroups = useTranslations("navGroups");
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const inSettings = pathname.startsWith(`/${locale}/settings`);
+  const [collapsed, setCollapsed] = useState(inSettings || defaultCollapsed);
   const prevInSettings = useRef(inSettings);
 
   // Auto-collapse when entering settings, restore when leaving

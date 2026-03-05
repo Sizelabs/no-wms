@@ -34,7 +34,7 @@ export function ModalityForm({ modality }: ModalityFormProps) {
           notify(result.error, "error");
         } else {
           notify("Modalidad actualizada", "success");
-          router.push("/tariffs/modalities");
+          router.push("/settings/modalities");
           router.refresh();
         }
       } else {
@@ -43,7 +43,7 @@ export function ModalityForm({ modality }: ModalityFormProps) {
           notify(result.error, "error");
         } else {
           notify("Modalidad creada", "success");
-          router.push("/tariffs/modalities");
+          router.push("/settings/modalities");
         }
       }
     });

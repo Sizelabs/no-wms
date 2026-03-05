@@ -53,6 +53,36 @@
     "consignees": "Consignatarios",
     "history": "Historial"
   },
+  "navGroups": {
+    "operations": "Operaciones",
+    "commercial": "Comercial",
+    "finance": "Finanzas",
+    "reports": "Reportes"
+  },
+  "userMenu": {
+    "settings": "Configuración",
+    "logout": "Cerrar sesión"
+  },
+  "settingsNav": {
+    "title": "Configuración",
+    "general": "General",
+    "warehouses": "Bodegas",
+    "forwarders": "Freight Forwarders",
+    "couriers": "Couriers",
+    "users": "Usuarios & Roles",
+    "chargeTypes": "Rubros de Cobro",
+    "modalities": "Modalidades",
+    "destinations": "Destinos",
+    "integrations": "Integraciones",
+    "billing": "Facturación & Plan",
+    "notifications": "Notificaciones",
+    "permissions": "Permisos",
+    "groupOrganization": "Organización",
+    "groupInfrastructure": "Infraestructura",
+    "groupUsers": "Usuarios",
+    "groupOperations": "Operaciones",
+    "groupSystem": "Sistema"
+  },
   "couriers": {
     "title": "Couriers",
     "new": "Nuevo Courier",

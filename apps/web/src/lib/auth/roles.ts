@@ -53,6 +53,9 @@ const WAREHOUSE_UNSCOPED_ROLES: Role[] = [
 export function getScopedWarehouseIds(
   assignments: UserRoleAssignment[],
 ): string[] | null {
+  // No assignments = superadmin or unassigned user → unscoped (see all)
+  if (assignments.length === 0) return null;
+
   const hasUnscopedRole = assignments.some((a) =>
     WAREHOUSE_UNSCOPED_ROLES.includes(a.role),
   );
@@ -76,6 +79,9 @@ export function getScopedWarehouseIds(
 export function getScopedAgencyIds(
   assignments: UserRoleAssignment[],
 ): string[] | null {
+  // No assignments = superadmin or unassigned user → unscoped (see all)
+  if (assignments.length === 0) return null;
+
   const hasNonAgencyRole = assignments.some(
     (a) => !AGENCY_ROLES.includes(a.role),
   );
@@ -102,6 +108,9 @@ const COURIER_SCOPED_ROLES: Role[] = ["destination_admin", "destination_operator
 export function getScopedCourierIds(
   assignments: UserRoleAssignment[],
 ): string[] | null {
+  // No assignments = superadmin or unassigned user → unscoped (see all)
+  if (assignments.length === 0) return null;
+
   const hasNonCourierRole = assignments.some(
     (a) => !COURIER_SCOPED_ROLES.includes(a.role),
   );

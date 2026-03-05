@@ -203,7 +203,7 @@ export async function createOrganization(formData: FormData): Promise<void> {
     throw new Error(roleError.message);
   }
 
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/forwarders");
 }
 
 export async function updateOrganization(
@@ -227,7 +227,7 @@ export async function updateOrganization(
     throw new Error(error.message);
   }
 
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/forwarders");
 }
 
 export async function deleteOrganization(
@@ -244,6 +244,6 @@ export async function deleteOrganization(
     return { error: error.message };
   }
 
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/forwarders");
   return null;
 }

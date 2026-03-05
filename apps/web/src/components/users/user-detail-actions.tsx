@@ -44,12 +44,12 @@ export function UserDetailActions({
   const actions: DetailAction[] = [
     {
       label: "Editar perfil",
-      href: `/${locale}/users/${userId}/edit`,
-      roles: ["forwarder_admin"],
+      href: `/${locale}/settings/users/${userId}/edit`,
+      roles: ["super_admin", "forwarder_admin"],
     },
     {
       label: "Reenviar invitación",
-      roles: ["forwarder_admin"],
+      roles: ["super_admin", "forwarder_admin"],
       onClick: () =>
         handleAction(
           () => resendInvite(userId),
@@ -58,7 +58,7 @@ export function UserDetailActions({
     },
     {
       label: "Reset contraseña",
-      roles: ["forwarder_admin"],
+      roles: ["super_admin", "forwarder_admin"],
       onClick: () =>
         handleAction(
           () => resetUserPassword(userId),
@@ -68,7 +68,7 @@ export function UserDetailActions({
     {
       label: isActive ? "Desactivar" : "Activar",
       variant: isActive ? "danger" : "default",
-      roles: ["forwarder_admin"],
+      roles: ["super_admin", "forwarder_admin"],
       onClick: () =>
         handleAction(
           () => toggleUserActive(userId, !isActive),

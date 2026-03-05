@@ -102,7 +102,7 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
       if (result?.error) {
         notify(result.error, "error");
       } else {
-        router.push(`/${locale}/couriers`);
+        router.push(`/${locale}/settings/couriers`);
       }
     });
   }
@@ -110,7 +110,7 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
   const detailActions: DetailAction[] = [
     {
       label: "Editar",
-      href: `/${locale}/couriers/${courier.id}/edit`,
+      href: `/${locale}/settings/couriers/${courier.id}/edit`,
       roles: ["super_admin", "forwarder_admin", "destination_admin"],
     },
     {
@@ -434,7 +434,7 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
           {userRoles.some((r) => USER_TAB_ROLES.includes(r)) && (
             <div className="flex justify-end">
               <Link
-                href={`/${locale}/couriers/${courier.id}/users/new`}
+                href={`/${locale}/settings/couriers/${courier.id}/users/new`}
                 className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
               >
                 + Invitar Usuario

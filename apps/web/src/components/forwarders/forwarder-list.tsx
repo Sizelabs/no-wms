@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
@@ -22,7 +22,7 @@ interface ForwarderListProps {
 export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = forwarders.filter((f) => {
     if (search) {
@@ -45,7 +45,7 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
         />
       </div>
 
-    <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+    <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
       <table className="w-full text-left text-sm">
         <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -59,7 +59,7 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
         </thead>
         <VirtualTableBody
           items={filtered}
-          scrollRef={scrollRef}
+          scrollElement={scrollEl}
           colSpan={6}
           emptyMessage="No hay freight forwarders registrados."
           renderRow={(fwd) => {
@@ -81,7 +81,7 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
                 <td className="px-4 py-3 text-gray-600">{c.users}</td>
                 <td className="px-4 py-3">
                   <Link
-                    href={`/${locale}/forwarders/${fwd.id}`}
+                    href={`/${locale}/settings/forwarders/${fwd.id}`}
                     className="text-xs font-medium text-gray-600 hover:text-gray-900"
                   >
                     Ver detalle

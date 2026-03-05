@@ -16,7 +16,7 @@ export async function getCouriers() {
       id, warehouse_id, is_active,
       warehouses(name),
       courier_warehouse_destinations(
-        id, destination_id, is_active, base_rate, rate_per_kg, transit_days, cutoff_day_of_week, currency_code, notes,
+        id, destination_id, is_active, transit_days, cutoff_day_of_week, currency_code, notes,
         destinations(city, country_code)
       )
     )`)
@@ -50,7 +50,7 @@ export async function getCourier(id: string) {
       id, warehouse_id, is_active,
       warehouses(name),
       courier_warehouse_destinations(
-        id, destination_id, is_active, base_rate, rate_per_kg, transit_days, cutoff_day_of_week, currency_code, notes,
+        id, destination_id, is_active, transit_days, cutoff_day_of_week, currency_code, notes,
         destinations(city, country_code)
       )
     ), agencies(id, name, code, type, is_active)`)
@@ -135,8 +135,8 @@ export async function createCourier(formData: FormData): Promise<void> {
     throw new Error(roleError.message);
   }
 
-  revalidatePath("/couriers");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/couriers");
+  revalidatePath("/settings/forwarders");
 }
 
 export async function updateCourier(id: string, formData: FormData): Promise<void> {
@@ -161,8 +161,8 @@ export async function updateCourier(id: string, formData: FormData): Promise<voi
     throw new Error(error.message);
   }
 
-  revalidatePath("/couriers");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/couriers");
+  revalidatePath("/settings/forwarders");
 }
 
 export async function deleteCourier(id: string): Promise<{ error: string } | null> {
@@ -174,8 +174,8 @@ export async function deleteCourier(id: string): Promise<{ error: string } | nul
     return { error: error.message };
   }
 
-  revalidatePath("/couriers");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/couriers");
+  revalidatePath("/settings/forwarders");
   return null;
 }
 
@@ -198,7 +198,7 @@ export async function addCourierWarehouse(
     throw new Error(error.message);
   }
 
-  revalidatePath("/couriers");
+  revalidatePath("/settings/couriers");
 }
 
 export async function removeCourierWarehouse(id: string): Promise<void> {
@@ -210,7 +210,7 @@ export async function removeCourierWarehouse(id: string): Promise<void> {
     throw new Error(error.message);
   }
 
-  revalidatePath("/couriers");
+  revalidatePath("/settings/couriers");
 }
 
 // ── Courier Warehouse Destinations ──
@@ -220,8 +220,6 @@ export async function addCourierWarehouseDestination(
   destinationId: string,
   organizationId: string,
   opts?: {
-    base_rate?: number;
-    rate_per_kg?: number;
     transit_days?: number;
     cutoff_day_of_week?: number;
     currency_code?: string;
@@ -234,8 +232,6 @@ export async function addCourierWarehouseDestination(
     organization_id: organizationId,
     courier_warehouse_id: courierWarehouseId,
     destination_id: destinationId,
-    base_rate: opts?.base_rate ?? null,
-    rate_per_kg: opts?.rate_per_kg ?? null,
     transit_days: opts?.transit_days ?? null,
     cutoff_day_of_week: opts?.cutoff_day_of_week ?? null,
     currency_code: opts?.currency_code ?? "USD",
@@ -246,14 +242,12 @@ export async function addCourierWarehouseDestination(
     throw new Error(error.message);
   }
 
-  revalidatePath("/couriers");
+  revalidatePath("/settings/couriers");
 }
 
 export async function updateCourierWarehouseDestination(
   id: string,
   updates: {
-    base_rate?: number | null;
-    rate_per_kg?: number | null;
     transit_days?: number | null;
     cutoff_day_of_week?: number | null;
     currency_code?: string;
@@ -272,7 +266,7 @@ export async function updateCourierWarehouseDestination(
     throw new Error(error.message);
   }
 
-  revalidatePath("/couriers");
+  revalidatePath("/settings/couriers");
 }
 
 export async function removeCourierWarehouseDestination(id: string): Promise<void> {
@@ -284,5 +278,5 @@ export async function removeCourierWarehouseDestination(id: string): Promise<voi
     throw new Error(error.message);
   }
 
-  revalidatePath("/couriers");
+  revalidatePath("/settings/couriers");
 }

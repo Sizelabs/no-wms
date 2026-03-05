@@ -23,7 +23,7 @@ export function WarehouseDetailActions({
   const actions: DetailAction[] = [
     {
       label: "Editar",
-      href: `/${locale}/warehouses/${warehouseId}/edit`,
+      href: `/${locale}/settings/warehouses/${warehouseId}/edit`,
       roles: ["forwarder_admin", "warehouse_admin"],
     },
     {
@@ -37,7 +37,7 @@ export function WarehouseDetailActions({
           if (result?.error) {
             notify(result.error, "error");
           } else {
-            router.push(`/${locale}/warehouses`);
+            router.push(`/${locale}/settings/warehouses`);
           }
         });
       },

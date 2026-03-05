@@ -94,7 +94,7 @@ export function ForwarderDetail({
       if (result?.error) {
         notify(result.error, "error");
       } else {
-        router.push(`/${locale}/forwarders`);
+        router.push(`/${locale}/settings/forwarders`);
       }
     });
   }
@@ -102,7 +102,7 @@ export function ForwarderDetail({
   const detailActions: DetailAction[] = [
     {
       label: "Editar",
-      href: `/${locale}/forwarders/${forwarder.id}/edit`,
+      href: `/${locale}/settings/forwarders/${forwarder.id}/edit`,
       roles: ["super_admin", "forwarder_admin"],
     },
     {
@@ -179,7 +179,7 @@ export function ForwarderDetail({
           </nav>
           {activeTab === "warehouses" && (
             <Link
-              href={`/${locale}/forwarders/${forwarder.id}/warehouses/new`}
+              href={`/${locale}/settings/forwarders/${forwarder.id}/warehouses/new`}
               className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
               + Nueva Bodega
@@ -187,7 +187,7 @@ export function ForwarderDetail({
           )}
           {activeTab === "couriers" && (
             <Link
-              href={`/${locale}/couriers/new`}
+              href={`/${locale}/settings/couriers/new`}
               className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
               + Nuevo Courier
@@ -203,7 +203,7 @@ export function ForwarderDetail({
           )}
           {activeTab === "users" && (
             <Link
-              href={`/${locale}/forwarders/${forwarder.id}/users/new`}
+              href={`/${locale}/settings/forwarders/${forwarder.id}/users/new`}
               className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
               + Invitar Usuario
@@ -300,7 +300,7 @@ export function ForwarderDetail({
                       <td className="px-4 py-3 font-mono text-xs">{c.code}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">
                         <Link
-                          href={`/${locale}/couriers/${c.id}`}
+                          href={`/${locale}/settings/couriers/${c.id}`}
                           className="hover:underline"
                         >
                           {c.name}

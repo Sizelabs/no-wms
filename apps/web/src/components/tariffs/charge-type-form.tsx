@@ -33,7 +33,7 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
           notify(result.error, "error");
         } else {
           notify("Tipo de cargo actualizado", "success");
-          router.push("/tariffs/charge-types");
+          router.push("/settings/charge-types");
           router.refresh();
         }
       } else {
@@ -42,7 +42,7 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
           notify(result.error, "error");
         } else {
           notify("Tipo de cargo creado", "success");
-          router.push("/tariffs/charge-types");
+          router.push("/settings/charge-types");
         }
       }
     });

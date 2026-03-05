@@ -4,7 +4,7 @@ import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
 import type { Role } from "@no-wms/shared/constants/roles";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
@@ -42,7 +42,7 @@ export function UserList({ users, allowedRoles }: UserListProps) {
   const currentRoles = useUserRoles();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const showActions = !allowedRoles || currentRoles.some((r) => allowedRoles.includes(r));
 
@@ -97,7 +97,7 @@ export function UserList({ users, allowedRoles }: UserListProps) {
         </select>
       </div>
 
-    <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+    <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
       <table className="w-full text-left text-sm">
         <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -109,14 +109,14 @@ export function UserList({ users, allowedRoles }: UserListProps) {
         </thead>
         <VirtualTableBody
           items={filtered}
-          scrollRef={scrollRef}
+          scrollElement={scrollEl}
           colSpan={showActions ? 4 : 3}
           emptyMessage="No hay usuarios registrados."
           renderRow={(u) => (
             <tr key={u.id} className="hover:bg-gray-50">
               <td className="px-4 py-3 font-medium text-gray-900">
                 <Link
-                  href={`/${locale}/users/${u.id}`}
+                  href={`/${locale}/settings/users/${u.id}`}
                   className="hover:underline"
                 >
                   {u.full_name}

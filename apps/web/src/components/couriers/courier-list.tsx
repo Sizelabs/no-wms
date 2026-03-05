@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { filterSelectClass } from "@/components/ui/form-section";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
@@ -34,7 +34,7 @@ export function CourierList({ couriers }: CourierListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = couriers.filter((c) => {
     if (search) {
@@ -76,7 +76,7 @@ export function CourierList({ couriers }: CourierListProps) {
         </select>
       </div>
 
-    <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+    <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
       <table className="w-full text-left text-sm">
         <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -89,7 +89,7 @@ export function CourierList({ couriers }: CourierListProps) {
         </thead>
         <VirtualTableBody
           items={filtered}
-          scrollRef={scrollRef}
+          scrollElement={scrollEl}
           colSpan={5}
           emptyMessage="No hay couriers registrados."
           renderRow={(courier) => {
@@ -104,7 +104,7 @@ export function CourierList({ couriers }: CourierListProps) {
                 <td className="px-4 py-3 font-mono text-xs">{courier.code}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
                   <Link
-                    href={`/${locale}/couriers/${courier.id}`}
+                    href={`/${locale}/settings/couriers/${courier.id}`}
                     className="hover:underline"
                   >
                     {courier.name}

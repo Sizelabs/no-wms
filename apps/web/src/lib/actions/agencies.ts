@@ -88,7 +88,7 @@ export async function deleteAgency(
   }
 
   revalidatePath("/agencies");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/forwarders");
   return null;
 }
 
@@ -209,8 +209,8 @@ export async function createAgencyWithAdmin(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/agencies");
-  revalidatePath("/couriers");
-  revalidatePath("/forwarders");
+  revalidatePath("/settings/couriers");
+  revalidatePath("/settings/forwarders");
 }
 
 export async function updateAgency(id: string, formData: FormData): Promise<void> {

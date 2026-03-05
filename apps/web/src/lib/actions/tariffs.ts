@@ -67,7 +67,7 @@ export async function createChargeType(formData: FormData): Promise<{ id: string
     if (error.code === "23505") return { error: "Ya existe un tipo de cargo con ese nombre" };
     return { error: error.message };
   }
-  revalidatePath("/tariffs/charge-types");
+  revalidatePath("/settings/charge-types");
   return { id: data.id };
 }
 
@@ -89,7 +89,7 @@ export async function updateChargeType(id: string, formData: FormData): Promise<
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/tariffs/charge-types");
+  revalidatePath("/settings/charge-types");
   return {};
 }
 
@@ -103,7 +103,7 @@ export async function deleteChargeType(id: string): Promise<{ error?: string }> 
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/tariffs/charge-types");
+  revalidatePath("/settings/charge-types");
   return {};
 }
 
@@ -119,7 +119,7 @@ export async function reorderChargeTypes(ids: string[]): Promise<{ error?: strin
     if (error) return { error: error.message };
   }
 
-  revalidatePath("/tariffs/charge-types");
+  revalidatePath("/settings/charge-types");
   return {};
 }
 
@@ -168,7 +168,7 @@ export async function createModality(formData: FormData): Promise<{ id: string }
     if (error.code === "23505") return { error: "Ya existe una modalidad con ese código" };
     return { error: error.message };
   }
-  revalidatePath("/tariffs/modalities");
+  revalidatePath("/settings/modalities");
   return { id: data.id };
 }
 
@@ -190,7 +190,7 @@ export async function updateModality(id: string, formData: FormData): Promise<{ 
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/tariffs/modalities");
+  revalidatePath("/settings/modalities");
   return {};
 }
 
@@ -204,7 +204,7 @@ export async function deleteModality(id: string): Promise<{ error?: string }> {
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/tariffs/modalities");
+  revalidatePath("/settings/modalities");
   return {};
 }
 
