@@ -24,7 +24,13 @@
     "logout": "Cerrar Sesión",
     "email": "Correo electrónico",
     "password": "Contraseña",
-    "forgotPassword": "¿Olvidaste tu contraseña?"
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "forgotPasswordTitle": "Recuperar contraseña",
+    "forgotPasswordDescription": "Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
+    "sendResetLink": "Enviar enlace",
+    "sending": "Enviando...",
+    "resetLinkSent": "Si existe una cuenta con ese correo, recibirás un enlace para restablecer tu contraseña.",
+    "backToLogin": "Volver al inicio de sesión"
   },
   "nav": {
     "dashboard": "Dashboard",

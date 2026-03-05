@@ -24,7 +24,13 @@
     "logout": "Log Out",
     "email": "Email",
     "password": "Password",
-    "forgotPassword": "Forgot your password?"
+    "forgotPassword": "Forgot your password?",
+    "forgotPasswordTitle": "Reset password",
+    "forgotPasswordDescription": "Enter your email and we'll send you a link to reset your password.",
+    "sendResetLink": "Send reset link",
+    "sending": "Sending...",
+    "resetLinkSent": "If an account exists with that email, you'll receive a password reset link.",
+    "backToLogin": "Back to login"
   },
   "nav": {
     "dashboard": "Dashboard",
