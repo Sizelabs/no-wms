@@ -336,10 +336,10 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
 
       {/* Table */}
       <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
-        <table className="w-full text-left text-sm">
+        <table className="w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
-            <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-3 py-3">
+            <tr className="text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="border-b border-gray-200 px-3 py-3">
                 <input
                   type="checkbox"
                   checked={selected.size === data.length && data.length > 0}
@@ -347,17 +347,17 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                   className="rounded border-gray-300"
                 />
               </th>
-              <th className="px-3 py-3">WR#</th>
-              <th className="px-3 py-3">Bodegaje</th>
-              <th className="px-3 py-3">Tracking</th>
-              <th className="px-3 py-3">Piezas</th>
-              <th className="px-3 py-3">Peso (lb)</th>
-              <th className="px-3 py-3">Peso (Kg)</th>
-              <th className="px-3 py-3">Tipo</th>
-              <th className="px-3 py-3">Remitente</th>
-              <th className="px-3 py-3">Transportista</th>
-              <th className="px-3 py-3">Valor Decl.</th>
-              <th className="px-3 py-3">Estado</th>
+              <th className="border-b border-gray-200 px-3 py-3">WR#</th>
+              <th className="border-b border-gray-200 px-3 py-3">Bodegaje</th>
+              <th className="border-b border-gray-200 px-3 py-3">Tracking</th>
+              <th className="border-b border-gray-200 px-3 py-3">Piezas</th>
+              <th className="border-b border-gray-200 px-3 py-3">Peso (lb)</th>
+              <th className="border-b border-gray-200 px-3 py-3">Peso (Kg)</th>
+              <th className="border-b border-gray-200 px-3 py-3">Tipo</th>
+              <th className="border-b border-gray-200 px-3 py-3">Remitente</th>
+              <th className="border-b border-gray-200 px-3 py-3">Transportista</th>
+              <th className="border-b border-gray-200 px-3 py-3">Valor Decl.</th>
+              <th className="border-b border-gray-200 px-3 py-3">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -381,8 +381,8 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                 return (
                 <React.Fragment key={groupKey}>
                   {/* Group header */}
-                  <tr className="sticky top-[41px] z-[5] border-t-2 border-gray-200 bg-gray-50">
-                    <td className="px-3 py-2.5">
+                  <tr className="sticky top-[40px] z-[5] border-t-2 border-gray-200 bg-gray-50">
+                    <td className="bg-gray-50 px-3 py-2.5">
                       <input
                         type="checkbox"
                         checked={allGroupSelected}
@@ -393,7 +393,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                     </td>
                     <td
                       colSpan={3}
-                      className="px-3 py-2.5 cursor-pointer select-none"
+                      className="bg-gray-50 px-3 py-2.5 cursor-pointer select-none"
                       onClick={() => toggleCollapse(groupKey)}
                     >
                       <div className="flex items-center gap-2">
@@ -408,17 +408,17 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-center text-xs font-medium text-gray-500">
+                    <td className="bg-gray-50 px-3 py-2.5 text-center text-xs font-medium text-gray-500">
                       {totalPieces}
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
+                    <td className="bg-gray-50 px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
                       {totalWeightLb.toFixed(1)}
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
+                    <td className="bg-gray-50 px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
                       {totalWeightKg.toFixed(1)}
                     </td>
-                    <td colSpan={4} />
-                    <td className="px-3 py-2.5 text-right text-xs text-gray-400">
+                    <td colSpan={4} className="bg-gray-50" />
+                    <td className="bg-gray-50 px-3 py-2.5 text-right text-xs text-gray-400">
                       {receipts.length} {receipts.length === 1 ? "recibo" : "recibos"}
                     </td>
                   </tr>

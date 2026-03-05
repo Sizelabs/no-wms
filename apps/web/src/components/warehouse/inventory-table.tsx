@@ -289,11 +289,11 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
 
       {/* Table */}
       <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
-        <table className="w-full text-left text-sm">
+        <table className="w-full border-separate border-spacing-0 text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
-            <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+            <tr className="text-xs font-medium uppercase tracking-wider text-gray-500">
               {canSelect && (
-                <th className="px-3 py-3">
+                <th className="border-b border-gray-200 px-3 py-3">
                   <input
                     type="checkbox"
                     checked={selected.size === data.length && data.length > 0}
@@ -302,14 +302,14 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                   />
                 </th>
               )}
-              <th className="px-3 py-3">Guía</th>
-              <th className="px-3 py-3">WR#</th>
-              <th className="px-3 py-3">Transportista</th>
-              <th className="px-3 py-3">Agencia</th>
-              <th className="px-3 py-3">Peso</th>
-              <th className="px-3 py-3">Estado</th>
-              <th className="px-3 py-3">Días</th>
-              <th className="px-3 py-3">Recibido</th>
+              <th className="border-b border-gray-200 px-3 py-3">Guía</th>
+              <th className="border-b border-gray-200 px-3 py-3">WR#</th>
+              <th className="border-b border-gray-200 px-3 py-3">Transportista</th>
+              <th className="border-b border-gray-200 px-3 py-3">Agencia</th>
+              <th className="border-b border-gray-200 px-3 py-3">Peso</th>
+              <th className="border-b border-gray-200 px-3 py-3">Estado</th>
+              <th className="border-b border-gray-200 px-3 py-3">Días</th>
+              <th className="border-b border-gray-200 px-3 py-3">Recibido</th>
             </tr>
           </thead>
           <tbody>
@@ -330,10 +330,10 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                 <React.Fragment key={groupKey}>
                   {/* Group header */}
                   <tr
-                    className="sticky top-[41px] z-[5] border-t-2 border-gray-200 bg-gray-50 cursor-pointer select-none"
+                    className="sticky top-[40px] z-[5] border-t-2 border-gray-200 bg-gray-50 cursor-pointer select-none"
                     onClick={() => toggleCollapse(groupKey)}
                   >
-                    <td colSpan={canSelect ? 5 : 4} className="px-3 py-2.5">
+                    <td colSpan={canSelect ? 5 : 4} className="bg-gray-50 px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400 text-xs">{isCollapsed ? "▸" : "▾"}</span>
                         <span className="text-sm font-semibold text-gray-800">
@@ -346,10 +346,10 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
+                    <td className="bg-gray-50 px-3 py-2.5 font-mono text-xs font-medium text-gray-500">
                       {totalWeight.toFixed(1)} lb
                     </td>
-                    <td colSpan={3} className="px-3 py-2.5 text-right text-xs text-gray-400">
+                    <td colSpan={3} className="bg-gray-50 px-3 py-2.5 text-right text-xs text-gray-400">
                       {packages.length} {packages.length === 1 ? "paq" : "paqs"} &middot; {totalPieces} pzs
                     </td>
                   </tr>
