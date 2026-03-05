@@ -91,7 +91,7 @@ describe("createShippingInstruction", () => {
     const fd = new FormData();
     fd.set("warehouse_id", "wh-1");
     fd.set("agency_id", "ag-1");
-    fd.set("destination_country_id", "dc-1");
+    fd.set("destination_id", "dc-1");
     fd.set("modality", "courier_a");
     fd.set("consignee_id", "con-1");
     fd.set("warehouse_receipt_ids", '["wr-1"]');

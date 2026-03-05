@@ -12,7 +12,10 @@ interface Agency {
   code: string;
   type: AgencyType;
   is_active: boolean;
-  destination_countries: { name: string } | null;
+  agency_destinations: {
+    is_home: boolean;
+    destinations: { city: string; country_code: string } | null;
+  }[] | null;
 }
 
 interface AgencyListProps {
@@ -27,10 +30,12 @@ export function AgencyList({ agencies }: AgencyListProps) {
   const filtered = agencies.filter((a) => {
     if (search) {
       const q = search.toLowerCase();
+      const homeDestination = a.agency_destinations?.find((d) => d.is_home)?.destinations;
       const matches =
         a.name.toLowerCase().includes(q) ||
         a.code.toLowerCase().includes(q) ||
-        a.destination_countries?.name?.toLowerCase().includes(q);
+        homeDestination?.city?.toLowerCase().includes(q) ||
+        homeDestination?.country_code?.toLowerCase().includes(q);
       if (!matches) return false;
     }
     if (statusFilter === "active" && !a.is_active) return false;
@@ -103,7 +108,10 @@ export function AgencyList({ agencies }: AgencyListProps) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-500">
-                  {agency.destination_countries?.name ?? "—"}
+                  {(() => {
+                    const home = agency.agency_destinations?.find((d) => d.is_home)?.destinations;
+                    return home ? `${home.city}, ${home.country_code}` : "—";
+                  })()}
                 </td>
                 <td className="px-4 py-3">
                   <span

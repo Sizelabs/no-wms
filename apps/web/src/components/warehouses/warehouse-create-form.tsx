@@ -19,6 +19,7 @@ import {
 import {
   getCitiesOfState,
   getStatesOfCountry,
+  getTimezoneForCoordinates,
   getTimezonesOfCountry,
 } from "@/lib/actions/locations";
 import { createWarehouse } from "@/lib/actions/warehouses";
@@ -36,6 +37,8 @@ interface StateOption {
 
 interface CityOption {
   name: string;
+  latitude: string | null | undefined;
+  longitude: string | null | undefined;
 }
 
 interface TimezoneOption {
@@ -104,6 +107,16 @@ export function WarehouseCreateForm({
     setCityName("");
   }
 
+  function handleCityChange(name: string) {
+    setCityName(name);
+    const city = cities.find((c) => c.name === name);
+    if (city?.longitude && countryCode) {
+      getTimezoneForCoordinates(countryCode, city.longitude).then((tz) => {
+        if (tz) setTimezone(tz);
+      });
+    }
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -160,7 +173,7 @@ export function WarehouseCreateForm({
               <option value="">Seleccionar...</option>
               {countries.map((c) => (
                 <option key={c.isoCode} value={c.isoCode}>
-                  {c.flag} {c.name}
+                  {c.name} {c.flag}
                 </option>
               ))}
             </select>
@@ -188,7 +201,7 @@ export function WarehouseCreateForm({
               <select
                 id="city"
                 value={cityName}
-                onChange={(e) => setCityName(e.target.value)}
+                onChange={(e) => handleCityChange(e.target.value)}
                 required
                 className={selectClass}
               >

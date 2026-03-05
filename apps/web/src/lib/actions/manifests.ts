@@ -30,7 +30,7 @@ export async function createMawb(formData: FormData): Promise<{ id: string } | {
       airline: formData.get("airline") as string,
       flight_number: (formData.get("flight_number") as string) || null,
       flight_date: (formData.get("flight_date") as string) || null,
-      destination_country_id: formData.get("destination_country_id") as string,
+      destination_id: formData.get("destination_id") as string,
     })
     .select("id")
     .single();
@@ -59,7 +59,7 @@ export async function getMawbs(filters?: { status?: string }) {
 
   let query = supabase
     .from("mawbs")
-    .select("*, destination_countries(name), hawbs(id, hawb_number, shipping_instruction_id)")
+    .select("*, destinations:destination_id(city, country_code), hawbs(id, hawb_number, shipping_instruction_id)")
     .order("created_at", { ascending: false });
 
   if (warehouseScope !== null) {
@@ -78,7 +78,7 @@ export async function getMawb(id: string) {
 
   const { data, error } = await supabase
     .from("mawbs")
-    .select("*, destination_countries(name), hawbs(*, shipping_instructions(si_number, agency_id, agencies(name, code)))")
+    .select("*, destinations:destination_id(city, country_code), hawbs(*, shipping_instructions(si_number, agency_id, agencies(name, code)))")
     .eq("id", id)
     .single();
 

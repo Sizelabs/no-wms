@@ -6,7 +6,7 @@ export const createMawbSchema = z.object({
   airline: z.string().min(1, "Aerolínea requerida"),
   flight_number: z.string().optional(),
   flight_date: z.string().optional(),
-  destination_country_id: z.string().uuid(),
+  destination_id: z.string().uuid(),
 });
 
 export const createAirlineReservationSchema = z.object({

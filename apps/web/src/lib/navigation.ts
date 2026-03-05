@@ -11,9 +11,9 @@ export interface NavItem {
 /** All possible nav items in display order. Dashboard is always visible. */
 const ALL_NAV_ITEMS: NavItem[] = [
   { label: "dashboard", href: "/", icon: "LayoutDashboard" },
-  { label: "companies", href: "/companies", icon: "Building" },
+  { label: "forwarders", href: "/forwarders", icon: "Building" },
   { label: "warehouses", href: "/warehouses", icon: "Warehouse" },
-  { label: "courriers", href: "/courriers", icon: "PackageCheck" },
+  { label: "couriers", href: "/couriers", icon: "PackageCheck" },
   { label: "agencies", href: "/agencies", icon: "Building2" },
   { label: "consignees", href: "/consignees", icon: "Contact" },
   { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package" },
@@ -48,7 +48,7 @@ export function getNavForPermissions(perms: RolePermissionMap): NavItem[] {
 /** Get the primary (highest-privilege) role for a user with multiple roles */
 const ROLE_PRIORITY: Role[] = [
   "super_admin",
-  "company_admin",
+  "forwarder_admin",
   "warehouse_admin",
   "destination_admin",
   "shipping_clerk",

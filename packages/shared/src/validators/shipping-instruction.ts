@@ -9,7 +9,7 @@ const cedulaRucSchema = z.string().refine(
 export const createShippingInstructionSchema = z.object({
   warehouse_id: z.string().uuid(),
   agency_id: z.string().uuid(),
-  destination_country_id: z.string().uuid(),
+  destination_id: z.string().uuid(),
   modality: z.enum([
     "courier_a", "courier_b", "courier_c", "courier_d",
     "courier_e", "courier_f", "courier_g", "air_cargo",

@@ -7,7 +7,7 @@ import { NotificationProvider } from "@/components/layout/notification";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { getRolePermissions } from "@/lib/actions/permissions";
-import { getScopedAgencyIds, getScopedCourrierIds, getScopedWarehouseIds, getUserRoleAssignments } from "@/lib/auth/roles";
+import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds, getUserRoleAssignments } from "@/lib/auth/roles";
 import { getNavForPermissions, getPrimaryRole } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,7 +32,7 @@ export default async function DashboardLayout({
   const assignments = await getUserRoleAssignments(supabase, user.id);
   const roles = assignments.map((a) => a.role);
   const warehouseIds = getScopedWarehouseIds(assignments);
-  const courrierIds = getScopedCourrierIds(assignments);
+  const courierIds = getScopedCourierIds(assignments);
   const agencyIds = getScopedAgencyIds(assignments);
   const primaryRole = getPrimaryRole(roles);
   const permissions = await getRolePermissions(primaryRole);
@@ -49,7 +49,7 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar userName={userName} userRole={userRole} />
         <NotificationProvider>
-          <RoleProvider roles={roles} warehouseIds={warehouseIds} courrierIds={courrierIds} agencyIds={agencyIds} permissions={permissions}>
+          <RoleProvider roles={roles} warehouseIds={warehouseIds} courierIds={courierIds} agencyIds={agencyIds} permissions={permissions}>
             <main className="flex-1 overflow-y-auto p-6">{children}</main>
           </RoleProvider>
         </NotificationProvider>

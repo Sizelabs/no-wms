@@ -10,7 +10,7 @@ import { useNotification } from "@/components/layout/notification";
 import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees";
 import {
   createShippingInstruction,
-  getDestinationCountries,
+  getDestinations,
   getCourierCategories,
 } from "@/lib/actions/shipping-instructions";
 import { createWorkOrder } from "@/lib/actions/work-orders";
@@ -23,7 +23,7 @@ interface GroupFlowProps {
   agencyId: string;
 }
 
-interface Country { id: string; name: string; code: string }
+interface Destination { id: string; city: string; country_code: string }
 interface CourierCategory { id: string; code: string; name: string; max_weight_lb: number | null; max_value_usd: number | null; description: string | null }
 interface ConsigneeResult { id: string; full_name: string; casillero: string | null; cedula_ruc: string | null; city: string | null }
 
@@ -32,8 +32,8 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
   const [instructions, setInstructions] = useState("");
 
   // Ship-form state (only when autoShip)
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [countryId, setCountryId] = useState("");
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [destinationId, setDestinationId] = useState("");
   const [city, setCity] = useState("");
   const [categories, setCategories] = useState<CourierCategory[]>([]);
   const [categoryCode, setCategoryCode] = useState("");
@@ -53,13 +53,13 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
 
   useEffect(() => {
     if (!autoShip) return;
-    getDestinationCountries().then((res) => { if (res.data) setCountries(res.data); });
+    getDestinations().then((res) => { if (res.data) setDestinations(res.data); });
   }, [autoShip]);
 
   useEffect(() => {
-    if (!countryId) { setCategories([]); setCategoryCode(""); return; }
-    getCourierCategories(countryId).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); });
-  }, [countryId]);
+    if (!destinationId) { setCategories([]); setCategoryCode(""); return; }
+    getCourierCategories(destinationId).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); });
+  }, [destinationId]);
 
   const handleConsigneeSearch = useCallback((query: string) => {
     setConsigneeQuery(query);
@@ -95,7 +95,7 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
     }
   }, [agencyId, newConsigneeName, notify]);
 
-  const canSubmit = !autoShip || (countryId !== "" && city.trim() !== "" && selectedConsignee !== null);
+  const canSubmit = !autoShip || (destinationId !== "" && city.trim() !== "" && selectedConsignee !== null);
 
   function handleSubmit() {
     startTransition(async () => {
@@ -114,7 +114,7 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
         const siFd = new FormData();
         siFd.set("warehouse_id", warehouseId);
         siFd.set("agency_id", agencyId);
-        siFd.set("destination_country_id", countryId);
+        siFd.set("destination_id", destinationId);
         siFd.set("destination_city", city.trim());
         siFd.set("modality", categoryCode ? `courier_${categoryCode.toLowerCase()}` : "air_cargo");
         if (categoryCode) siFd.set("courier_category", categoryCode);
@@ -166,17 +166,17 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
           <fieldset className="space-y-3">
             <legend className="text-xs font-medium uppercase tracking-wider text-gray-400">Destino</legend>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Pais" required>
-                <select value={countryId} onChange={(e) => setCountryId(e.target.value)} className={selectClass}>
+              <Field label="Destino" required>
+                <select value={destinationId} onChange={(e) => setDestinationId(e.target.value)} className={selectClass}>
                   <option value="">Seleccionar...</option>
-                  {countries.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+                  {destinations.map((d) => <option key={d.id} value={d.id}>{d.city} ({d.country_code})</option>)}
                 </select>
               </Field>
               <Field label="Ciudad" required>
                 <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
               </Field>
             </div>
-            {countryId && categories.length > 0 && (
+            {destinationId && categories.length > 0 && (
               <Field label="Categoria courier">
                 <select value={categoryCode} onChange={(e) => setCategoryCode(e.target.value)} className={selectClass}>
                   <option value="">Carga aerea (sin categoria)</option>

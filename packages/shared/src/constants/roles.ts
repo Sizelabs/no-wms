@@ -1,6 +1,6 @@
 export const ROLES = {
   SUPER_ADMIN: "super_admin",
-  COMPANY_ADMIN: "company_admin",
+  FORWARDER_ADMIN: "forwarder_admin",
   WAREHOUSE_ADMIN: "warehouse_admin",
   WAREHOUSE_OPERATOR: "warehouse_operator",
   SHIPPING_CLERK: "shipping_clerk",
@@ -13,7 +13,7 @@ export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 export const ROLE_LABELS: Record<Role, string> = {
   super_admin: "Super Admin",
-  company_admin: "Administrador de Empresa",
+  forwarder_admin: "Freight Forwarder Admin",
   warehouse_admin: "Administrador de Bodega",
   warehouse_operator: "Operario de Bodega",
   shipping_clerk: "Shipping Clerk",
@@ -22,9 +22,9 @@ export const ROLE_LABELS: Record<Role, string> = {
   agency: "Agencia Subcourier",
 };
 
-/** Company-level role (manages all warehouses + agencies) */
-export const COMPANY_ROLES: Role[] = [
-  ROLES.COMPANY_ADMIN,
+/** Forwarder-level role (manages all warehouses + agencies) */
+export const FORWARDER_ROLES: Role[] = [
+  ROLES.FORWARDER_ADMIN,
 ];
 
 /** Roles that belong to origin (warehouse) */

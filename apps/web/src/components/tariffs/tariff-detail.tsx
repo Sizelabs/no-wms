@@ -3,26 +3,22 @@
 import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import Link from "next/link";
 
-import { TariffRatesTable } from "@/components/tariffs/tariff-rates-table";
-
 interface TariffDetailProps {
   schedule: {
     id: string;
     modality: string;
     courier_category: string | null;
+    rate_type: string;
     is_active: boolean;
     effective_from: string;
     effective_to: string | null;
+    min_weight_kg: number;
+    max_weight_kg: number;
+    rate_per_kg: number;
+    minimum_charge: number;
     created_at: string;
     agencies: { name: string; code: string } | null;
-    destination_countries: { name: string; code: string } | null;
-    tariff_rates: Array<{
-      id: string;
-      min_weight_lb: number;
-      max_weight_lb: number;
-      rate_per_lb: number;
-      minimum_charge: number;
-    }>;
+    destinations: { city: string; country_code: string } | null;
   };
   readOnly?: boolean;
 }
@@ -30,7 +26,6 @@ interface TariffDetailProps {
 export function TariffDetail({ schedule, readOnly }: TariffDetailProps) {
   return (
     <div className="space-y-6">
-      {/* Info card */}
       <div className="rounded-lg border bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Información de Tarifa</h2>
@@ -43,6 +38,15 @@ export function TariffDetail({ schedule, readOnly }: TariffDetailProps) {
               }`}
             >
               {schedule.is_active ? "Activa" : "Inactiva"}
+            </span>
+            <span
+              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                schedule.rate_type === "courier_cost"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-purple-100 text-purple-800"
+              }`}
+            >
+              {schedule.rate_type === "courier_cost" ? "Costo courier" : "Tarifa agencia"}
             </span>
             {!readOnly && (
               <Link
@@ -64,7 +68,7 @@ export function TariffDetail({ schedule, readOnly }: TariffDetailProps) {
           </div>
           <div>
             <dt className="font-medium text-gray-500">Destino</dt>
-            <dd className="mt-0.5 text-gray-900">{schedule.destination_countries?.name ?? "—"}</dd>
+            <dd className="mt-0.5 text-gray-900">{schedule.destinations?.city ?? "—"}</dd>
           </div>
           <div>
             <dt className="font-medium text-gray-500">Modalidad</dt>
@@ -88,16 +92,25 @@ export function TariffDetail({ schedule, readOnly }: TariffDetailProps) {
               {schedule.effective_to ? new Date(schedule.effective_to).toLocaleDateString("es") : "Sin límite"}
             </dd>
           </div>
+          <div>
+            <dt className="font-medium text-gray-500">Peso mín. (kg)</dt>
+            <dd className="mt-0.5 text-gray-900">{Number(schedule.min_weight_kg).toFixed(2)}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-gray-500">Peso máx. (kg)</dt>
+            <dd className="mt-0.5 text-gray-900">{Number(schedule.max_weight_kg).toFixed(2)}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-gray-500">Tarifa / kg</dt>
+            <dd className="mt-0.5 text-gray-900">${Number(schedule.rate_per_kg).toFixed(4)}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-gray-500">Cargo mínimo</dt>
+            <dd className="mt-0.5 text-gray-900">
+              {Number(schedule.minimum_charge) > 0 ? `$${Number(schedule.minimum_charge).toFixed(2)}` : "—"}
+            </dd>
+          </div>
         </dl>
-      </div>
-
-      {/* Rates table */}
-      <div className="rounded-lg border bg-white p-6">
-        <TariffRatesTable
-          scheduleId={schedule.id}
-          rates={schedule.tariff_rates ?? []}
-          readOnly={readOnly}
-        />
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ import {
 const validSI = {
   warehouse_id: "a0000000-0000-0000-0000-000000000001",
   agency_id: "a0000000-0000-0000-0000-000000000002",
-  destination_country_id: "a0000000-0000-0000-0000-000000000003",
+  destination_id: "a0000000-0000-0000-0000-000000000003",
   modality: "courier_a" as const,
   consignee_id: "a0000000-0000-0000-0000-000000000004",
   warehouse_receipt_ids: ["a0000000-0000-0000-0000-000000000010"],

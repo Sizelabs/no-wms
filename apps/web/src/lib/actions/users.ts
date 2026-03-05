@@ -55,7 +55,7 @@ export async function updateUserProfile(
   }
 
   revalidatePath("/settings");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   revalidatePath("/users");
 }
 
@@ -67,8 +67,8 @@ export async function assignRole(formData: FormData): Promise<void> {
     organization_id: formData.get("organization_id") as string,
     role: formData.get("role") as string,
     warehouse_id: (formData.get("warehouse_id") as string) || null,
-    destination_country_id:
-      (formData.get("destination_country_id") as string) || null,
+    destination_id:
+      (formData.get("destination_id") as string) || null,
     agency_id: (formData.get("agency_id") as string) || null,
   });
 
@@ -77,7 +77,7 @@ export async function assignRole(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/settings");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   revalidatePath("/users");
 }
 
@@ -94,7 +94,7 @@ export async function removeRole(roleId: string): Promise<void> {
   }
 
   revalidatePath("/settings");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   revalidatePath("/users");
 }
 
@@ -107,7 +107,7 @@ export async function inviteUser(
   fullName: string,
   email: string,
   role: string,
-  opts?: { warehouse_id?: string; courrier_id?: string; agency_id?: string },
+  opts?: { warehouse_id?: string; courier_id?: string; agency_id?: string },
 ): Promise<{ error: string } | null> {
   const admin = createAdminClient();
 
@@ -142,7 +142,7 @@ export async function inviteUser(
     organization_id: organizationId,
     role,
     warehouse_id: opts?.warehouse_id || null,
-    courrier_id: opts?.courrier_id || null,
+    courier_id: opts?.courier_id || null,
     agency_id: opts?.agency_id || null,
   });
 
@@ -152,7 +152,7 @@ export async function inviteUser(
   }
 
   revalidatePath("/settings");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   revalidatePath("/users");
   return null;
 }
@@ -191,7 +191,7 @@ export async function resendInvite(
   }
 
   revalidatePath("/users");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   return null;
 }
 
@@ -223,7 +223,7 @@ export async function resetUserPassword(
   }
 
   revalidatePath("/users");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   return null;
 }
 
@@ -246,7 +246,7 @@ export async function toggleUserActive(
   }
 
   revalidatePath("/settings");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   revalidatePath("/users");
   return null;
 }

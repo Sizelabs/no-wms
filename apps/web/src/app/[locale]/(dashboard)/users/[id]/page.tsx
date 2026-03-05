@@ -100,7 +100,7 @@ export default async function UserDetailPage({
                     id: string;
                     role: string;
                     warehouse_id: string | null;
-                    destination_country_id: string | null;
+                    destination_id: string | null;
                     agency_id: string | null;
                   }) => (
                     <div
@@ -116,7 +116,7 @@ export default async function UserDetailPage({
                             Bodega
                           </span>
                         )}
-                        {r.destination_country_id && (
+                        {r.destination_id && (
                           <span className="rounded bg-purple-50 px-1.5 py-0.5 text-purple-700">
                             Destino
                           </span>

@@ -36,10 +36,10 @@ export default async function NewTariffPage({
       ? Promise.resolve({ data: [] })
       : agenciesQuery,
     supabase
-      .from("destination_countries")
-      .select("id, name, code")
+      .from("destinations")
+      .select("id, city, country_code")
       .eq("is_active", true)
-      .order("name"),
+      .order("city"),
   ]);
 
   return (

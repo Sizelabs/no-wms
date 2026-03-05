@@ -1,0 +1,41 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+
+import { CourierList } from "@/components/couriers/courier-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { getCouriers } from "@/lib/actions/couriers";
+import { getUserCourierScope } from "@/lib/auth/scope";
+
+export default async function CouriersPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations("couriers");
+
+  // Destination roles scoped to a single courier → go straight to detail
+  const courierIds = await getUserCourierScope();
+  if (courierIds && courierIds.length === 1) {
+    redirect(`/${locale}/couriers/${courierIds[0]}`);
+  }
+
+  const { data: couriers } = await getCouriers();
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t("title")}>
+        {courierIds === null && (
+          <Link
+            href={`/${locale}/couriers/new`}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + {t("new")}
+          </Link>
+        )}
+      </PageHeader>
+      <CourierList couriers={couriers ?? []} />
+    </div>
+  );
+}

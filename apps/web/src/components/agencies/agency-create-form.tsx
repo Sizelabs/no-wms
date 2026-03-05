@@ -20,32 +20,32 @@ import {
 } from "@/components/ui/form-section";
 import { createAgencyWithAdmin } from "@/lib/actions/agencies";
 
-interface Courrier {
+interface Courier {
   id: string;
   name: string;
   code: string;
 }
 
-interface DestinationCountry {
+interface Destination {
   id: string;
-  name: string;
-  code: string;
+  city: string;
+  country_code: string;
 }
 
 interface AgencyCreateFormProps {
   organizationId: string;
-  courriers: Courrier[];
-  destinationCountries: DestinationCountry[];
-  defaultCourrierId?: string;
-  lockCourrier?: boolean;
+  couriers: Courier[];
+  destinations: Destination[];
+  defaultCourierId?: string;
+  lockCourier?: boolean;
 }
 
 export function AgencyCreateForm({
   organizationId,
-  courriers,
-  destinationCountries,
-  defaultCourrierId,
-  lockCourrier,
+  couriers,
+  destinations,
+  defaultCourierId,
+  lockCourier,
 }: AgencyCreateFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
@@ -74,37 +74,37 @@ export function AgencyCreateForm({
       <form onSubmit={handleSubmit}>
         <FormSection title="Agencia" icon={Store}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Courrier" htmlFor="courrier_id" required>
+            <Field label="Courier" htmlFor="courier_id" required>
               <select
-                id="courrier_id"
-                name="courrier_id"
+                id="courier_id"
+                name="courier_id"
                 required
-                defaultValue={defaultCourrierId ?? ""}
-                disabled={lockCourrier}
-                className={lockCourrier ? disabledInputClass : selectClass}
+                defaultValue={defaultCourierId ?? ""}
+                disabled={lockCourier}
+                className={lockCourier ? disabledInputClass : selectClass}
               >
-                <option value="" disabled>Seleccionar courrier</option>
-                {courriers.map((c) => (
+                <option value="" disabled>Seleccionar courier</option>
+                {couriers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.code})
                   </option>
                 ))}
               </select>
-              {lockCourrier && defaultCourrierId && (
-                <input type="hidden" name="courrier_id" value={defaultCourrierId} />
+              {lockCourier && defaultCourierId && (
+                <input type="hidden" name="courier_id" value={defaultCourierId} />
               )}
             </Field>
-            <Field label="País destino" htmlFor="destination_country_id" required>
+            <Field label="Destino principal" htmlFor="destination_id" required>
               <select
-                id="destination_country_id"
-                name="destination_country_id"
+                id="destination_id"
+                name="destination_id"
                 required
                 className={selectClass}
               >
-                <option value="" disabled>Seleccionar país</option>
-                {destinationCountries.map((dc) => (
-                  <option key={dc.id} value={dc.id}>
-                    {dc.name} ({dc.code})
+                <option value="" disabled>Seleccionar destino</option>
+                {destinations.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.city} ({d.country_code})
                   </option>
                 ))}
               </select>

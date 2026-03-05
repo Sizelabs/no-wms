@@ -11,14 +11,15 @@ interface Warehouse {
   code: string;
 }
 
-interface DestinationCountry {
+interface Destination {
   id: string;
-  name: string;
+  city: string;
+  country_code: string;
 }
 
 interface MawbCreateFormProps {
   warehouses: Warehouse[];
-  destinations: DestinationCountry[];
+  destinations: Destination[];
 }
 
 export function MawbCreateForm({ warehouses, destinations }: MawbCreateFormProps) {
@@ -37,7 +38,7 @@ export function MawbCreateForm({ warehouses, destinations }: MawbCreateFormProps
     startTransition(async () => {
       const fd = new FormData();
       fd.set("warehouse_id", warehouseId);
-      fd.set("destination_country_id", destinationId);
+      fd.set("destination_id", destinationId);
       fd.set("mawb_number", mawbNumber);
       fd.set("airline", airline);
       if (flightNumber) fd.set("flight_number", flightNumber);
@@ -102,7 +103,7 @@ export function MawbCreateForm({ warehouses, destinations }: MawbCreateFormProps
           >
             {destinations.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.name}
+                {d.city} ({d.country_code})
               </option>
             ))}
           </select>

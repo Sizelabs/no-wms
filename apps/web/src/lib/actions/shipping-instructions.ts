@@ -51,7 +51,7 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
       warehouse_id: formData.get("warehouse_id") as string,
       si_number: siNumber,
       agency_id: formData.get("agency_id") as string,
-      destination_country_id: formData.get("destination_country_id") as string,
+      destination_id: formData.get("destination_id") as string,
       modality: formData.get("modality") as string,
       courier_category: (formData.get("courier_category") as string) || null,
       consignee_id: formData.get("consignee_id") as string,
@@ -296,14 +296,14 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
   return { hawb_number: hawbNumber };
 }
 
-export async function getDestinationCountries() {
+export async function getDestinations() {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("destination_countries")
-    .select("id, name, code")
+    .from("destinations")
+    .select("id, city, country_code")
     .eq("is_active", true)
-    .order("name");
+    .order("city");
 
   if (error) return { data: null, error: error.message };
   return { data, error: null };
@@ -315,7 +315,7 @@ export async function getCourierCategories(countryId: string) {
   const { data, error } = await supabase
     .from("courier_categories")
     .select("id, code, name, max_weight_lb, max_value_usd, description")
-    .eq("destination_country_id", countryId)
+    .eq("destination_id", countryId)
     .eq("is_active", true)
     .order("code");
 

@@ -181,7 +181,7 @@ export async function getShippingReport(filters?: {
     .select(
       `id, si_number, status, modality, total_weight_lb, total_pieces, created_at,
        agencies:agency_id(name, code),
-       destination_countries:destination_country_id(name, code)`,
+       destinations:destination_id(city, country_code)`,
     )
     .order("created_at", { ascending: false });
 

@@ -1,9 +1,9 @@
 import type { Role } from "./roles";
 
 export const RESOURCES = [
-  "companies",
+  "forwarders",
   "warehouses",
-  "courriers",
+  "couriers",
   "agencies",
   "users",
   "warehouse_receipts",
@@ -35,9 +35,9 @@ export interface ResourcePermissions {
 export type RolePermissionMap = Record<Resource, ResourcePermissions>;
 
 export const RESOURCE_LABELS: Record<Resource, string> = {
-  companies: "Empresas",
+  forwarders: "Freight Forwarders",
   warehouses: "Bodegas",
-  courriers: "Courriers",
+  couriers: "Couriers",
   agencies: "Agencias",
   users: "Usuarios",
   warehouse_receipts: "Recibos de Bodega",
@@ -57,9 +57,9 @@ export const RESOURCE_LABELS: Record<Resource, string> = {
 
 /** Maps nav item labels (i18n keys) to resource names for nav filtering */
 export const NAV_RESOURCE_MAP: Record<string, Resource> = {
-  companies: "companies",
+  forwarders: "forwarders",
   warehouses: "warehouses",
-  courriers: "courriers",
+  couriers: "couriers",
   agencies: "agencies",
   users: "users",
   consignees: "consignees",
@@ -98,10 +98,10 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     Object.fromEntries(RESOURCES.map((r) => [r, FULL])) as Record<Resource, ResourcePermissions>,
   ),
 
-  company_admin: makePermMap({
-    companies: crud(false, true, true, false),
+  forwarder_admin: makePermMap({
+    forwarders: crud(false, true, true, false),
     warehouses: FULL,
-    courriers: FULL,
+    couriers: FULL,
     agencies: FULL,
     users: FULL,
     warehouse_receipts: crud(true, true, true, false),
@@ -121,7 +121,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
 
   warehouse_admin: makePermMap({
     warehouses: crud(false, true, true, false),
-    courriers: READ,
+    couriers: READ,
     agencies: READ,
     warehouse_receipts: crud(true, true, true, false),
     inventory: READ,
@@ -157,7 +157,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
   }),
 
   destination_admin: makePermMap({
-    courriers: crud(false, true, true, false),
+    couriers: crud(false, true, true, false),
     agencies: FULL,
     consignees: FULL,
     warehouse_receipts: READ,
@@ -175,7 +175,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
   }),
 
   destination_operator: makePermMap({
-    courriers: READ,
+    couriers: READ,
     agencies: READ,
     inventory: READ,
     shipping: READ,

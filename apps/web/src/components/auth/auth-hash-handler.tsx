@@ -38,7 +38,7 @@ export function AuthHashHandler() {
         // Clear the hash from the URL
         window.history.replaceState(null, "", window.location.pathname);
 
-        if (type === "invite" || type === "recovery") {
+        if (type === "invite" || type === "recovery" || type === "magiclink") {
           router.replace(`/${locale}/set-password`);
         } else {
           router.replace(`/${locale}`);

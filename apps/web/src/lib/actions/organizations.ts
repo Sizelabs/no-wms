@@ -39,13 +39,13 @@ export async function getOrganization(id: string) {
 export async function getOrganizationCounts(orgId: string) {
   const supabase = await createClient();
 
-  const [warehouses, courriers, agencies, users] = await Promise.all([
+  const [warehouses, couriers, agencies, users] = await Promise.all([
     supabase
       .from("warehouses")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId),
     supabase
-      .from("courriers")
+      .from("couriers")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId),
     supabase
@@ -60,7 +60,7 @@ export async function getOrganizationCounts(orgId: string) {
 
   return {
     warehouses: warehouses.count ?? 0,
-    courriers: courriers.count ?? 0,
+    couriers: couriers.count ?? 0,
     agencies: agencies.count ?? 0,
     users: users.count ?? 0,
   };
@@ -82,12 +82,12 @@ export async function getOrganizationWarehouses(orgId: string) {
   return { data, error: null };
 }
 
-export async function getOrganizationCourriers(orgId: string) {
+export async function getOrganizationCouriers(orgId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("courriers")
-    .select("*, courrier_coverage(id, destination_countries(name))")
+    .from("couriers")
+    .select("*, courier_warehouses(id, warehouses(name), courier_warehouse_destinations(id, destinations(city, country_code)))")
     .eq("organization_id", orgId)
     .order("name");
 
@@ -103,7 +103,7 @@ export async function getOrganizationAgencies(orgId: string) {
 
   const { data, error } = await supabase
     .from("agencies")
-    .select("*, destination_countries(name)")
+    .select("*, agency_destinations(destination_id, is_home, destinations(city, country_code))")
     .eq("organization_id", orgId)
     .order("name");
 
@@ -190,11 +190,11 @@ export async function createOrganization(formData: FormData): Promise<void> {
     throw new Error(profileError.message);
   }
 
-  // 4. Assign company_admin role
+  // 4. Assign forwarder_admin role
   const { error: roleError } = await admin.from("user_roles").insert({
     user_id: userId,
     organization_id: org.id,
-    role: "company_admin",
+    role: "forwarder_admin",
   });
 
   if (roleError) {
@@ -203,7 +203,7 @@ export async function createOrganization(formData: FormData): Promise<void> {
     throw new Error(roleError.message);
   }
 
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
 }
 
 export async function updateOrganization(
@@ -227,7 +227,7 @@ export async function updateOrganization(
     throw new Error(error.message);
   }
 
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
 }
 
 export async function deleteOrganization(
@@ -244,6 +244,6 @@ export async function deleteOrganization(
     return { error: error.message };
   }
 
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   return null;
 }

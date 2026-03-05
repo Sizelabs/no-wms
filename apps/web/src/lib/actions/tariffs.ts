@@ -7,8 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function getTariffSchedules(filters?: {
   agency_id?: string;
-  destination_country_id?: string;
+  destination_id?: string;
   is_active?: boolean;
+  rate_type?: string;
 }) {
   const supabase = await createClient();
   const agencyScope = await getUserAgencyScope();
@@ -19,7 +20,7 @@ export async function getTariffSchedules(filters?: {
 
   let query = supabase
     .from("tariff_schedules")
-    .select("*, agencies(name, code), destination_countries(name, code)")
+    .select("*, agencies(name, code), destinations:destination_id(city, country_code), courier_warehouse_destinations(id, destinations(city, country_code))")
     .order("created_at", { ascending: false });
 
   if (agencyScope !== null) {
@@ -27,8 +28,9 @@ export async function getTariffSchedules(filters?: {
   }
 
   if (filters?.agency_id) query = query.eq("agency_id", filters.agency_id);
-  if (filters?.destination_country_id) query = query.eq("destination_country_id", filters.destination_country_id);
+  if (filters?.destination_id) query = query.eq("destination_id", filters.destination_id);
   if (filters?.is_active !== undefined) query = query.eq("is_active", filters.is_active);
+  if (filters?.rate_type) query = query.eq("rate_type", filters.rate_type);
 
   const { data, error } = await query;
 
@@ -41,7 +43,7 @@ export async function getTariffSchedule(id: string) {
 
   const { data, error } = await supabase
     .from("tariff_schedules")
-    .select("*, agencies(name, code), destination_countries(name, code), tariff_rates(*)")
+    .select("*, agencies(name, code), destinations:destination_id(city, country_code), courier_warehouse_destinations(id, destinations(city, country_code))")
     .eq("id", id)
     .single();
 
@@ -66,16 +68,25 @@ export async function createTariffSchedule(formData: FormData): Promise<{ id: st
 
   if (!profile) return { error: "Perfil no encontrado" };
 
+  const rateType = (formData.get("rate_type") as string) || "agency_rate";
+  const agencyId = rateType === "agency_rate" ? (formData.get("agency_id") as string) : null;
+
   const { data, error } = await supabase
     .from("tariff_schedules")
     .insert({
       organization_id: profile.organization_id,
-      agency_id: formData.get("agency_id") as string,
-      destination_country_id: formData.get("destination_country_id") as string,
+      agency_id: agencyId,
+      destination_id: formData.get("destination_id") as string,
+      courier_warehouse_destination_id: (formData.get("courier_warehouse_destination_id") as string) || null,
       modality: formData.get("modality") as string,
       courier_category: (formData.get("courier_category") as string) || null,
+      rate_type: rateType,
       effective_from: formData.get("effective_from") as string,
       effective_to: (formData.get("effective_to") as string) || null,
+      min_weight_kg: parseFloat(formData.get("min_weight_kg") as string),
+      max_weight_kg: parseFloat(formData.get("max_weight_kg") as string),
+      rate_per_kg: parseFloat(formData.get("rate_per_kg") as string),
+      minimum_charge: parseFloat(formData.get("minimum_charge") as string) || 0,
     })
     .select("id")
     .single();
@@ -96,12 +107,20 @@ export async function updateTariffSchedule(id: string, formData: FormData): Prom
   if (!user) return { error: "No autenticado" };
 
   const updates: Record<string, unknown> = {};
-  const fields = ["agency_id", "destination_country_id", "modality", "courier_category", "effective_from", "effective_to"];
+  const stringFields = ["agency_id", "destination_id", "courier_warehouse_destination_id", "modality", "courier_category", "rate_type", "effective_from", "effective_to"];
 
-  for (const field of fields) {
+  for (const field of stringFields) {
     const val = formData.get(field) as string | null;
     if (val !== null) {
       updates[field] = val || null;
+    }
+  }
+
+  const numericFields = ["min_weight_kg", "max_weight_kg", "rate_per_kg", "minimum_charge"];
+  for (const field of numericFields) {
+    const val = formData.get(field) as string | null;
+    if (val !== null) {
+      updates[field] = parseFloat(val);
     }
   }
 
@@ -142,182 +161,46 @@ export async function deleteTariffSchedule(id: string): Promise<{ error?: string
   return {};
 }
 
-export async function createTariffRate(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
-
-  const { data, error } = await supabase
-    .from("tariff_rates")
-    .insert({
-      schedule_id: formData.get("schedule_id") as string,
-      min_weight_lb: parseFloat(formData.get("min_weight_lb") as string),
-      max_weight_lb: parseFloat(formData.get("max_weight_lb") as string),
-      rate_per_lb: parseFloat(formData.get("rate_per_lb") as string),
-      minimum_charge: parseFloat(formData.get("minimum_charge") as string) || 0,
-    })
-    .select("id")
-    .single();
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/tariffs");
-  return { id: data.id };
-}
-
-export async function updateTariffRate(id: string, formData: FormData): Promise<{ error?: string }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
-
-  const { error } = await supabase
-    .from("tariff_rates")
-    .update({
-      min_weight_lb: parseFloat(formData.get("min_weight_lb") as string),
-      max_weight_lb: parseFloat(formData.get("max_weight_lb") as string),
-      rate_per_lb: parseFloat(formData.get("rate_per_lb") as string),
-      minimum_charge: parseFloat(formData.get("minimum_charge") as string) || 0,
-    })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/tariffs");
-  return {};
-}
-
-export async function deleteTariffRate(id: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
-
-  const { error } = await supabase
-    .from("tariff_rates")
-    .delete()
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/tariffs");
-  return {};
-}
-
-export async function importTariffRates(
-  scheduleId: string,
-  csvData: string,
-): Promise<{ count: number } | { error: string }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
-
-  const lines = csvData.trim().split("\n");
-  // Skip header row if present
-  const startIdx = lines[0]?.toLowerCase().includes("min") ? 1 : 0;
-
-  const rows: Array<{
-    schedule_id: string;
-    min_weight_lb: number;
-    max_weight_lb: number;
-    rate_per_lb: number;
-    minimum_charge: number;
-  }> = [];
-
-  for (let i = startIdx; i < lines.length; i++) {
-    const cols = lines[i]!.split(",").map((c) => c.trim());
-    if (cols.length < 3) continue;
-
-    const minWeight = parseFloat(cols[0]!);
-    const maxWeight = parseFloat(cols[1]!);
-    const ratePerLb = parseFloat(cols[2]!);
-    const minimumCharge = cols[3] ? parseFloat(cols[3]) : 0;
-
-    if (isNaN(minWeight) || isNaN(maxWeight) || isNaN(ratePerLb)) {
-      return { error: `Fila ${i + 1}: valores numéricos inválidos` };
-    }
-
-    rows.push({
-      schedule_id: scheduleId,
-      min_weight_lb: minWeight,
-      max_weight_lb: maxWeight,
-      rate_per_lb: ratePerLb,
-      minimum_charge: minimumCharge,
-    });
-  }
-
-  if (!rows.length) return { error: "No se encontraron filas válidas en el CSV" };
-
-  const { error } = await supabase.from("tariff_rates").insert(rows);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/tariffs");
-  return { count: rows.length };
-}
-
 /**
  * Find the applicable tariff rate for a given set of parameters.
- * Pure lookup: find active schedule → find rate band for weight → return rate.
+ * Weight brackets are now inline in tariff_schedules (no tariff_rates table).
  */
 export async function getApplicableTariffRate(
   orgId: string,
   agencyId: string,
-  destCountryId: string,
+  destinationId: string,
   modality: string,
   category: string | null,
-  weightLb: number,
-): Promise<{ rate_per_lb: number; minimum_charge: number } | null> {
+  weightKg: number,
+): Promise<{ rate_per_kg: number; minimum_charge: number } | null> {
   const supabase = await createClient();
 
-  // Find active schedule matching criteria
-  let scheduleQuery = supabase
+  // Find active schedule matching criteria with weight bracket
+  let query = supabase
     .from("tariff_schedules")
-    .select("id")
+    .select("rate_per_kg, minimum_charge")
     .eq("organization_id", orgId)
     .eq("agency_id", agencyId)
-    .eq("destination_country_id", destCountryId)
+    .eq("destination_id", destinationId)
     .eq("modality", modality)
+    .eq("rate_type", "agency_rate")
     .eq("is_active", true)
     .lte("effective_from", new Date().toISOString().split("T")[0]!)
+    .lte("min_weight_kg", weightKg)
+    .gte("max_weight_kg", weightKg)
     .order("effective_from", { ascending: false })
     .limit(1);
 
   if (category) {
-    scheduleQuery = scheduleQuery.eq("courier_category", category);
+    query = query.eq("courier_category", category);
   }
 
-  const { data: schedules } = await scheduleQuery;
+  const { data } = await query;
 
-  if (!schedules?.length) return null;
-
-  // Find rate band for weight
-  const { data: rates } = await supabase
-    .from("tariff_rates")
-    .select("rate_per_lb, minimum_charge")
-    .eq("schedule_id", schedules[0]!.id)
-    .lte("min_weight_lb", weightLb)
-    .gte("max_weight_lb", weightLb)
-    .limit(1);
-
-  if (!rates?.length) return null;
+  if (!data?.length) return null;
 
   return {
-    rate_per_lb: rates[0]!.rate_per_lb,
-    minimum_charge: rates[0]!.minimum_charge,
+    rate_per_kg: data[0]!.rate_per_kg,
+    minimum_charge: data[0]!.minimum_charge,
   };
 }

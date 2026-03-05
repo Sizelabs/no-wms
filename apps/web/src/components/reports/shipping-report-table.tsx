@@ -11,7 +11,7 @@ interface ShippingRow {
   total_pieces: number | null;
   created_at: string;
   agencies: { name: string; code: string } | null;
-  destination_countries: { name: string; code: string } | null;
+  destinations: { city: string; country_code: string } | null;
 }
 
 interface ShippingReportTableProps {
@@ -74,7 +74,7 @@ export function ShippingReportTable({ data, summary }: ShippingReportTableProps)
               <tr key={row.id}>
                 <td className="px-4 py-2 font-mono text-xs">{row.si_number}</td>
                 <td className="px-4 py-2 text-xs">{row.agencies?.name ?? "—"}</td>
-                <td className="px-4 py-2 text-xs">{row.destination_countries?.name ?? "—"}</td>
+                <td className="px-4 py-2 text-xs">{row.destinations?.city ?? "—"}</td>
                 <td className="px-4 py-2 text-xs">{row.modality}</td>
                 <td className="px-4 py-2 text-xs">{SI_STATUS_LABELS[row.status as SiStatus] ?? row.status}</td>
                 <td className="px-4 py-2 text-right text-xs">{Number(row.total_weight_lb ?? 0).toFixed(2)}</td>

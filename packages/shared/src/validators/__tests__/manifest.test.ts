@@ -12,7 +12,7 @@ describe("createMawbSchema", () => {
       warehouse_id: "a0000000-0000-0000-0000-000000000001",
       mawb_number: "123-45678901",
       airline: "LATAM",
-      destination_country_id: "a0000000-0000-0000-0000-000000000003",
+      destination_id: "a0000000-0000-0000-0000-000000000003",
     });
     expect(result.success).toBe(true);
   });
@@ -22,7 +22,7 @@ describe("createMawbSchema", () => {
       warehouse_id: "a0000000-0000-0000-0000-000000000001",
       mawb_number: "",
       airline: "LATAM",
-      destination_country_id: "a0000000-0000-0000-0000-000000000003",
+      destination_id: "a0000000-0000-0000-0000-000000000003",
     });
     expect(result.success).toBe(false);
   });
@@ -32,7 +32,7 @@ describe("createMawbSchema", () => {
       warehouse_id: "a0000000-0000-0000-0000-000000000001",
       mawb_number: "123-45678901",
       airline: "",
-      destination_country_id: "a0000000-0000-0000-0000-000000000003",
+      destination_id: "a0000000-0000-0000-0000-000000000003",
     });
     expect(result.success).toBe(false);
   });
@@ -44,7 +44,7 @@ describe("createMawbSchema", () => {
       airline: "LATAM",
       flight_number: "LA-601",
       flight_date: "2026-03-15",
-      destination_country_id: "a0000000-0000-0000-0000-000000000003",
+      destination_id: "a0000000-0000-0000-0000-000000000003",
     });
     expect(result.success).toBe(true);
   });

@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 interface RoleContextValue {
   roles: Role[];
   warehouseIds: string[] | null;
-  courrierIds: string[] | null;
+  courierIds: string[] | null;
   agencyIds: string[] | null;
   permissions: RolePermissionMap | null;
 }
@@ -16,7 +16,7 @@ interface RoleContextValue {
 const RoleContext = createContext<RoleContextValue>({
   roles: [],
   warehouseIds: null,
-  courrierIds: null,
+  courierIds: null,
   agencyIds: null,
   permissions: null,
 });
@@ -24,20 +24,20 @@ const RoleContext = createContext<RoleContextValue>({
 export function RoleProvider({
   roles,
   warehouseIds,
-  courrierIds,
+  courierIds,
   agencyIds,
   permissions,
   children,
 }: {
   roles: Role[];
   warehouseIds: string[] | null;
-  courrierIds: string[] | null;
+  courierIds: string[] | null;
   agencyIds: string[] | null;
   permissions: RolePermissionMap;
   children: ReactNode;
 }) {
   return (
-    <RoleContext.Provider value={{ roles, warehouseIds, courrierIds, agencyIds, permissions }}>
+    <RoleContext.Provider value={{ roles, warehouseIds, courierIds, agencyIds, permissions }}>
       {children}
     </RoleContext.Provider>
   );
@@ -57,12 +57,12 @@ export function useWarehouseScope(): string[] | null {
 }
 
 /**
- * Returns the courrier IDs the current user is scoped to.
+ * Returns the courier IDs the current user is scoped to.
  * null = not a destination user (sees all).
- * string[] = scoped to specific courriers.
+ * string[] = scoped to specific couriers.
  */
-export function useCourrierScope(): string[] | null {
-  return useContext(RoleContext).courrierIds;
+export function useCourierScope(): string[] | null {
+  return useContext(RoleContext).courierIds;
 }
 
 /**

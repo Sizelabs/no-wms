@@ -37,7 +37,7 @@ export default async function NewMawbPage({
     warehouseScope !== null && warehouseScope.length === 0
       ? Promise.resolve({ data: [] })
       : warehousesQuery,
-    supabase.from("destination_countries").select("id, name").order("name"),
+    supabase.from("destinations").select("id, city, country_code").order("city"),
   ]);
 
   return (

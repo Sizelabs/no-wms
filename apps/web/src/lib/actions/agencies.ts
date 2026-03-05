@@ -2,25 +2,25 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getUserAgencyScope, getUserCourrierScope } from "@/lib/auth/scope";
+import { getUserAgencyScope, getUserCourierScope } from "@/lib/auth/scope";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getAgencies() {
   const supabase = await createClient();
-  const [courrierIds, agencyIds] = await Promise.all([
-    getUserCourrierScope(),
+  const [courierIds, agencyIds] = await Promise.all([
+    getUserCourierScope(),
     getUserAgencyScope(),
   ]);
 
   let query = supabase
     .from("agencies")
-    .select("*, destination_countries(name), courriers(name, code)")
+    .select("*, couriers(name, code), agency_destinations(destination_id, is_home, destinations(city, country_code))")
     .order("name");
 
-  // Destination roles only see agencies under their courrier(s)
-  if (courrierIds !== null) {
-    query = query.in("courrier_id", courrierIds.length > 0 ? courrierIds : ["00000000-0000-0000-0000-000000000000"]);
+  // Destination roles only see agencies under their courier(s)
+  if (courierIds !== null) {
+    query = query.in("courier_id", courierIds.length > 0 ? courierIds : ["00000000-0000-0000-0000-000000000000"]);
   }
 
   // Agency roles only see their own agency(ies)
@@ -42,7 +42,7 @@ export async function getAgency(id: string) {
 
   const { data, error } = await supabase
     .from("agencies")
-    .select("*, destination_countries(name), courriers(name, code), agency_contacts(*)")
+    .select("*, couriers(name, code), agency_destinations(destination_id, is_home, destinations(city, country_code)), agency_contacts(*)")
     .eq("id", id)
     .single();
 
@@ -58,8 +58,7 @@ export async function createAgency(formData: FormData): Promise<void> {
 
   const { error } = await supabase.from("agencies").insert({
     organization_id: formData.get("organization_id") as string,
-    destination_country_id: formData.get("destination_country_id") as string,
-    courrier_id: (formData.get("courrier_id") as string) || null,
+    courier_id: (formData.get("courier_id") as string) || null,
     name: formData.get("name") as string,
     code: formData.get("code") as string,
     type: formData.get("type") as string,
@@ -89,7 +88,7 @@ export async function deleteAgency(
   }
 
   revalidatePath("/agencies");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   return null;
 }
 
@@ -148,13 +147,12 @@ export async function createAgencyWithAdmin(formData: FormData): Promise<void> {
 
   const userId = authData.user.id;
 
-  // 2. Create agency
+  // 2. Create agency (no destination_country_id — destinations managed via agency_destinations)
   const { data: agency, error: agencyError } = await admin
     .from("agencies")
     .insert({
       organization_id: organizationId,
-      destination_country_id: formData.get("destination_country_id") as string,
-      courrier_id: (formData.get("courrier_id") as string) || null,
+      courier_id: (formData.get("courier_id") as string) || null,
       name: formData.get("name") as string,
       code: formData.get("code") as string,
       type: formData.get("type") as string,
@@ -170,6 +168,17 @@ export async function createAgencyWithAdmin(formData: FormData): Promise<void> {
   if (agencyError) {
     await admin.auth.admin.deleteUser(userId);
     throw new Error(agencyError.message);
+  }
+
+  // 2b. Create agency_destination with is_home if a destination was provided
+  const destinationId = formData.get("destination_id") as string | null;
+  if (destinationId) {
+    await admin.from("agency_destinations").insert({
+      organization_id: organizationId,
+      agency_id: agency.id,
+      destination_id: destinationId,
+      is_home: true,
+    });
   }
 
   // 3. Create profile
@@ -200,8 +209,8 @@ export async function createAgencyWithAdmin(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/agencies");
-  revalidatePath("/courriers");
-  revalidatePath("/companies");
+  revalidatePath("/couriers");
+  revalidatePath("/forwarders");
 }
 
 export async function updateAgency(id: string, formData: FormData): Promise<void> {

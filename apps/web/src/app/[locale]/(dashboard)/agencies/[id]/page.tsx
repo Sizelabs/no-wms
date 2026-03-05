@@ -55,11 +55,18 @@ export default async function AgencyDetailPage({
             {AGENCY_TYPE_LABELS[agency.type as AgencyType]}
           </span>
         </InfoCard>
-        <InfoCard label="Courrier">
-          {agency.courriers ? `${agency.courriers.name} (${agency.courriers.code})` : "—"}
+        <InfoCard label="Courier">
+          {agency.couriers ? `${agency.couriers.name} (${agency.couriers.code})` : "—"}
         </InfoCard>
-        <InfoCard label="País destino">
-          {agency.destination_countries?.name ?? "—"}
+        <InfoCard label="Destino principal">
+          {(() => {
+            const home = agency.agency_destinations?.find(
+              (d: { is_home: boolean; destinations: { city: string; country_code: string } | null }) => d.is_home,
+            );
+            return home?.destinations
+              ? `${home.destinations.city}, ${home.destinations.country_code}`
+              : "—";
+          })()}
         </InfoCard>
         <InfoCard label="Estado">
           <span

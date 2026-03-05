@@ -13,19 +13,19 @@ interface Agency {
   code: string;
 }
 
-interface DestinationCountry {
+interface Destination {
   id: string;
-  name: string;
-  code: string;
+  city: string;
+  country_code: string;
 }
 
 interface TariffScheduleFormProps {
   agencies: Agency[];
-  destinations: DestinationCountry[];
+  destinations: Destination[];
   schedule?: {
     id: string;
     agency_id: string;
-    destination_country_id: string;
+    destination_id: string;
     modality: string;
     courier_category: string | null;
     effective_from: string;
@@ -88,15 +88,15 @@ export function TariffScheduleForm({ agencies, destinations, schedule }: TariffS
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">País destino</label>
         <select
-          name="destination_country_id"
+          name="destination_id"
           required
-          defaultValue={schedule?.destination_country_id ?? ""}
+          defaultValue={schedule?.destination_id ?? ""}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         >
           <option value="">Seleccionar destino</option>
           {destinations.map((d) => (
             <option key={d.id} value={d.id}>
-              {d.name} ({d.code})
+              {d.city} ({d.country_code})
             </option>
           ))}
         </select>

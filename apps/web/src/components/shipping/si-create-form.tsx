@@ -24,9 +24,10 @@ interface Consignee {
   name: string;
 }
 
-interface DestinationCountry {
+interface Destination {
   id: string;
-  name: string;
+  city: string;
+  country_code: string;
 }
 
 interface WrPackage {
@@ -46,7 +47,7 @@ interface SiCreateFormProps {
   agencies: Agency[];
   warehouses: Warehouse[];
   consignees: Consignee[];
-  destinations: DestinationCountry[];
+  destinations: Destination[];
   availableWrs: WrOption[];
 }
 
@@ -92,7 +93,7 @@ export function SiCreateForm({
       fd.set("warehouse_id", warehouseId);
       fd.set("agency_id", agencyId);
       fd.set("consignee_id", consigneeId);
-      fd.set("destination_country_id", destinationId);
+      fd.set("destination_id", destinationId);
       fd.set("warehouse_receipt_ids", JSON.stringify(selectedWrs));
       if (cedulaRuc) fd.set("cedula_ruc", cedulaRuc);
       fd.set("cupo_4x4_used", String(cupo4x4));
@@ -165,7 +166,7 @@ export function SiCreateForm({
           >
             {destinations.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.name}
+                {d.city} ({d.country_code})
               </option>
             ))}
           </select>

@@ -20,7 +20,7 @@ export default async function TariffDetailPage({
     <div className="space-y-6">
       <PageHeader
         title={`Tarifa — ${schedule.agencies?.name ?? ""}`}
-        description={schedule.destination_countries?.name}
+        description={schedule.destinations?.city}
       />
       <TariffDetail schedule={schedule} />
     </div>

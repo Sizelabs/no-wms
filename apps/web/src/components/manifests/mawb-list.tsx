@@ -21,7 +21,7 @@ interface Mawb {
   total_pieces: number | null;
   total_weight_lb: number | null;
   created_at: string;
-  destination_countries: { name: string } | null;
+  destinations: { city: string; country_code: string } | null;
   hawbs: Hawb[];
 }
 
@@ -63,7 +63,7 @@ export function MawbList({ data }: MawbListProps) {
         m.mawb_number.toLowerCase().includes(q) ||
         m.airline.toLowerCase().includes(q) ||
         m.flight_number?.toLowerCase().includes(q) ||
-        m.destination_countries?.name?.toLowerCase().includes(q) ||
+        m.destinations?.city?.toLowerCase().includes(q) ||
         m.hawbs.some((h) => h.hawb_number.toLowerCase().includes(q));
       if (!matches) return false;
     }
@@ -130,7 +130,7 @@ export function MawbList({ data }: MawbListProps) {
                   <td className="px-4 py-3 text-xs">
                     {m.flight_date ? new Date(m.flight_date).toLocaleDateString("es") : "—"}
                   </td>
-                  <td className="px-4 py-3 text-xs">{m.destination_countries?.name ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs">{m.destinations?.city ?? "—"}</td>
                   <td className="px-4 py-3 text-xs">
                     {m.hawbs.length > 0
                       ? m.hawbs.map((h) => h.hawb_number).join(", ")

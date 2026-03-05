@@ -10,7 +10,7 @@ import { useNotification } from "@/components/layout/notification";
 import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees";
 import {
   createShippingInstruction,
-  getDestinationCountries,
+  getDestinations,
   getCourierCategories,
 } from "@/lib/actions/shipping-instructions";
 
@@ -22,13 +22,13 @@ interface ShipFlowProps {
   agencyId: string;
 }
 
-interface Country { id: string; name: string; code: string }
+interface Destination { id: string; city: string; country_code: string }
 interface CourierCategory { id: string; code: string; name: string; max_weight_lb: number | null; max_value_usd: number | null; description: string | null }
 interface ConsigneeResult { id: string; full_name: string; casillero: string | null; cedula_ruc: string | null; city: string | null }
 
 export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlowProps) {
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [countryId, setCountryId] = useState("");
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [destinationId, setDestinationId] = useState("");
   const [city, setCity] = useState("");
   const [categories, setCategories] = useState<CourierCategory[]>([]);
   const [categoryCode, setCategoryCode] = useState("");
@@ -49,13 +49,13 @@ export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlow
   const { notify } = useNotification();
 
   useEffect(() => {
-    getDestinationCountries().then((res) => { if (res.data) setCountries(res.data); });
+    getDestinations().then((res) => { if (res.data) setDestinations(res.data); });
   }, []);
 
   useEffect(() => {
-    if (!countryId) { setCategories([]); setCategoryCode(""); return; }
-    getCourierCategories(countryId).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); });
-  }, [countryId]);
+    if (!destinationId) { setCategories([]); setCategoryCode(""); return; }
+    getCourierCategories(destinationId).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); });
+  }, [destinationId]);
 
   const handleConsigneeSearch = useCallback((query: string) => {
     setConsigneeQuery(query);
@@ -91,7 +91,7 @@ export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlow
     }
   }, [agencyId, newConsigneeName, notify]);
 
-  const canSubmit = countryId !== "" && city.trim() !== "" && selectedConsignee !== null;
+  const canSubmit = destinationId !== "" && city.trim() !== "" && selectedConsignee !== null;
 
   function handleSubmit() {
     if (!selectedConsignee) return;
@@ -99,7 +99,7 @@ export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlow
       const fd = new FormData();
       fd.set("warehouse_id", warehouseId);
       fd.set("agency_id", agencyId);
-      fd.set("destination_country_id", countryId);
+      fd.set("destination_id", destinationId);
       fd.set("destination_city", city.trim());
       fd.set("modality", categoryCode ? `courier_${categoryCode.toLowerCase()}` : "air_cargo");
       if (categoryCode) fd.set("courier_category", categoryCode);
@@ -135,17 +135,17 @@ export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlow
       <fieldset className="space-y-3">
         <legend className="text-xs font-medium uppercase tracking-wider text-gray-400">Destino</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Pais" required>
-            <select value={countryId} onChange={(e) => setCountryId(e.target.value)} className={selectClass}>
+          <Field label="Destino" required>
+            <select value={destinationId} onChange={(e) => setDestinationId(e.target.value)} className={selectClass}>
               <option value="">Seleccionar...</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+              {destinations.map((d) => <option key={d.id} value={d.id}>{d.city} ({d.country_code})</option>)}
             </select>
           </Field>
           <Field label="Ciudad" required>
             <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
           </Field>
         </div>
-        {countryId && categories.length > 0 && (
+        {destinationId && categories.length > 0 && (
           <Field label="Categoria courier">
             <select value={categoryCode} onChange={(e) => setCategoryCode(e.target.value)} className={selectClass}>
               <option value="">Carga aerea (sin categoria)</option>

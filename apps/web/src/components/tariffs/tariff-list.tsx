@@ -15,7 +15,7 @@ interface TariffSchedule {
   effective_from: string;
   effective_to: string | null;
   agencies: { name: string; code: string } | null;
-  destination_countries: { name: string; code: string } | null;
+  destinations: { city: string; country_code: string } | null;
 }
 
 interface TariffListProps {
@@ -35,7 +35,7 @@ export function TariffList({ data }: TariffListProps) {
       const matches =
         t.agencies?.name?.toLowerCase().includes(q) ||
         t.agencies?.code?.toLowerCase().includes(q) ||
-        t.destination_countries?.name?.toLowerCase().includes(q) ||
+        t.destinations?.city?.toLowerCase().includes(q) ||
         t.modality?.toLowerCase().includes(q);
       if (!matches) return false;
     }
@@ -137,7 +137,7 @@ export function TariffList({ data }: TariffListProps) {
                   {t.agencies ? `${t.agencies.name} (${t.agencies.code})` : "—"}
                 </td>
                 <td className="px-4 py-3 text-xs">
-                  {t.destination_countries?.name ?? "—"}
+                  {t.destinations?.city ?? "—"}
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {MODALITY_LABELS[t.modality as keyof typeof MODALITY_LABELS] ?? t.modality}

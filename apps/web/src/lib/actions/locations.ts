@@ -23,7 +23,36 @@ export async function getCitiesOfState(
 ) {
   return (City.getCitiesOfState(countryCode, stateCode) ?? []).map((c) => ({
     name: c.name,
+    latitude: c.latitude,
+    longitude: c.longitude,
   }));
+}
+
+export async function getTimezoneForCoordinates(
+  countryCode: string,
+  longitude: string,
+) {
+  const country = Country.getCountryByCode(countryCode);
+  const timezones = country?.timezones ?? [];
+
+  if (timezones.length <= 1) return timezones[0]?.zoneName ?? null;
+
+  const cityLon = parseFloat(longitude);
+  if (Number.isNaN(cityLon)) return timezones[0]?.zoneName ?? null;
+
+  let bestZone = timezones[0]?.zoneName ?? null;
+  let bestDiff = Infinity;
+
+  for (const tz of timezones) {
+    const tzLon = (tz.gmtOffset / 3600) * 15;
+    const diff = Math.abs(cityLon - tzLon);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestZone = tz.zoneName;
+    }
+  }
+
+  return bestZone;
 }
 
 export async function getTimezonesOfCountry(countryCode: string) {

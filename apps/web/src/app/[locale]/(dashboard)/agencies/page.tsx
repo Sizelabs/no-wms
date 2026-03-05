@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { AgencyList } from "@/components/agencies/agency-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { getAgencies } from "@/lib/actions/agencies";
-import { getUserCourrierScope } from "@/lib/auth/scope";
+import { getUserCourierScope } from "@/lib/auth/scope";
 
 export default async function AgenciesPage({
   params,
@@ -14,15 +14,15 @@ export default async function AgenciesPage({
   const { locale } = await params;
   const t = await getTranslations("nav");
 
-  const [{ data: agencies }, courrierScope] = await Promise.all([
+  const [{ data: agencies }, courierScope] = await Promise.all([
     getAgencies(),
-    getUserCourrierScope(),
+    getUserCourierScope(),
   ]);
 
-  // If scoped to a single courrier, pre-select it in the create form
+  // If scoped to a single courier, pre-select it in the create form
   const newHref =
-    courrierScope !== null && courrierScope.length === 1
-      ? `/${locale}/agencies/new?courrier_id=${courrierScope[0]}`
+    courierScope !== null && courierScope.length === 1
+      ? `/${locale}/agencies/new?courier_id=${courierScope[0]}`
       : `/${locale}/agencies/new`;
 
   return (

@@ -30,17 +30,17 @@ const ASSIGNABLE_ROLES = [
 ] as const;
 
 const WAREHOUSE_ROLES = ["warehouse_admin", "warehouse_operator", "shipping_clerk"];
-const COURRIER_ROLES = ["destination_admin", "destination_operator"];
+const COURIER_ROLES = ["destination_admin", "destination_operator"];
 const AGENCY_ROLES = ["agency"];
 
 interface InviteUserFormProps {
   organizationId: string;
   warehouses?: { id: string; name: string; code: string }[];
-  courriers?: { id: string; name: string; code: string }[];
+  couriers?: { id: string; name: string; code: string }[];
   agencies?: { id: string; name: string; code: string }[];
 }
 
-export function InviteUserForm({ organizationId, warehouses = [], courriers = [], agencies = [] }: InviteUserFormProps) {
+export function InviteUserForm({ organizationId, warehouses = [], couriers = [], agencies = [] }: InviteUserFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
   const { notify } = useNotification();
@@ -48,7 +48,7 @@ export function InviteUserForm({ organizationId, warehouses = [], courriers = []
   const [selectedRole, setSelectedRole] = useState<string>(ASSIGNABLE_ROLES[0]);
 
   const showWarehouse = WAREHOUSE_ROLES.includes(selectedRole);
-  const showCourrier = COURRIER_ROLES.includes(selectedRole);
+  const showCourier = COURIER_ROLES.includes(selectedRole);
   const showAgency = AGENCY_ROLES.includes(selectedRole);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -58,13 +58,13 @@ export function InviteUserForm({ organizationId, warehouses = [], courriers = []
     const email = fd.get("email") as string;
     const role = fd.get("role") as string;
     const warehouseId = fd.get("warehouse_id") as string | null;
-    const courrierId = fd.get("courrier_id") as string | null;
+    const courierId = fd.get("courier_id") as string | null;
     const agencyId = fd.get("agency_id") as string | null;
 
     startTransition(async () => {
       const result = await inviteUser(organizationId, fullName, email, role, {
         warehouse_id: warehouseId || undefined,
-        courrier_id: courrierId || undefined,
+        courier_id: courierId || undefined,
         agency_id: agencyId || undefined,
       });
       if (result?.error) {
@@ -139,16 +139,16 @@ export function InviteUserForm({ organizationId, warehouses = [], courriers = []
             </Field>
           )}
 
-          {showCourrier && (
-            <Field label="Courrier asignado" htmlFor="courrier_id" required>
+          {showCourier && (
+            <Field label="Courier asignado" htmlFor="courier_id" required>
               <select
-                id="courrier_id"
-                name="courrier_id"
+                id="courier_id"
+                name="courier_id"
                 required
                 className={selectClass}
               >
-                <option value="">Seleccionar courrier...</option>
-                {courriers.map((c) => (
+                <option value="">Seleccionar courier...</option>
+                {couriers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.code})
                   </option>

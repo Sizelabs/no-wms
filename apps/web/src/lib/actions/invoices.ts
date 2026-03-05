@@ -128,7 +128,7 @@ export async function generateInvoice(formData: FormData): Promise<{ id: string 
   const { data: dispatchedSiItems } = await supabase
     .from("shipping_instruction_items")
     .select(
-      "warehouse_receipt_id, shipping_instruction_id, warehouse_receipts!inner(wr_number, total_billable_weight_lb, agency_id, organization_id), shipping_instructions!inner(status, agency_id, destination_country_id, modality, courier_category, finalized_at)",
+      "warehouse_receipt_id, shipping_instruction_id, warehouse_receipts!inner(wr_number, total_billable_weight_lb, agency_id, organization_id), shipping_instructions!inner(status, agency_id, destination_id, modality, courier_category, finalized_at)",
     )
     .eq("shipping_instructions.agency_id", agencyId)
     .eq("shipping_instructions.status", "finalized")
@@ -142,45 +142,41 @@ export async function generateInvoice(formData: FormData): Promise<{ id: string 
       const weight = wr?.total_billable_weight_lb ?? 0;
 
       // Look up applicable tariff rate
-      let ratePerLb = 0;
+      let ratePerKg = 0;
       let minimumCharge = 0;
 
-      const { data: schedules } = await supabase
+      // Weight brackets are inline in tariff_schedules (no tariff_rates table)
+      const weightKg = weight * 0.453592; // convert lb to kg for rate lookup
+
+      const { data: tariffMatch } = await supabase
         .from("tariff_schedules")
-        .select("id")
+        .select("rate_per_kg, minimum_charge")
         .eq("organization_id", orgId)
         .eq("agency_id", agencyId)
-        .eq("destination_country_id", si.destination_country_id)
+        .eq("destination_id", si.destination_id)
         .eq("modality", si.modality)
+        .eq("rate_type", "agency_rate")
         .eq("is_active", true)
         .lte("effective_from", periodEnd)
+        .lte("min_weight_kg", weightKg)
+        .gte("max_weight_kg", weightKg)
         .order("effective_from", { ascending: false })
         .limit(1);
 
-      if (schedules?.length) {
-        const { data: rates } = await supabase
-          .from("tariff_rates")
-          .select("rate_per_lb, minimum_charge")
-          .eq("schedule_id", schedules[0]!.id)
-          .lte("min_weight_lb", weight)
-          .gte("max_weight_lb", weight)
-          .limit(1);
-
-        if (rates?.length) {
-          ratePerLb = rates[0]!.rate_per_lb;
-          minimumCharge = rates[0]!.minimum_charge;
-        }
+      if (tariffMatch?.length) {
+        ratePerKg = tariffMatch[0]!.rate_per_kg;
+        minimumCharge = tariffMatch[0]!.minimum_charge;
       }
 
-      const shippingTotal = Math.max(weight * ratePerLb, minimumCharge);
+      const shippingTotal = Math.max(weightKg * ratePerKg, minimumCharge);
 
       lineItems.push({
         type: "shipping",
-        description: `Envío ${wr?.wr_number ?? "?"} — ${weight} lbs @ $${ratePerLb}/lb`,
+        description: `Envío ${wr?.wr_number ?? "?"} — ${weightKg.toFixed(2)} kg @ $${ratePerKg}/kg`,
         warehouse_receipt_id: item.warehouse_receipt_id,
         shipping_instruction_id: item.shipping_instruction_id,
-        quantity: weight,
-        unit_price: ratePerLb,
+        quantity: weightKg,
+        unit_price: ratePerKg,
         total: Math.round(shippingTotal * 100) / 100,
       });
     }
