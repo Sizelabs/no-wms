@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getCourier } from "@/lib/actions/couriers";
 import { getTariffSchedules } from "@/lib/actions/tariffs";
 import { getCourierUsers } from "@/lib/actions/users";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserCourierScope } from "@/lib/auth/scope";
 
 export default async function CourierDetailPage({
@@ -15,6 +16,7 @@ export default async function CourierDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  await requirePermission(locale, "couriers", "read");
   const t = await getTranslations("couriers");
 
   const [{ data: courier }, { data: users }, { data: tariffs }] = await Promise.all([

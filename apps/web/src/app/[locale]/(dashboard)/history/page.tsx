@@ -8,6 +8,7 @@ import {
   getWarehouseReceiptsForHistory,
   getWarehousesForFilter,
 } from "@/lib/actions/warehouse-receipts";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function HistoryPage({
   params,
@@ -26,6 +27,7 @@ export default async function HistoryPage({
   }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "history", "read");
   const filters = await searchParams;
   const t = await getTranslations("history");
 

@@ -4,13 +4,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { WarehouseEditForm } from "@/components/warehouses/warehouse-edit-form";
 import { getAllCountries } from "@/lib/actions/locations";
 import { getWarehouse } from "@/lib/actions/warehouses";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function WarehouseEditPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  await requirePermission(locale, "warehouses", "update");
 
   const [{ data: warehouse }, countries] = await Promise.all([
     getWarehouse(id),

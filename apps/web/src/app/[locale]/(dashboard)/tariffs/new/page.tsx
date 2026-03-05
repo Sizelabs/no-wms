@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { TariffScheduleForm } from "@/components/tariffs/tariff-schedule-form";
 import { getShippingCategories } from "@/lib/actions/tariffs";
-import { getUserAgencyScope, getUserCourierScope } from "@/lib/auth/scope";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { getUserAgencyScope, getUserAllowedTariffSide, getUserCourierScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewTariffPage({
@@ -12,6 +13,7 @@ export default async function NewTariffPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "tariffs", "create");
   const supabase = await createClient();
 
   const {
@@ -20,9 +22,10 @@ export default async function NewTariffPage({
 
   if (!user) redirect(`/${locale}/login`);
 
-  const [courierScope, agencyScope] = await Promise.all([
+  const [courierScope, agencyScope, allowedSide] = await Promise.all([
     getUserCourierScope(),
     getUserAgencyScope(),
+    getUserAllowedTariffSide(),
   ]);
 
   let couriersQuery = supabase
@@ -68,6 +71,7 @@ export default async function NewTariffPage({
         agencies={agenciesResult.data ?? []}
         destinations={destinationsResult.data ?? []}
         shippingCategories={categoriesResult.data ?? []}
+        allowedSide={allowedSide}
       />
     </div>
   );

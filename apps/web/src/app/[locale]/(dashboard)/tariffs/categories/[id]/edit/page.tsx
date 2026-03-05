@@ -3,13 +3,15 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { ShippingCategoryForm } from "@/components/tariffs/shipping-category-form";
 import { getShippingCategory } from "@/lib/actions/tariffs";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function EditShippingCategoryPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  await requirePermission(locale, "shipping_categories", "update");
   const { data: category, error } = await getShippingCategory(id);
 
   if (error || !category) notFound();

@@ -2,8 +2,15 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportCard } from "@/components/reports/report-card";
+import { requirePermission } from "@/lib/auth/require-permission";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  await requirePermission(locale, "reports", "read");
   const t = await getTranslations("reports");
 
   return (

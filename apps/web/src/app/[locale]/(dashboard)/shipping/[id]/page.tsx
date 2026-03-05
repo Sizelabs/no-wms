@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SiActions } from "@/components/shipping/si-actions";
 import { InfoCard, Section } from "@/components/ui/detail-page";
 import { getShippingInstruction } from "@/lib/actions/shipping-instructions";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 const STATUS_COLORS: Record<string, string> = {
   requested: "bg-blue-100 text-blue-800",
@@ -23,6 +24,7 @@ export default async function ShippingDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  await requirePermission(locale, "shipping", "read");
   const { data: si, error } = await getShippingInstruction(id);
 
   if (error || !si) {

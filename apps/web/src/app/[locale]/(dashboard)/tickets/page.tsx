@@ -4,10 +4,17 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { TicketList } from "@/components/tickets/ticket-list";
 import { getTickets } from "@/lib/actions/tickets";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserAgencyScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function TicketsPage() {
+export default async function TicketsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const { permissions } = await requirePermission(locale, "tickets", "read");
   const t = await getTranslations("tickets");
   const { data: tickets } = await getTickets();
   const agencyScope = await getUserAgencyScope();
@@ -20,15 +27,19 @@ export default async function TicketsPage() {
     agencies = data ?? [];
   }
 
+  const canCreate = permissions.tickets.create;
+
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")}>
-        <Link
-          href="/tickets/new"
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          + {t("new")}
-        </Link>
+        {canCreate && (
+          <Link
+            href="/tickets/new"
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + {t("new")}
+          </Link>
+        )}
       </PageHeader>
       <TicketList data={tickets as never[]} agencies={agencies} />
     </div>

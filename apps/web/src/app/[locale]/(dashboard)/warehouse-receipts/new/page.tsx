@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WrReceiptForm } from "@/components/warehouse/wr-receipt-form";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,6 +12,7 @@ export default async function NewWarehouseReceiptPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "warehouse_receipts", "create");
   const supabase = await createClient();
 
   const {

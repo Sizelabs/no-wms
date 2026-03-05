@@ -5,13 +5,15 @@ import { CourierEditForm } from "@/components/couriers/courier-edit-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { getCourier } from "@/lib/actions/couriers";
 import { getAllCountries } from "@/lib/actions/locations";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function CourierEditPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  await requirePermission(locale, "couriers", "update");
   const t = await getTranslations("couriers");
 
   const [{ data: courier }, countries] = await Promise.all([

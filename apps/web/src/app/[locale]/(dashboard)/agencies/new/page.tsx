@@ -4,6 +4,7 @@ import { AgencyCreateForm } from "@/components/agencies/agency-create-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { getCouriers } from "@/lib/actions/couriers";
 import { getDestinations } from "@/lib/actions/shipping-instructions";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserCourierScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,6 +16,7 @@ export default async function NewAgencyPage({
   searchParams: Promise<{ courier_id?: string }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "agencies", "create");
   const { courier_id } = await searchParams;
   const supabase = await createClient();
 

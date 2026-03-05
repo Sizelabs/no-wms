@@ -11,6 +11,7 @@ import { getAgency } from "@/lib/actions/agencies";
 import { getConsigneesByAgency } from "@/lib/actions/consignees";
 import { getTariffSchedules } from "@/lib/actions/tariffs";
 import { getAgencyUsers } from "@/lib/actions/users";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function AgencyDetailPage({
   params,
@@ -18,6 +19,7 @@ export default async function AgencyDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  await requirePermission(locale, "agencies", "read");
 
   const [agencyResult, consigneesResult, usersResult, tariffsResult] = await Promise.all([
     getAgency(id),

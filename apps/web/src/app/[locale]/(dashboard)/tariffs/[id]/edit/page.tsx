@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { TariffScheduleForm } from "@/components/tariffs/tariff-schedule-form";
 import { getShippingCategories, getTariffSchedule } from "@/lib/actions/tariffs";
-import { getUserAgencyScope, getUserCourierScope } from "@/lib/auth/scope";
+import { requirePermission } from "@/lib/auth/require-permission";
+import { getUserAgencyScope, getUserAllowedTariffSide, getUserCourierScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function EditTariffPage({
@@ -12,6 +13,7 @@ export default async function EditTariffPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  await requirePermission(locale, "tariffs", "update");
   const supabase = await createClient();
 
   const {
@@ -23,9 +25,10 @@ export default async function EditTariffPage({
   const { data: schedule, error } = await getTariffSchedule(id);
   if (error || !schedule) notFound();
 
-  const [courierScope, agencyScope] = await Promise.all([
+  const [courierScope, agencyScope, allowedSide] = await Promise.all([
     getUserCourierScope(),
     getUserAgencyScope(),
+    getUserAllowedTariffSide(),
   ]);
 
   let couriersQuery = supabase
@@ -74,6 +77,7 @@ export default async function EditTariffPage({
         destinations={destinationsResult.data ?? []}
         shippingCategories={categoriesResult.data ?? []}
         schedule={schedule}
+        allowedSide={allowedSide}
       />
     </div>
   );

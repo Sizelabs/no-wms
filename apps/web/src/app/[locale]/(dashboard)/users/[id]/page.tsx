@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { DtDd, InfoCard, Section } from "@/components/ui/detail-page";
 import { UserDetailActions } from "@/components/users/user-detail-actions";
 import { getUser } from "@/lib/actions/users";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function UserDetailPage({
   params,
@@ -14,9 +15,19 @@ export default async function UserDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  const { roles } = await requirePermission(locale, "users", "read");
+
   const { data: user, error } = await getUser(id);
 
   if (error || !user) {
+    notFound();
+  }
+
+  // Prevent non-super_admin from viewing super_admin profiles
+  const targetIsSuperAdmin = user.user_roles?.some(
+    (r: { role: string }) => r.role === "super_admin",
+  );
+  if (targetIsSuperAdmin && !roles.includes("super_admin")) {
     notFound();
   }
 

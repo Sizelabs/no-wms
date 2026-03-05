@@ -7,6 +7,7 @@ import {
   getOrganizationCounts,
   getOrganizations,
 } from "@/lib/actions/organizations";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function ForwardersPage({
   params,
@@ -14,6 +15,7 @@ export default async function ForwardersPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const { permissions } = await requirePermission(locale, "forwarders", "read");
   const t = await getTranslations("nav");
 
   const { data: forwarders } = await getOrganizations();
@@ -27,15 +29,19 @@ export default async function ForwardersPage({
   );
   const counts = Object.fromEntries(countsEntries);
 
+  const canCreate = permissions.forwarders.create;
+
   return (
     <div className="space-y-6">
       <PageHeader title={t("forwarders")}>
-        <Link
-          href={`/${locale}/forwarders/new`}
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          + Nuevo Freight Forwarder
-        </Link>
+        {canCreate && (
+          <Link
+            href={`/${locale}/forwarders/new`}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nuevo Freight Forwarder
+          </Link>
+        )}
       </PageHeader>
       <ForwarderList forwarders={orgs} counts={counts} />
     </div>

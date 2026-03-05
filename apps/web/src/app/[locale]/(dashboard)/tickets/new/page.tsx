@@ -3,10 +3,17 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { TicketForm } from "@/components/tickets/ticket-form";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserAgencyScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function NewTicketPage() {
+export default async function NewTicketPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  await requirePermission(locale, "tickets", "create");
   const t = await getTranslations("tickets");
   const supabase = await createClient();
 
@@ -14,7 +21,7 @@ export default async function NewTicketPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/es/login");
+  if (!user) redirect(`/${locale}/login`);
 
   const agencyScope = await getUserAgencyScope();
 

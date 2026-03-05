@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { InvoiceGenerateForm } from "@/components/invoicing/invoice-generate-form";
 import { PageHeader } from "@/components/layout/page-header";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserAgencyScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,6 +12,7 @@ export default async function GenerateInvoicePage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "invoicing", "create");
   const supabase = await createClient();
 
   const {

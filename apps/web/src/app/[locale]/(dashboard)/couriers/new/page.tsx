@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { CourierCreateForm } from "@/components/couriers/courier-create-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { getAllCountries } from "@/lib/actions/locations";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewCourierPage({
@@ -12,6 +13,7 @@ export default async function NewCourierPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "couriers", "create");
   const t = await getTranslations("couriers");
   const supabase = await createClient();
 

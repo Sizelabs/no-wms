@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getAgencies } from "@/lib/actions/agencies";
 import { generateCasillero } from "@/lib/actions/consignees";
 import { getAllCountries } from "@/lib/actions/locations";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function NewConsigneePage({
   params,
@@ -13,7 +14,8 @@ export default async function NewConsigneePage({
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ agency_id?: string }>;
 }) {
-  await params;
+  const { locale } = await params;
+  await requirePermission(locale, "consignees", "create");
   const { agency_id } = await searchParams;
 
   const [{ data: agencies }, countries] = await Promise.all([

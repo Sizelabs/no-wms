@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { DtDd, InfoCard, Section } from "@/components/ui/detail-page";
 import { getWarehouseReceipt } from "@/lib/actions/warehouse-receipts";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 const STATUS_COLORS: Record<string, string> = {
   received: "bg-blue-50 text-blue-700",
@@ -29,6 +30,7 @@ export default async function WrDetailPage({
   searchParams: Promise<{ from?: string }>;
 }) {
   const { locale, id } = await params;
+  await requirePermission(locale, "inventory", "read");
   const { from } = await searchParams;
   const { data: wr, error } = await getWarehouseReceipt(id);
 

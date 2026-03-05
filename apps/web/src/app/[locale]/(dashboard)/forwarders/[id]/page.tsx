@@ -10,13 +10,15 @@ import {
   getOrganizationUsers,
   getOrganizationWarehouses,
 } from "@/lib/actions/organizations";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function ForwarderDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  await requirePermission(locale, "forwarders", "read");
   const t = await getTranslations("nav");
 
   const { data: forwarder } = await getOrganization(id);

@@ -3,14 +3,16 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { TicketDetail } from "@/components/tickets/ticket-detail";
 import { getTicket } from "@/lib/actions/tickets";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserAgencyScope } from "@/lib/auth/scope";
 
 interface TicketDetailPageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }
 
 export default async function TicketDetailPage({ params }: TicketDetailPageProps) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  await requirePermission(locale, "tickets", "read");
   const { data: ticket, error } = await getTicket(id);
 
   if (error || !ticket) notFound();

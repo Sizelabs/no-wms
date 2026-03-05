@@ -3,13 +3,15 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { TariffDetail } from "@/components/tariffs/tariff-detail";
 import { getTariffSchedule } from "@/lib/actions/tariffs";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function TariffDetailPage({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  await requirePermission(locale, "tariffs", "read");
   const { data: schedule, error } = await getTariffSchedule(id);
 
   if (error || !schedule) {

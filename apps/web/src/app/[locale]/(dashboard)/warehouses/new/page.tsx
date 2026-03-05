@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { WarehouseCreateForm } from "@/components/warehouses/warehouse-create-form";
 import { getAllCountries } from "@/lib/actions/locations";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewWarehousePage({
@@ -12,6 +13,7 @@ export default async function NewWarehousePage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "warehouses", "create");
   const t = await getTranslations("nav");
   const supabase = await createClient();
 

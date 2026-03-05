@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { WrHistoryTable } from "@/components/warehouse/wr-history-table";
 import { getAgenciesForFilter, getStorageSettings, getWarehouseReceipts, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function WarehouseReceiptsPage({
   params,
@@ -22,8 +23,11 @@ export default async function WarehouseReceiptsPage({
   }>;
 }) {
   const { locale } = await params;
+  const { permissions } = await requirePermission(locale, "warehouse_receipts", "read");
   const filters = await searchParams;
   const t = await getTranslations("nav");
+
+  const canCreate = permissions.warehouse_receipts.create;
 
   const [{ data, count }, agencies, warehouses, storageSettings] = await Promise.all([
     getWarehouseReceipts({
@@ -44,18 +48,22 @@ export default async function WarehouseReceiptsPage({
   return (
     <div className="space-y-6">
       <PageHeader title={t("warehouseReceipts")}>
-        <Link
-          href={`/${locale}/warehouse-receipts/import`}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Importar lote
-        </Link>
-        <Link
-          href={`/${locale}/warehouse-receipts/new`}
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          + Recibir Paquete
-        </Link>
+        {canCreate && (
+          <>
+            <Link
+              href={`/${locale}/warehouse-receipts/import`}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Importar lote
+            </Link>
+            <Link
+              href={`/${locale}/warehouse-receipts/new`}
+              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              + Recibir Paquete
+            </Link>
+          </>
+        )}
       </PageHeader>
       <WrHistoryTable
         data={data ?? []}

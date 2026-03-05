@@ -3,13 +3,15 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { InviteCourierUserForm } from "@/components/users/invite-courier-user-form";
 import { getCourier } from "@/lib/actions/couriers";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function CourierInviteUserPage({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  await requirePermission(locale, "users", "create");
 
   const { data: courier } = await getCourier(id);
   if (!courier) notFound();

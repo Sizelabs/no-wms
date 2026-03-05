@@ -8,6 +8,7 @@ import { DtDd, InfoCard, Section } from "@/components/ui/detail-page";
 import { WarehouseDetailActions } from "@/components/warehouses/warehouse-detail-actions";
 import { getWarehouseReceipts } from "@/lib/actions/warehouse-receipts";
 import { getWarehouse } from "@/lib/actions/warehouses";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 const STATUS_COLORS: Record<string, string> = {
   received: "bg-blue-50 text-blue-700",
@@ -25,6 +26,7 @@ export default async function WarehouseDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  await requirePermission(locale, "warehouses", "read");
   const [warehouseResult, wrsResult] = await Promise.all([
     getWarehouse(id),
     getWarehouseReceipts({ warehouse_id: id, limit: 20 }),

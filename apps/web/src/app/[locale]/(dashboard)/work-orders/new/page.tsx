@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WoCreateForm } from "@/components/work-orders/wo-create-form";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,6 +12,7 @@ export default async function NewWorkOrderPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "work_orders", "create");
   const supabase = await createClient();
 
   const {

@@ -5,13 +5,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { WarehouseCreateForm } from "@/components/warehouses/warehouse-create-form";
 import { getAllCountries } from "@/lib/actions/locations";
 import { getOrganization } from "@/lib/actions/organizations";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function ForwarderNewWarehousePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  await requirePermission(locale, "warehouses", "create");
   const t = await getTranslations("nav");
 
   const [{ data: forwarder }, countries] = await Promise.all([

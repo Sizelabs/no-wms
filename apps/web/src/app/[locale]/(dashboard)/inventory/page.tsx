@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { InventoryTable } from "@/components/warehouse/inventory-table";
 import { getAgenciesForFilter, getPackages, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function InventoryPage({
   params,
@@ -22,6 +23,7 @@ export default async function InventoryPage({
   }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "inventory", "read");
   const filters = await searchParams;
   const t = await getTranslations("nav");
 

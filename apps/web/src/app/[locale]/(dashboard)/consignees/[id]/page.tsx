@@ -5,6 +5,7 @@ import { ConsigneeDetailActions } from "@/components/consignees/consignee-detail
 import { PageHeader } from "@/components/layout/page-header";
 import { DtDd, InfoCard, Section } from "@/components/ui/detail-page";
 import { getConsignee } from "@/lib/actions/consignees";
+import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function ConsigneeDetailPage({
   params,
@@ -12,6 +13,7 @@ export default async function ConsigneeDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  await requirePermission(locale, "consignees", "read");
   const { data: consignee, error } = await getConsignee(id);
 
   if (error || !consignee) {

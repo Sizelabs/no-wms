@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { InviteUserForm } from "@/components/users/invite-user-form";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewUserPage({
@@ -11,6 +12,7 @@ export default async function NewUserPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  await requirePermission(locale, "users", "create");
   const t = await getTranslations("nav");
   const supabase = await createClient();
 
