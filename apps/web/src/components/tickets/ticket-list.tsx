@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { TicketPriorityBadge } from "@/components/tickets/ticket-priority-badge";
 import { TicketStatusBadge } from "@/components/tickets/ticket-status-badge";
+import { filterSelectClass } from "@/components/ui/form-section";
 
 interface TicketRow {
   id: string;
@@ -64,7 +65,7 @@ export function TicketList({ data, agencies }: TicketListProps) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           {Object.values(TICKET_STATUSES).map((s) => (
@@ -91,7 +92,7 @@ export function TicketList({ data, agencies }: TicketListProps) {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className={filterSelectClass}
           >
             <option value="">Todas las prioridades</option>
             <option value="low">Baja</option>
@@ -103,7 +104,7 @@ export function TicketList({ data, agencies }: TicketListProps) {
             <select
               value={agencyFilter}
               onChange={(e) => setAgencyFilter(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className={filterSelectClass}
             >
               <option value="">Todas las agencias</option>
               {agencies.map((a) => (

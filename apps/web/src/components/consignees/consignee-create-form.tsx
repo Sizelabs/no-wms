@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Field,
   FormActions,
@@ -13,8 +14,9 @@ import {
   inputClass,
   primaryBtnClass,
   secondaryBtnClass,
-  selectClass,
 } from "@/components/ui/form-section";
+import type { Country } from "@/components/ui/location-selects";
+import { LocationSelects } from "@/components/ui/location-selects";
 import { createConsignee } from "@/lib/actions/consignees";
 
 interface Agency {
@@ -25,12 +27,14 @@ interface Agency {
 
 interface ConsigneeCreateFormProps {
   agencies: Agency[];
+  countries: Country[];
   defaultAgencyId?: string;
   defaultCasillero?: string;
 }
 
 export function ConsigneeCreateForm({
   agencies,
+  countries,
   defaultAgencyId,
   defaultCasillero,
 }: ConsigneeCreateFormProps) {
@@ -56,20 +60,14 @@ export function ConsigneeCreateForm({
       <form onSubmit={handleSubmit}>
         <FormSection title="Identificación" icon={User}>
           <Field label="Agencia" htmlFor="agency_id" required>
-            <select
+            <Combobox
               id="agency_id"
               name="agency_id"
+              options={agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
+              defaultValue={defaultAgencyId}
+              placeholder="Seleccionar agencia"
               required
-              defaultValue={defaultAgencyId ?? ""}
-              className={selectClass}
-            >
-              <option value="" disabled>Seleccionar agencia</option>
-              {agencies.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.code})
-                </option>
-              ))}
-            </select>
+            />
           </Field>
           <Field
             label="Casillero"
@@ -139,32 +137,19 @@ export function ConsigneeCreateForm({
               className={inputClass}
             />
           </Field>
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Ciudad" htmlFor="city">
-              <input
-                id="city"
-                name="city"
-                type="text"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Provincia" htmlFor="province">
-              <input
-                id="province"
-                name="province"
-                type="text"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Código postal" htmlFor="postal_code">
-              <input
-                id="postal_code"
-                name="postal_code"
-                type="text"
-                className={inputClass}
-              />
-            </Field>
-          </div>
+          <LocationSelects
+            countries={countries}
+            stateFieldName="province"
+            stateLabel="Provincia"
+          />
+          <Field label="Código postal" htmlFor="postal_code">
+            <input
+              id="postal_code"
+              name="postal_code"
+              type="text"
+              className={inputClass}
+            />
+          </Field>
         </FormSection>
         <FormActions>
           <button

@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { filterSelectClass } from "@/components/ui/form-section";
 import {
   resendInvite,
   resetUserPassword,
@@ -80,7 +81,7 @@ export function UserList({ users }: UserListProps) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           <option value="active">Activo</option>

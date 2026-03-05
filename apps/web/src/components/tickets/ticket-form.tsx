@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
+import { inputClass, selectClass, textareaClass } from "@/components/ui/form-section";
 import { createTicket } from "@/lib/actions/tickets";
 
 interface TicketFormProps {
@@ -47,14 +49,14 @@ export function TicketForm({ agencies, agencyId, wrs }: TicketFormProps) {
       {agencies && !agencyId && (
         <div>
           <label className="block text-sm font-medium text-gray-700">Agencia</label>
-          <select name="agency_id" required className="mt-1 w-full rounded border px-3 py-2 text-sm">
-            <option value="">Seleccionar agencia</option>
-            {agencies.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.code})
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <Combobox
+              name="agency_id"
+              options={agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
+              placeholder="Seleccionar agencia"
+              required
+            />
+          </div>
         </div>
       )}
       {agencyId && <input type="hidden" name="agency_id" value={agencyId} />}
@@ -62,7 +64,7 @@ export function TicketForm({ agencies, agencyId, wrs }: TicketFormProps) {
       {/* Category */}
       <div>
         <label className="block text-sm font-medium text-gray-700">Categoría</label>
-        <select name="category" required className="mt-1 w-full rounded border px-3 py-2 text-sm">
+        <select name="category" required className={`mt-1 ${selectClass}`}>
           <option value="">Seleccionar categoría</option>
           {TICKET_CATEGORIES.map((cat) => (
             <option key={cat} value={cat}>
@@ -80,7 +82,7 @@ export function TicketForm({ agencies, agencyId, wrs }: TicketFormProps) {
           type="text"
           required
           maxLength={255}
-          className="mt-1 w-full rounded border px-3 py-2 text-sm"
+          className={`mt-1 ${inputClass}`}
           placeholder="Breve descripción del problema"
         />
       </div>
@@ -92,7 +94,7 @@ export function TicketForm({ agencies, agencyId, wrs }: TicketFormProps) {
           name="description"
           required
           rows={4}
-          className="mt-1 w-full rounded border px-3 py-2 text-sm"
+          className={`mt-1 ${textareaClass}`}
           placeholder="Detalle completo del problema o consulta"
         />
       </div>
@@ -100,7 +102,7 @@ export function TicketForm({ agencies, agencyId, wrs }: TicketFormProps) {
       {/* Priority */}
       <div>
         <label className="block text-sm font-medium text-gray-700">Prioridad</label>
-        <select name="priority" defaultValue="normal" className="mt-1 w-full rounded border px-3 py-2 text-sm">
+        <select name="priority" defaultValue="normal" className={`mt-1 ${selectClass}`}>
           <option value="low">Baja</option>
           <option value="normal">Normal</option>
           <option value="high">Alta</option>

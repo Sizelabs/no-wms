@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Field,
   FormActions,
@@ -123,55 +124,37 @@ export function InviteUserForm({ organizationId, warehouses = [], couriers = [],
 
           {showWarehouse && (
             <Field label="Almacén asignado" htmlFor="warehouse_id" required>
-              <select
+              <Combobox
                 id="warehouse_id"
                 name="warehouse_id"
+                options={warehouses.map((w) => ({ value: w.id, label: `${w.name} (${w.code})` }))}
+                placeholder="Seleccionar almacén..."
                 required
-                className={selectClass}
-              >
-                <option value="">Seleccionar almacén...</option>
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} ({w.code})
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
           )}
 
           {showCourier && (
             <Field label="Courier asignado" htmlFor="courier_id" required>
-              <select
+              <Combobox
                 id="courier_id"
                 name="courier_id"
+                options={couriers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+                placeholder="Seleccionar courier..."
                 required
-                className={selectClass}
-              >
-                <option value="">Seleccionar courier...</option>
-                {couriers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
           )}
 
           {showAgency && (
             <Field label="Agencia asignada" htmlFor="agency_id" required>
-              <select
+              <Combobox
                 id="agency_id"
                 name="agency_id"
+                options={agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
+                placeholder="Seleccionar agencia..."
                 required
-                className={selectClass}
-              >
-                <option value="">Seleccionar agencia...</option>
-                {agencies.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({a.code})
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
           )}
         </FormSection>

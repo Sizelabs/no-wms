@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
+import { inputClass } from "@/components/ui/form-section";
 import { generateInvoice } from "@/lib/actions/invoices";
 
 interface Agency {
@@ -93,18 +95,12 @@ export function InvoiceGenerateForm({ agencies }: InvoiceGenerateFormProps) {
 
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">Agencia</label>
-        <select
+        <Combobox
+          options={agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
           value={formValues.agency_id}
-          onChange={(e) => setFormValues((f) => ({ ...f, agency_id: e.target.value }))}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="">Seleccionar agencia</option>
-          {agencies.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} ({a.code})
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setFormValues((f) => ({ ...f, agency_id: v }))}
+          placeholder="Seleccionar agencia"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -114,7 +110,7 @@ export function InvoiceGenerateForm({ agencies }: InvoiceGenerateFormProps) {
             type="date"
             value={formValues.period_start}
             onChange={(e) => setFormValues((f) => ({ ...f, period_start: e.target.value }))}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
         <div>
@@ -123,7 +119,7 @@ export function InvoiceGenerateForm({ agencies }: InvoiceGenerateFormProps) {
             type="date"
             value={formValues.period_end}
             onChange={(e) => setFormValues((f) => ({ ...f, period_end: e.target.value }))}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
       </div>

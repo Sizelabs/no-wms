@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { filterSelectClass } from "@/components/ui/form-section";
 import { deleteTariffSchedule } from "@/lib/actions/tariffs";
 
 interface TariffSchedule {
@@ -74,7 +75,7 @@ export function TariffList({ data }: TariffListProps) {
         <select
           value={filter.active}
           onChange={(e) => setFilter((f) => ({ ...f, active: e.target.value }))}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           <option value="true">Activas</option>
@@ -98,7 +99,7 @@ export function TariffList({ data }: TariffListProps) {
           <select
             value={filter.agency}
             onChange={(e) => setFilter((f) => ({ ...f, agency: e.target.value }))}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className={filterSelectClass}
           >
             <option value="">Todas las agencias</option>
             {agencies.map((code) => (

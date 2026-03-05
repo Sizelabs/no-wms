@@ -3,6 +3,7 @@
 import { MAWB_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useState, useTransition } from "react";
 
+import { filterSelectClass } from "@/components/ui/form-section";
 import { updateMawbStatus } from "@/lib/actions/manifests";
 
 interface Hawb {
@@ -92,7 +93,7 @@ export function MawbList({ data }: MawbListProps) {
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           {Object.entries(MAWB_STATUS_LABELS).map(([k, v]) => (

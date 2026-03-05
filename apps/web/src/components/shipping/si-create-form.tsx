@@ -5,6 +5,8 @@ import { MODALITY_LABELS, MVP_MODALITIES } from "@no-wms/shared/constants/modali
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
+import { selectClass } from "@/components/ui/form-section";
 import { createShippingInstruction } from "@/lib/actions/shipping-instructions";
 
 interface Agency {
@@ -119,7 +121,7 @@ export function SiCreateForm({
           <select
             value={modality}
             onChange={(e) => setModality(e.target.value as Modality)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+            className={`mt-1 ${selectClass}`}
           >
             {MVP_MODALITIES.map((m) => (
               <option key={m} value={m}>
@@ -130,60 +132,48 @@ export function SiCreateForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Bodega</label>
-          <select
-            value={warehouseId}
-            onChange={(e) => setWarehouseId(e.target.value)}
-            disabled={warehouses.length <= 1}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
-          >
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.code})
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <Combobox
+              options={warehouses.map((w) => ({ value: w.id, label: `${w.name} (${w.code})` }))}
+              value={warehouseId}
+              onChange={setWarehouseId}
+              disabled={warehouses.length <= 1}
+              placeholder="Seleccionar bodega"
+            />
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Agencia</label>
-          <select
-            value={agencyId}
-            onChange={(e) => setAgencyId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-          >
-            {agencies.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.code})
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <Combobox
+              options={agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
+              value={agencyId}
+              onChange={setAgencyId}
+              placeholder="Seleccionar agencia"
+            />
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Destino</label>
-          <select
-            value={destinationId}
-            onChange={(e) => setDestinationId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-          >
-            {destinations.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.city} ({d.country_code})
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <Combobox
+              options={destinations.map((d) => ({ value: d.id, label: `${d.city} (${d.country_code})` }))}
+              value={destinationId}
+              onChange={setDestinationId}
+              placeholder="Seleccionar destino"
+            />
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Consignatario</label>
-          <select
-            value={consigneeId}
-            onChange={(e) => setConsigneeId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-          >
-            {consignees.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <Combobox
+              options={consignees.map((c) => ({ value: c.id, label: c.name }))}
+              value={consigneeId}
+              onChange={setConsigneeId}
+              placeholder="Seleccionar consignatario"
+            />
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Cédula / RUC</label>

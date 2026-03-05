@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { filterSelectClass } from "@/components/ui/form-section";
+
 interface Warehouse {
   id: string;
   name: string;
@@ -52,7 +54,7 @@ export function WarehouseList({ warehouses }: WarehouseListProps) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           <option value="active">Activa</option>

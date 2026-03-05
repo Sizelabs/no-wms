@@ -5,6 +5,7 @@ import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { filterSelectClass } from "@/components/ui/form-section";
 import {
   approveShippingInstruction,
   finalizeShippingInstruction,
@@ -102,7 +103,7 @@ export function SiList({ data }: SiListProps) {
         <select
           value={filter.status}
           onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           {Object.entries(SI_STATUS_LABELS).map(([k, v]) => (
@@ -127,7 +128,7 @@ export function SiList({ data }: SiListProps) {
           <select
             value={filter.modality}
             onChange={(e) => setFilter((f) => ({ ...f, modality: e.target.value }))}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className={filterSelectClass}
           >
             <option value="">Todas las modalidades</option>
             {Object.entries(MODALITY_LABELS).map(([k, v]) => (

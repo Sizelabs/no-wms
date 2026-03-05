@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { InvoiceStatusBadge } from "@/components/invoicing/invoice-status-badge";
+import { filterSelectClass } from "@/components/ui/form-section";
 
 interface Invoice {
   id: string;
@@ -61,7 +62,7 @@ export function InvoiceList({ data }: InvoiceListProps) {
         <select
           value={filter.status}
           onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           {Object.entries(INVOICE_STATUS_LABELS).map(([k, v]) => (
@@ -86,7 +87,7 @@ export function InvoiceList({ data }: InvoiceListProps) {
           <select
             value={filter.agency}
             onChange={(e) => setFilter((f) => ({ ...f, agency: e.target.value }))}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className={filterSelectClass}
           >
             <option value="">Todas las agencias</option>
             {agencies.map((code) => (

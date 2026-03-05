@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { filterSelectClass } from "@/components/ui/form-section";
+
 interface CourierWarehouseDestination {
   id: string;
   destinations: { city: string; country_code: string } | null;
@@ -64,7 +66,7 @@ export function CourierList({ couriers }: CourierListProps) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           <option value="active">Activo</option>

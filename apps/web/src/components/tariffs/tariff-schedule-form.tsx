@@ -2,9 +2,11 @@
 
 import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
+import { inputClass, selectClass } from "@/components/ui/form-section";
 import { createTariffSchedule, updateTariffSchedule } from "@/lib/actions/tariffs";
 
 interface Agency {
@@ -39,6 +41,11 @@ export function TariffScheduleForm({ agencies, destinations, schedule }: TariffS
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const isEditing = !!schedule;
+  const [agencyId, setAgencyId] = useState(schedule?.agency_id ?? "");
+  const [destinationId, setDestinationId] = useState(schedule?.destination_id ?? "");
+
+  const agencyOptions = agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }));
+  const destinationOptions = destinations.map((d) => ({ value: d.id, label: `${d.city} (${d.country_code})` }));
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -70,36 +77,26 @@ export function TariffScheduleForm({ agencies, destinations, schedule }: TariffS
     <form onSubmit={handleSubmit} className="mx-auto max-w-xl space-y-4 rounded-lg border bg-white p-6">
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">Agencia</label>
-        <select
+        <Combobox
           name="agency_id"
+          options={agencyOptions}
+          value={agencyId}
+          onChange={setAgencyId}
+          placeholder="Seleccionar agencia"
           required
-          defaultValue={schedule?.agency_id ?? ""}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="">Seleccionar agencia</option>
-          {agencies.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} ({a.code})
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">País destino</label>
-        <select
+        <Combobox
           name="destination_id"
+          options={destinationOptions}
+          value={destinationId}
+          onChange={setDestinationId}
+          placeholder="Seleccionar destino"
           required
-          defaultValue={schedule?.destination_id ?? ""}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="">Seleccionar destino</option>
-          {destinations.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.city} ({d.country_code})
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       <div>
@@ -108,7 +105,7 @@ export function TariffScheduleForm({ agencies, destinations, schedule }: TariffS
           name="modality"
           required
           defaultValue={schedule?.modality ?? ""}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className={selectClass}
         >
           <option value="">Seleccionar modalidad</option>
           {Object.entries(MODALITY_LABELS).map(([k, v]) => (
@@ -124,7 +121,7 @@ export function TariffScheduleForm({ agencies, destinations, schedule }: TariffS
           type="text"
           defaultValue={schedule?.courier_category ?? ""}
           placeholder="Ej: A, B (opcional)"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className={inputClass}
         />
       </div>
 
@@ -136,7 +133,7 @@ export function TariffScheduleForm({ agencies, destinations, schedule }: TariffS
             type="date"
             required
             defaultValue={schedule?.effective_from ?? ""}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
         <div>
@@ -145,7 +142,7 @@ export function TariffScheduleForm({ agencies, destinations, schedule }: TariffS
             name="effective_to"
             type="date"
             defaultValue={schedule?.effective_to ?? ""}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
       </div>

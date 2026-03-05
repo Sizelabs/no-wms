@@ -6,6 +6,9 @@ export const inputClass =
 
 export const selectClass = inputClass;
 
+export const filterSelectClass =
+  "h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 focus:outline-none transition-colors";
+
 export const textareaClass =
   "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 focus:outline-none transition-colors";
 

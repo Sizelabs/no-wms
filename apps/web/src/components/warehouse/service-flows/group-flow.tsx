@@ -7,6 +7,7 @@ import type { WrSummaryItem } from "./service-flow-wrapper";
 import { ServiceFlowWrapper } from "./service-flow-wrapper";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
 import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees";
 import {
   createShippingInstruction,
@@ -167,10 +168,13 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
             <legend className="text-xs font-medium uppercase tracking-wider text-gray-400">Destino</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Destino" required>
-                <select value={destinationId} onChange={(e) => setDestinationId(e.target.value)} className={selectClass}>
-                  <option value="">Seleccionar...</option>
-                  {destinations.map((d) => <option key={d.id} value={d.id}>{d.city} ({d.country_code})</option>)}
-                </select>
+                <Combobox
+                  options={destinations.map((d) => ({ value: d.id, label: `${d.city} (${d.country_code})` }))}
+                  value={destinationId}
+                  onChange={setDestinationId}
+                  placeholder="Seleccionar..."
+                  required
+                />
               </Field>
               <Field label="Ciudad" required>
                 <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />

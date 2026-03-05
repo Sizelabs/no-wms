@@ -5,6 +5,8 @@ import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-type
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
+import { selectClass } from "@/components/ui/form-section";
 import { createWorkOrder } from "@/lib/actions/work-orders";
 
 interface Agency {
@@ -96,7 +98,7 @@ export function WoCreateForm({ agencies, warehouses, availableWrs }: WoCreateFor
           <select
             value={type}
             onChange={(e) => setType(e.target.value as WorkOrderType)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+            className={`mt-1 ${selectClass}`}
           >
             {Object.entries(WORK_ORDER_TYPE_LABELS).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
@@ -105,28 +107,26 @@ export function WoCreateForm({ agencies, warehouses, availableWrs }: WoCreateFor
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Bodega</label>
-          <select
-            value={warehouseId}
-            onChange={(e) => setWarehouseId(e.target.value)}
-            disabled={warehouses.length <= 1}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
-          >
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <Combobox
+              options={warehouses.map((w) => ({ value: w.id, label: `${w.name} (${w.code})` }))}
+              value={warehouseId}
+              onChange={setWarehouseId}
+              disabled={warehouses.length <= 1}
+              placeholder="Seleccionar bodega"
+            />
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Agencia</label>
-          <select
-            value={agencyId}
-            onChange={(e) => setAgencyId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-          >
-            {agencies.map((a) => (
-              <option key={a.id} value={a.id}>{a.name} ({a.code})</option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <Combobox
+              options={agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
+              value={agencyId}
+              onChange={setAgencyId}
+              placeholder="Seleccionar agencia"
+            />
+          </div>
         </div>
       </div>
 

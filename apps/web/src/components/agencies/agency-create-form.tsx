@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { Combobox } from "@/components/ui/combobox";
 import {
   checkboxClass,
   disabledInputClass,
@@ -75,39 +76,35 @@ export function AgencyCreateForm({
         <FormSection title="Agencia" icon={Store}>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Courier" htmlFor="courier_id" required>
-              <select
-                id="courier_id"
-                name="courier_id"
-                required
-                defaultValue={defaultCourierId ?? ""}
-                disabled={lockCourier}
-                className={lockCourier ? disabledInputClass : selectClass}
-              >
-                <option value="" disabled>Seleccionar courier</option>
-                {couriers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
-              {lockCourier && defaultCourierId && (
-                <input type="hidden" name="courier_id" value={defaultCourierId} />
+              {lockCourier ? (
+                <>
+                  <input
+                    type="text"
+                    disabled
+                    value={couriers.find((c) => c.id === defaultCourierId)?.name ?? ""}
+                    className={disabledInputClass}
+                  />
+                  <input type="hidden" name="courier_id" value={defaultCourierId ?? ""} />
+                </>
+              ) : (
+                <Combobox
+                  id="courier_id"
+                  name="courier_id"
+                  options={couriers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+                  defaultValue={defaultCourierId}
+                  placeholder="Seleccionar courier"
+                  required
+                />
               )}
             </Field>
             <Field label="Destino principal" htmlFor="destination_id" required>
-              <select
+              <Combobox
                 id="destination_id"
                 name="destination_id"
+                options={destinations.map((d) => ({ value: d.id, label: `${d.city} (${d.country_code})` }))}
+                placeholder="Seleccionar destino"
                 required
-                className={selectClass}
-              >
-                <option value="" disabled>Seleccionar destino</option>
-                {destinations.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.city} ({d.country_code})
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">

@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useState, useTransition } from "react";
 
 import { usePermissions } from "@/components/auth/role-provider";
+import { filterSelectClass } from "@/components/ui/form-section";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
 interface PackageRow {
@@ -168,7 +169,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
         <select
           defaultValue={searchParams.get("status") ?? ""}
           onChange={(e) => updateFilter("status", e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           {Object.entries(WR_STATUS_LABELS).map(([key, label]) => (
@@ -195,7 +196,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
           <select
             defaultValue={searchParams.get("warehouse_id") ?? ""}
             onChange={(e) => updateFilter("warehouse_id", e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className={filterSelectClass}
           >
             <option value="">Todas las bodegas</option>
             {warehouses.map((w) => (
@@ -207,7 +208,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
           <select
             defaultValue={searchParams.get("agency_id") ?? ""}
             onChange={(e) => updateFilter("agency_id", e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className={filterSelectClass}
           >
             <option value="">Todas las agencias</option>
             {agencies.map((a) => (
@@ -219,7 +220,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
           <select
             defaultValue={searchParams.get("is_damaged") ?? ""}
             onChange={(e) => updateFilter("is_damaged", e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className={filterSelectClass}
           >
             <option value="">Daño: Todos</option>
             <option value="true">Solo dañados</option>

@@ -5,6 +5,7 @@ import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-type
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
+import { filterSelectClass } from "@/components/ui/form-section";
 import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
 
 interface WorkOrder {
@@ -100,7 +101,7 @@ export function WoList({ data, locale }: WoListProps) {
         <select
           value={filter.status}
           onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           {Object.entries(WO_STATUS_LABELS).map(([k, v]) => (
@@ -125,7 +126,7 @@ export function WoList({ data, locale }: WoListProps) {
           <select
             value={filter.type}
             onChange={(e) => setFilter((f) => ({ ...f, type: e.target.value }))}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className={filterSelectClass}
           >
             <option value="">Todos los tipos</option>
             {Object.entries(WORK_ORDER_TYPE_LABELS).map(([k, v]) => (

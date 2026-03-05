@@ -1,5 +1,7 @@
 "use client";
 
+import { filterSelectClass } from "@/components/ui/form-section";
+
 interface ReportFiltersProps {
   agencies?: Array<{ id: string; name: string }>;
   warehouses?: Array<{ id: string; name: string }>;
@@ -25,7 +27,7 @@ export function ReportFilters({ agencies, warehouses, showWarehouse, onFilter }:
       {agencies && agencies.length > 0 && (
         <div>
           <label className="block text-xs font-medium text-gray-500">Agencia</label>
-          <select name="agency_id" className="mt-1 rounded border px-2 py-1.5 text-sm">
+          <select name="agency_id" className={filterSelectClass}>
             <option value="">Todas</option>
             {agencies.map((a) => (
               <option key={a.id} value={a.id}>{a.name}</option>
@@ -36,7 +38,7 @@ export function ReportFilters({ agencies, warehouses, showWarehouse, onFilter }:
       {showWarehouse && warehouses && warehouses.length > 0 && (
         <div>
           <label className="block text-xs font-medium text-gray-500">Bodega</label>
-          <select name="warehouse_id" className="mt-1 rounded border px-2 py-1.5 text-sm">
+          <select name="warehouse_id" className={filterSelectClass}>
             <option value="">Todas</option>
             {warehouses.map((w) => (
               <option key={w.id} value={w.id}>{w.name}</option>
