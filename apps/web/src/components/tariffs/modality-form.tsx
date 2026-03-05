@@ -64,7 +64,7 @@ export function ModalityForm({ modality }: ModalityFormProps) {
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Código</label>
+        <label className="mb-1 block text-sm font-medium text-gray-700">Identificador</label>
         <input
           name="code"
           type="text"

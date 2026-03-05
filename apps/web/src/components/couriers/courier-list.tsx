@@ -80,7 +80,7 @@ export function CourierList({ couriers }: CourierListProps) {
       <table className="w-full text-left text-sm">
         <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-            <th className="px-4 py-3">Código</th>
+            <th className="px-4 py-3">Identificador</th>
             <th className="px-4 py-3">Nombre</th>
             <th className="px-4 py-3">Tipo</th>
             <th className="px-4 py-3">Destinos</th>

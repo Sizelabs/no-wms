@@ -146,7 +146,7 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
               <dd className="mt-1 text-sm font-medium text-gray-900">{courier.name}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase text-gray-500">Código</dt>
+              <dt className="text-xs font-medium uppercase text-gray-500">Identificador</dt>
               <dd className="mt-1 font-mono text-sm text-gray-600">{courier.code}</dd>
             </div>
             <div>
@@ -253,7 +253,7 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-                <th className="px-4 py-3">Código</th>
+                <th className="px-4 py-3">Identificador</th>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Tipo</th>
                 <th className="px-4 py-3">Estado</th>

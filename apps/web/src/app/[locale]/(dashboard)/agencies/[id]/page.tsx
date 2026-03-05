@@ -53,7 +53,7 @@ export default async function AgencyDetailPage({
 
       {/* Key info cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <InfoCard label="Código">
+        <InfoCard label="Identificador">
           <span className="font-mono text-sm">{agency.code}</span>
         </InfoCard>
         <InfoCard label="Tipo">

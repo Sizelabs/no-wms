@@ -117,7 +117,7 @@ export function AgencyCreateForm({
                 className={inputClass}
               />
             </Field>
-            <Field label="Código" htmlFor="code" required>
+            <Field label="Identificador" htmlFor="code" required>
               <input
                 id="code"
                 name="code"

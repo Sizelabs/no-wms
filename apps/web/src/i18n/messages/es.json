@@ -89,7 +89,7 @@
     "edit": "Editar Courier",
     "detail": "Detalle de Courier",
     "name": "Nombre",
-    "code": "Código",
+    "code": "Identificador",
     "type": "Tipo",
     "ruc": "RUC",
     "address": "Dirección",

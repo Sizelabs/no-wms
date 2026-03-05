@@ -87,7 +87,7 @@
     "edit": "Edit Courier",
     "detail": "Courier Detail",
     "name": "Name",
-    "code": "Code",
+    "code": "Identifier",
     "type": "Type",
     "ruc": "Tax ID",
     "address": "Address",

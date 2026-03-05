@@ -54,7 +54,7 @@ export default async function WarehouseDetailPage({
 
       {/* Key info cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <InfoCard label="Código">
+        <InfoCard label="Identificador">
           <span className="font-mono text-sm">{warehouse.code}</span>
         </InfoCard>
         <InfoCard label="Ciudad">
@@ -83,7 +83,7 @@ export default async function WarehouseDetailPage({
           <Section title="Información general">
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <DtDd label="Nombre" value={warehouse.name} />
-              <DtDd label="Código" value={warehouse.code} />
+              <DtDd label="Identificador" value={warehouse.code} />
               <DtDd label="Ciudad" value={warehouse.city ?? "—"} />
               <DtDd label="País" value={warehouse.country ?? "—"} />
               <DtDd label="Zona horaria" value={warehouse.timezone} />
