@@ -36,8 +36,8 @@ const NAV_CONFIG: NavConfig = {
     {
       id: "commercial",
       items: [
-        { label: "consignees", href: "/consignees", icon: "Contact", resource: "consignees" },
         { label: "agencies", href: "/agencies", icon: "Building2", resource: "agencies" },
+        { label: "consignees", href: "/consignees", icon: "Contact", resource: "consignees" },
       ],
     },
     {

@@ -1,0 +1,95 @@
+-- ============================================================================
+-- Migration: Add base pricing to modalities + courier_modality_tariffs table
+-- - Adds base_rate, base_rate_unit, base_minimum_charge to modalities
+-- - Creates courier_modality_tariffs for per-courier pricing overrides
+-- - Auto-seeds courier_modality_tariffs when a new courier is created
+-- ============================================================================
+
+-- ============================================================================
+-- 1. Add base pricing columns to modalities
+-- ============================================================================
+
+ALTER TABLE modalities
+  ADD COLUMN base_rate numeric(10,4) NOT NULL DEFAULT 0,
+  ADD COLUMN base_rate_unit text NOT NULL DEFAULT 'flat'
+    CHECK (base_rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_mawb','per_hawb')),
+  ADD COLUMN base_minimum_charge numeric(10,2);
+
+-- ============================================================================
+-- 2. Create courier_modality_tariffs table
+-- ============================================================================
+
+CREATE TABLE courier_modality_tariffs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  courier_id uuid NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  modality_id uuid NOT NULL REFERENCES modalities(id) ON DELETE CASCADE,
+  rate numeric(10,4) NOT NULL,
+  rate_unit text NOT NULL CHECK (rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_mawb','per_hawb')),
+  minimum_charge numeric(10,2),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(courier_id, modality_id)
+);
+
+ALTER TABLE courier_modality_tariffs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY cmt_select ON courier_modality_tariffs FOR SELECT USING (
+  auth_has_role('super_admin') OR organization_id = auth_org_id()
+);
+CREATE POLICY cmt_insert ON courier_modality_tariffs FOR INSERT WITH CHECK (
+  organization_id = auth_org_id() OR auth_has_role('super_admin')
+);
+CREATE POLICY cmt_update ON courier_modality_tariffs FOR UPDATE USING (
+  auth_has_role('super_admin') OR organization_id = auth_org_id()
+);
+CREATE POLICY cmt_delete ON courier_modality_tariffs FOR DELETE USING (
+  organization_id = auth_org_id() OR auth_has_role('super_admin')
+);
+
+CREATE TRIGGER set_courier_modality_tariffs_updated_at
+  BEFORE UPDATE ON courier_modality_tariffs
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER audit_courier_modality_tariffs
+  AFTER INSERT OR UPDATE OR DELETE ON courier_modality_tariffs
+  FOR EACH ROW EXECUTE FUNCTION audit_trigger_fn();
+
+-- ============================================================================
+-- 3. Trigger: seed courier_modality_tariffs on new courier creation
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION seed_courier_modality_tariffs()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO courier_modality_tariffs (organization_id, courier_id, modality_id, rate, rate_unit, minimum_charge)
+  SELECT NEW.organization_id, NEW.id, m.id, m.base_rate, m.base_rate_unit, m.base_minimum_charge
+  FROM modalities m
+  WHERE m.organization_id = NEW.organization_id AND m.is_active = true;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_seed_courier_modality_tariffs
+  AFTER INSERT ON couriers
+  FOR EACH ROW EXECUTE FUNCTION seed_courier_modality_tariffs();
+
+-- ============================================================================
+-- 4. Seed courier_modality_tariffs for existing couriers
+-- ============================================================================
+
+INSERT INTO courier_modality_tariffs (organization_id, courier_id, modality_id, rate, rate_unit, minimum_charge)
+SELECT c.organization_id, c.id, m.id, m.base_rate, m.base_rate_unit, m.base_minimum_charge
+FROM couriers c
+JOIN modalities m ON m.organization_id = c.organization_id AND m.is_active = true
+ON CONFLICT (courier_id, modality_id) DO NOTHING;
+
+-- ============================================================================
+-- 5. Seed default role_permissions for courier_modality_tariffs
+-- ============================================================================
+
+INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, can_delete)
+SELECT role, 'courier_modality_tariffs', can_create, can_read, can_update, can_delete
+FROM role_permissions
+WHERE resource = 'modalities'
+ON CONFLICT (role, resource) DO NOTHING;
