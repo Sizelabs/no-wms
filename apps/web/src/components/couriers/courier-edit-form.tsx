@@ -50,6 +50,7 @@ export function CourierEditForm({ courier, countries }: CourierEditFormProps) {
     startTransition(async () => {
       try {
         await updateCourier(courier.id, formData);
+        notify("Courier actualizado", "success");
         router.back();
       } catch (err) {
         notify(

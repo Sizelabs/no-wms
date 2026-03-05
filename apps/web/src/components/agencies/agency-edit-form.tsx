@@ -51,6 +51,7 @@ export function AgencyEditForm({ agency }: AgencyEditFormProps) {
     startTransition(async () => {
       try {
         await updateAgency(agency.id, formData);
+        notify("Agencia actualizada", "success");
         router.back();
       } catch (err) {
         notify(

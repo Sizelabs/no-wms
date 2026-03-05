@@ -4,3 +4,8 @@ button,
 [role="button"] {
   cursor: pointer;
 }
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #111827; /* gray-900 */
+}

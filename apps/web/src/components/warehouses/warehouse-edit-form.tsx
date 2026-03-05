@@ -73,6 +73,7 @@ export function WarehouseEditForm({ warehouse, countries }: WarehouseEditFormPro
     startTransition(async () => {
       try {
         await updateWarehouse(warehouse.id, formData);
+        notify("Bodega actualizada", "success");
         router.back();
       } catch (err) {
         notify(

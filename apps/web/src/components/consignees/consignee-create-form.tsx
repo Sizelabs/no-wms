@@ -50,6 +50,7 @@ export function ConsigneeCreateForm({
       if (result.error) {
         notify(result.error, "error");
       } else {
+        notify("Consignatario creado", "success");
         router.push(`/es/consignees/${result.data!.id}`);
       }
     });

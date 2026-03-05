@@ -97,7 +97,7 @@ export function NotificationPreferences() {
                     onClick={() => handleToggle(et, "email")}
                     disabled={isPending}
                     className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      isEnabled(et, "email") ? "bg-blue-600" : "bg-gray-200"
+                      isEnabled(et, "email") ? "bg-gray-900" : "bg-gray-200"
                     }`}
                   >
                     <span
@@ -112,7 +112,7 @@ export function NotificationPreferences() {
                     onClick={() => handleToggle(et, "in_app")}
                     disabled={isPending}
                     className={`inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      isEnabled(et, "in_app") ? "bg-blue-600" : "bg-gray-200"
+                      isEnabled(et, "in_app") ? "bg-gray-900" : "bg-gray-200"
                     }`}
                   >
                     <span

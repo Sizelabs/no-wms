@@ -53,6 +53,7 @@ export function ConsigneeEditForm({ consignee, countries }: ConsigneeEditFormPro
       if (result.error) {
         notify(result.error, "error");
       } else {
+        notify("Consignatario actualizado", "success");
         router.back();
       }
     });

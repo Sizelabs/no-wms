@@ -29,6 +29,7 @@ export function ForwarderCreateForm() {
     startTransition(async () => {
       try {
         await createOrganization(formData);
+        notify("Freight forwarder creado", "success");
         router.back();
       } catch (err) {
         notify(err instanceof Error ? err.message : "Error al crear freight forwarder", "error");

@@ -60,6 +60,7 @@ export function AgencyCreateForm({
     startTransition(async () => {
       try {
         await createAgencyWithAdmin(formData);
+        notify("Agencia creada", "success");
         router.back();
       } catch (err) {
         notify(

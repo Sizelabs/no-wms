@@ -72,6 +72,7 @@ export function WarehouseCreateForm({
     startTransition(async () => {
       try {
         await createWarehouse(formData);
+        notify("Bodega creada", "success");
         router.back();
       } catch (err) {
         notify(

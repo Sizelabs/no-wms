@@ -44,6 +44,7 @@ export function InviteAgencyUserForm({
       if (result?.error) {
         notify(result.error, "error");
       } else {
+        notify("Invitación enviada", "success");
         router.back();
       }
     });

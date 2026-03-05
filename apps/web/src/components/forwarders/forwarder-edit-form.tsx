@@ -39,6 +39,7 @@ export function ForwarderEditForm({ forwarder }: ForwarderEditFormProps) {
     startTransition(async () => {
       try {
         await updateOrganization(forwarder.id, formData);
+        notify("Freight forwarder actualizado", "success");
         router.back();
       } catch (err) {
         notify(

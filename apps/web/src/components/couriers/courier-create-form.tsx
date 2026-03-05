@@ -38,6 +38,7 @@ export function CourierCreateForm({ organizationId, countries }: CourierCreateFo
     startTransition(async () => {
       try {
         await createCourier(formData);
+        notify("Courier creado", "success");
         router.back();
       } catch (err) {
         notify(

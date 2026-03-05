@@ -39,6 +39,7 @@ export function UserEditForm({ user }: UserEditFormProps) {
     startTransition(async () => {
       try {
         await updateUserProfile(user.id, formData);
+        notify("Usuario actualizado", "success");
         router.back();
       } catch (err) {
         notify(
