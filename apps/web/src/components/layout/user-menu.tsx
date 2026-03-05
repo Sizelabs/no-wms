@@ -56,16 +56,12 @@ export function UserMenu({ userName, userRole, userEmail, locale }: UserMenuProp
             </Link>
           </DropdownMenu.Item>
           <DropdownMenu.Separator className="my-1 h-px bg-gray-100" />
-          <DropdownMenu.Item asChild>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 outline-none hover:bg-gray-100 focus:bg-gray-100"
-              >
-                <LogOut className="size-4" />
-                {t("logout")}
-              </button>
-            </form>
+          <DropdownMenu.Item
+            onSelect={() => void logout()}
+            className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 outline-none hover:bg-gray-100 focus:bg-gray-100"
+          >
+            <LogOut className="size-4" />
+            {t("logout")}
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
