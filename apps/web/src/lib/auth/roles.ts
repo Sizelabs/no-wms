@@ -39,7 +39,7 @@ export async function getUserRoleAssignments(
 /** Roles that don't filter by warehouse (they filter by agency or destination instead, or not at all) */
 const WAREHOUSE_UNSCOPED_ROLES: Role[] = [
   "super_admin",
-  "company_admin",
+  "forwarder_admin",
   "agency",
   "destination_admin",
   "destination_operator",
@@ -47,7 +47,7 @@ const WAREHOUSE_UNSCOPED_ROLES: Role[] = [
 
 /**
  * Extract unique warehouse IDs from role assignments.
- * Returns null for unscoped users (super_admin, company_admin, agency) meaning "all warehouses".
+ * Returns null for unscoped users (super_admin, forwarder_admin, agency) meaning "all warehouses".
  * Returns string[] for warehouse-scoped users.
  */
 export function getScopedWarehouseIds(

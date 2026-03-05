@@ -136,7 +136,7 @@ export async function createCourier(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/couriers");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
 }
 
 export async function updateCourier(id: string, formData: FormData): Promise<void> {
@@ -162,7 +162,7 @@ export async function updateCourier(id: string, formData: FormData): Promise<voi
   }
 
   revalidatePath("/couriers");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
 }
 
 export async function deleteCourier(id: string): Promise<{ error: string } | null> {
@@ -175,7 +175,7 @@ export async function deleteCourier(id: string): Promise<{ error: string } | nul
   }
 
   revalidatePath("/couriers");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   return null;
 }
 

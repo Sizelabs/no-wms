@@ -59,7 +59,7 @@ const users: SeedUser[] = [
   // super_admin × 2
   { id: "b0000000-0000-0000-0000-000000000001", email: "superadmin@test.nowms.dev",      full_name: "Carlos Rivera",       org_id: ORG_ACME },
   { id: "b0000000-0000-0000-0000-000000000002", email: "superadmin2@test.nowms.dev",     full_name: "Maria Espinoza",      org_id: ORG_ACME },
-  // company_admin × 2
+  // forwarder_admin × 2
   { id: "b0000000-0000-0000-0000-000000000003", email: "companyadmin@test.nowms.dev",    full_name: "Roberto Salazar",     org_id: ORG_ACME },
   { id: "b0000000-0000-0000-0000-000000000004", email: "companyadmin2@test.nowms.dev",   full_name: "Diana Morales",       org_id: ORG_ACME },
   // warehouse_admin × 2

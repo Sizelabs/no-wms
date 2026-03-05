@@ -57,9 +57,9 @@ function timeAgo(dateStr: string): string {
 export function DashboardGrid({ role, stats }: DashboardGridProps) {
   const t = useTranslations("dashboard");
 
-  const showRecentWrs = ["company_admin", "warehouse_admin", "warehouse_operator"].includes(role);
+  const showRecentWrs = ["forwarder_admin", "warehouse_admin", "warehouse_operator"].includes(role);
   const showTickets = role !== "super_admin";
-  const showDispatches = ["company_admin", "warehouse_admin", "warehouse_operator", "shipping_clerk", "agency"].includes(role);
+  const showDispatches = ["forwarder_admin", "warehouse_admin", "warehouse_operator", "shipping_clerk", "agency"].includes(role);
 
   return (
     <div className="space-y-6">

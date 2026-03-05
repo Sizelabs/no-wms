@@ -20,7 +20,7 @@ import {
 import { inviteUser } from "@/lib/actions/users";
 
 const ASSIGNABLE_ROLES = [
-  "company_admin",
+  "forwarder_admin",
   "warehouse_admin",
   "warehouse_operator",
   "shipping_clerk",

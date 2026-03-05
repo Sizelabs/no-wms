@@ -10,7 +10,7 @@ import { useNotification } from "@/components/layout/notification";
 import { resetRolePermissions, saveRolePermission } from "@/lib/actions/permissions";
 
 const CONFIGURABLE_ROLES: Role[] = [
-  "company_admin",
+  "forwarder_admin",
   "warehouse_admin",
   "warehouse_operator",
   "shipping_clerk",
@@ -33,7 +33,7 @@ interface Props {
 }
 
 export function RolePermissionsPanel({ initialPermissions }: Props) {
-  const [activeRole, setActiveRole] = useState<Role>("company_admin");
+  const [activeRole, setActiveRole] = useState<Role>("forwarder_admin");
   const [permissions, setPermissions] = useState(initialPermissions);
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();

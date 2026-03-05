@@ -237,7 +237,7 @@ function getOrgForUser(userId: string): string | null {
   // Map user IDs to their org IDs from seed data
   const orgMap: Record<string, string | null> = {
     "b0000000-0000-0000-0000-000000000001": null, // super_admin → no org (platform-level)
-    "b0000000-0000-0000-0000-000000000002": "a0000000-0000-0000-0000-000000000001", // company_admin → ACME
+    "b0000000-0000-0000-0000-000000000002": "a0000000-0000-0000-0000-000000000001", // forwarder_admin → ACME
     "b0000000-0000-0000-0000-000000000003": "a0000000-0000-0000-0000-000000000001", // wh_admin MIA → ACME
     "b0000000-0000-0000-0000-000000000004": "a0000000-0000-0000-0000-000000000001", // wh_admin GYE → ACME
     "b0000000-0000-0000-0000-000000000005": "a0000000-0000-0000-0000-000000000001", // operator MIA → ACME

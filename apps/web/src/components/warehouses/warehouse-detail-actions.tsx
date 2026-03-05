@@ -24,12 +24,12 @@ export function WarehouseDetailActions({
     {
       label: "Editar",
       href: `/${locale}/warehouses/${warehouseId}/edit`,
-      roles: ["company_admin", "warehouse_admin"],
+      roles: ["forwarder_admin", "warehouse_admin"],
     },
     {
       label: "Eliminar",
       variant: "danger",
-      roles: ["company_admin"],
+      roles: ["forwarder_admin"],
       onClick: () => {
         if (!confirm("¿Eliminar esta bodega? Esta acción no se puede deshacer.")) return;
         startTransition(async () => {

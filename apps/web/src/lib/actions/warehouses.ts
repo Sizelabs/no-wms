@@ -63,7 +63,7 @@ export async function createWarehouse(formData: FormData): Promise<void> {
 
   revalidatePath("/settings");
   revalidatePath("/warehouses");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
 }
 
 export async function deleteWarehouse(
@@ -78,7 +78,7 @@ export async function deleteWarehouse(
   }
 
   revalidatePath("/warehouses");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
   return null;
 }
 
@@ -102,5 +102,5 @@ export async function updateWarehouse(id: string, formData: FormData): Promise<v
 
   revalidatePath("/settings");
   revalidatePath("/warehouses");
-  revalidatePath("/companies");
+  revalidatePath("/forwarders");
 }

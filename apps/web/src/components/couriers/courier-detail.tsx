@@ -84,12 +84,12 @@ export function CourierDetail({ courier }: CourierDetailProps) {
     {
       label: "Editar",
       href: `/${locale}/couriers/${courier.id}/edit`,
-      roles: ["super_admin", "company_admin", "destination_admin"],
+      roles: ["super_admin", "forwarder_admin", "destination_admin"],
     },
     {
       label: "Eliminar",
       variant: "danger",
-      roles: ["super_admin", "company_admin"],
+      roles: ["super_admin", "forwarder_admin"],
       onClick: handleDelete,
     },
   ];
@@ -154,7 +154,7 @@ export function CourierDetail({ courier }: CourierDetailProps) {
           ))}
         </nav>
         {activeTab === "agencies" &&
-          userRoles.some((r) => ["super_admin", "company_admin", "destination_admin"].includes(r)) && (
+          userRoles.some((r) => ["super_admin", "forwarder_admin", "destination_admin"].includes(r)) && (
           <Link
             href={`/${locale}/agencies/new?courier_id=${courier.id}`}
             className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"

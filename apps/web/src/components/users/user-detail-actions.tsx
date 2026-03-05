@@ -45,11 +45,11 @@ export function UserDetailActions({
     {
       label: "Editar perfil",
       href: `/${locale}/users/${userId}/edit`,
-      roles: ["company_admin"],
+      roles: ["forwarder_admin"],
     },
     {
       label: "Reenviar invitación",
-      roles: ["company_admin"],
+      roles: ["forwarder_admin"],
       onClick: () =>
         handleAction(
           () => resendInvite(userId),
@@ -58,7 +58,7 @@ export function UserDetailActions({
     },
     {
       label: "Reset contraseña",
-      roles: ["company_admin"],
+      roles: ["forwarder_admin"],
       onClick: () =>
         handleAction(
           () => resetUserPassword(userId),
@@ -68,7 +68,7 @@ export function UserDetailActions({
     {
       label: isActive ? "Desactivar" : "Activar",
       variant: isActive ? "danger" : "default",
-      roles: ["company_admin"],
+      roles: ["forwarder_admin"],
       onClick: () =>
         handleAction(
           () => toggleUserActive(userId, !isActive),

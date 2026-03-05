@@ -28,7 +28,7 @@ async function getUserScopes(): Promise<{ assignments: UserRoleAssignment[] | nu
 
 /**
  * Server-side helper: returns the warehouse IDs the current user is scoped to.
- * - Returns null for unscoped users (super_admin, company_admin) → sees all warehouses.
+ * - Returns null for unscoped users (super_admin, forwarder_admin) → sees all warehouses.
  * - Returns string[] for warehouse-scoped users.
  * - Returns [] (empty array) if user is not authenticated, which effectively shows nothing.
  */
