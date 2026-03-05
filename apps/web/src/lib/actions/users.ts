@@ -5,6 +5,40 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+export async function getCourierUsers(courierId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*, user_roles!inner(*)")
+    .eq("user_roles.courier_id", courierId)
+    .in("user_roles.role", ["destination_admin", "destination_operator"])
+    .order("full_name");
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+export async function getAgencyUsers(agencyId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*, user_roles!inner(*)")
+    .eq("user_roles.agency_id", agencyId)
+    .eq("user_roles.role", "agency")
+    .order("full_name");
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
 export async function getUsers() {
   const supabase = await createClient();
 

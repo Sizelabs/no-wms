@@ -15,6 +15,8 @@ import {
   primaryBtnClass,
   secondaryBtnClass,
 } from "@/components/ui/form-section";
+import type { Country } from "@/components/ui/location-selects";
+import { LocationSelects } from "@/components/ui/location-selects";
 import { updateConsignee } from "@/lib/actions/consignees";
 
 interface Consignee {
@@ -35,9 +37,10 @@ interface Consignee {
 
 interface ConsigneeEditFormProps {
   consignee: Consignee;
+  countries: Country[];
 }
 
-export function ConsigneeEditForm({ consignee }: ConsigneeEditFormProps) {
+export function ConsigneeEditForm({ consignee, countries }: ConsigneeEditFormProps) {
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -138,35 +141,23 @@ export function ConsigneeEditForm({ consignee }: ConsigneeEditFormProps) {
               className={inputClass}
             />
           </Field>
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Ciudad" htmlFor="city">
-              <input
-                id="city"
-                name="city"
-                type="text"
-                defaultValue={consignee.city ?? ""}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Provincia" htmlFor="province">
-              <input
-                id="province"
-                name="province"
-                type="text"
-                defaultValue={consignee.province ?? ""}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Código postal" htmlFor="postal_code">
-              <input
-                id="postal_code"
-                name="postal_code"
-                type="text"
-                defaultValue={consignee.postal_code ?? ""}
-                className={inputClass}
-              />
-            </Field>
-          </div>
+          <LocationSelects
+            countries={countries}
+            defaultCountryName={undefined}
+            defaultStateName={consignee.province ?? undefined}
+            defaultCityName={consignee.city ?? undefined}
+            stateFieldName="province"
+            stateLabel="Provincia"
+          />
+          <Field label="Código postal" htmlFor="postal_code">
+            <input
+              id="postal_code"
+              name="postal_code"
+              type="text"
+              defaultValue={consignee.postal_code ?? ""}
+              className={inputClass}
+            />
+          </Field>
         </FormSection>
         <FormActions>
           <button

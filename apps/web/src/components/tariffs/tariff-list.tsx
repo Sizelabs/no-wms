@@ -1,22 +1,34 @@
 "use client";
 
 import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
+import { TARIFF_SIDE_LABELS, type TariffSide } from "@no-wms/shared/constants/tariff";
+import { WORK_ORDER_TYPE_LABELS, type WorkOrderType } from "@no-wms/shared/constants/work-order-types";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { deleteTariffSchedule } from "@/lib/actions/tariffs";
 
 interface TariffSchedule {
   id: string;
-  modality: string;
-  courier_category: string | null;
+  tariff_side: string;
+  tariff_type: string;
+  courier_id: string | null;
+  agency_id: string | null;
+  modality: string | null;
+  work_order_type: string | null;
+  base_fee: number;
+  weight_unit: string;
   is_active: boolean;
   effective_from: string;
   effective_to: string | null;
-  agencies: { name: string; code: string } | null;
-  destinations: { city: string; country_code: string } | null;
+  couriers: { id: string; name: string; code: string } | null;
+  agencies: { id: string; name: string; code: string } | null;
+  destinations: { id: string; city: string; country_code: string } | null;
+  shipping_categories: { id: string; code: string; name: string } | null;
+  tariff_brackets: { id: string }[];
 }
 
 interface TariffListProps {
@@ -27,27 +39,28 @@ export function TariffList({ data }: TariffListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState({ agency: "", active: "" });
-  const [showFilters, setShowFilters] = useState(false);
+  const [sideFilter, setSideFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = data.filter((t) => {
     if (search) {
       const q = search.toLowerCase();
       const matches =
+        t.couriers?.name?.toLowerCase().includes(q) ||
         t.agencies?.name?.toLowerCase().includes(q) ||
-        t.agencies?.code?.toLowerCase().includes(q) ||
         t.destinations?.city?.toLowerCase().includes(q) ||
-        t.modality?.toLowerCase().includes(q);
+        t.modality?.toLowerCase().includes(q) ||
+        t.work_order_type?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (filter.agency && t.agencies?.code !== filter.agency) return false;
-    if (filter.active === "true" && !t.is_active) return false;
-    if (filter.active === "false" && t.is_active) return false;
+    if (sideFilter && t.tariff_side !== sideFilter) return false;
+    if (typeFilter && t.tariff_type !== typeFilter) return false;
+    if (activeFilter === "true" && !t.is_active) return false;
+    if (activeFilter === "false" && t.is_active) return false;
     return true;
   });
-
-  const agencies = [...new Set(data.map((t) => t.agencies?.code).filter(Boolean))];
-  const activeFilterCount = [filter.agency].filter(Boolean).length;
 
   const handleDeactivate = (id: string) => {
     if (!confirm("¿Desactivar esta tarifa?")) return;
@@ -61,89 +74,113 @@ export function TariffList({ data }: TariffListProps) {
     });
   };
 
+  const getCustomerLabel = (t: TariffSchedule) => {
+    if (t.tariff_side === "forwarder_to_courier") {
+      return t.couriers ? `${t.couriers.name}` : "Base (todos)";
+    }
+    if (t.agency_id && t.agencies) {
+      return `${t.agencies.name}`;
+    }
+    return "Base (todas)";
+  };
+
+  const getDimensionLabel = (t: TariffSchedule) => {
+    if (t.tariff_type === "work_order") {
+      return WORK_ORDER_TYPE_LABELS[t.work_order_type as WorkOrderType] ?? t.work_order_type;
+    }
+    const parts: string[] = [];
+    if (t.destinations) parts.push(`${t.destinations.city} (${t.destinations.country_code})`);
+    if (t.modality) parts.push(MODALITY_LABELS[t.modality as keyof typeof MODALITY_LABELS] ?? t.modality);
+    if (t.shipping_categories) parts.push(`Cat. ${t.shipping_categories.code}`);
+    return parts.join(" / ") || "—";
+  };
+
   return (
     <div className="space-y-3">
-      {/* Search + primary filter row */}
       <div className="flex flex-wrap gap-2">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar agencia, destino, modalidad..."
+          placeholder="Buscar courier, agencia, destino..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
         <select
-          value={filter.active}
-          onChange={(e) => setFilter((f) => ({ ...f, active: e.target.value }))}
+          value={sideFilter}
+          onChange={(e) => setSideFilter(e.target.value)}
+          className={filterSelectClass}
+        >
+          <option value="">Todos los lados</option>
+          {Object.entries(TARIFF_SIDE_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className={filterSelectClass}
+        >
+          <option value="">Todos los tipos</option>
+          <option value="shipping">Envío</option>
+          <option value="work_order">Orden de Trabajo</option>
+        </select>
+        <select
+          value={activeFilter}
+          onChange={(e) => setActiveFilter(e.target.value)}
           className={filterSelectClass}
         >
           <option value="">Todos los estados</option>
           <option value="true">Activas</option>
           <option value="false">Inactivas</option>
         </select>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`rounded-md border px-3 py-2 text-sm ${
-            activeFilterCount > 0
-              ? "border-gray-900 bg-gray-900 text-white"
-              : "border-gray-300 text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-        </button>
       </div>
 
-      {/* Expanded filters */}
-      {showFilters && (
-        <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
-          <select
-            value={filter.agency}
-            onChange={(e) => setFilter((f) => ({ ...f, agency: e.target.value }))}
-            className={filterSelectClass}
-          >
-            <option value="">Todas las agencias</option>
-            {agencies.map((code) => (
-              <option key={code} value={code}>{code}</option>
-            ))}
-          </select>
-          {activeFilterCount > 0 && (
-            <button
-              onClick={() => setFilter((f) => ({ ...f, agency: "" }))}
-              className="text-xs text-red-600 hover:text-red-800"
-            >
-              Limpiar filtros
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-4 py-3">Agencia</th>
-              <th className="px-4 py-3">Destino</th>
-              <th className="px-4 py-3">Modalidad</th>
-              <th className="px-4 py-3">Categoría</th>
+              <th className="px-4 py-3">Lado</th>
+              <th className="px-4 py-3">Cliente</th>
+              <th className="px-4 py-3">Tipo</th>
+              <th className="px-4 py-3">Dimensión</th>
+              <th className="px-4 py-3">Rangos</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3">Vigente desde</th>
-              <th className="px-4 py-3">Vigente hasta</th>
               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {filtered.map((t) => (
+          <VirtualTableBody
+            items={filtered}
+            scrollRef={scrollRef}
+            colSpan={8}
+            emptyMessage="No hay tarifas configuradas"
+            renderRow={(t) => (
               <tr key={t.id}>
                 <td className="px-4 py-3 text-xs">
-                  {t.agencies ? `${t.agencies.name} (${t.agencies.code})` : "—"}
+                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    t.tariff_side === "forwarder_to_courier"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-purple-50 text-purple-700"
+                  }`}>
+                    {TARIFF_SIDE_LABELS[t.tariff_side as TariffSide] ?? t.tariff_side}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-xs">
-                  {t.destinations?.city ?? "—"}
+                  {t.tariff_side === "courier_to_agency" && t.couriers && (
+                    <span className="text-gray-400">{t.couriers.code} → </span>
+                  )}
+                  {getCustomerLabel(t)}
                 </td>
                 <td className="px-4 py-3 text-xs">
-                  {MODALITY_LABELS[t.modality as keyof typeof MODALITY_LABELS] ?? t.modality}
+                  {t.tariff_type === "shipping" ? "Envío" : "OT"}
                 </td>
-                <td className="px-4 py-3 text-xs">{t.courier_category ?? "—"}</td>
+                <td className="px-4 py-3 text-xs">{getDimensionLabel(t)}</td>
+                <td className="px-4 py-3 text-xs">
+                  {t.tariff_brackets?.length ?? 0}
+                  {Number(t.base_fee) > 0 && (
+                    <span className="ml-1 text-gray-400">+ ${Number(t.base_fee).toFixed(2)}</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -157,9 +194,6 @@ export function TariffList({ data }: TariffListProps) {
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {new Date(t.effective_from).toLocaleDateString("es")}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {t.effective_to ? new Date(t.effective_to).toLocaleDateString("es") : "—"}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
@@ -187,15 +221,8 @@ export function TariffList({ data }: TariffListProps) {
                   </div>
                 </td>
               </tr>
-            ))}
-            {!filtered.length && (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
-                  No hay tarifas configuradas
-                </td>
-              </tr>
             )}
-          </tbody>
+          />
         </table>
       </div>
     </div>

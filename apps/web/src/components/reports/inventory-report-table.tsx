@@ -56,9 +56,9 @@ export function InventoryReportTable({ data, summary }: InventoryReportTableProp
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               <th className="px-4 py-3">WR #</th>
               <th className="px-4 py-3">Agencia</th>

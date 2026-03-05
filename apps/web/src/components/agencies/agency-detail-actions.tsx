@@ -27,7 +27,7 @@ export function AgencyDetailActions({ agencyId }: { agencyId: string }) {
       variant: "danger",
       roles: ["super_admin", "forwarder_admin", "destination_admin"],
       onClick: () => {
-        if (!confirm("¿Eliminar esta agencia? Esta acción no se puede deshacer.")) return;
+        if (!confirm("¿Eliminar permanentemente esta agencia?\n\nSe eliminarán también los roles de usuario asociados.\n\nEsta acción no se puede deshacer.")) return;
         startTransition(async () => {
           const result = await deleteAgency(agencyId);
           if (result?.error) {

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { CourierEditForm } from "@/components/couriers/courier-edit-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { getCourier } from "@/lib/actions/couriers";
+import { getAllCountries } from "@/lib/actions/locations";
 
 export default async function CourierEditPage({
   params,
@@ -13,13 +14,16 @@ export default async function CourierEditPage({
   const { id } = await params;
   const t = await getTranslations("couriers");
 
-  const { data: courier } = await getCourier(id);
+  const [{ data: courier }, countries] = await Promise.all([
+    getCourier(id),
+    getAllCountries(),
+  ]);
   if (!courier) notFound();
 
   return (
     <div className="space-y-6">
       <PageHeader title={`${t("edit")} — ${courier.name}`} />
-      <CourierEditForm courier={courier} />
+      <CourierEditForm courier={courier} countries={countries} />
     </div>
   );
 }

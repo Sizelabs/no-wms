@@ -156,58 +156,60 @@ export function ForwarderDetail({
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-b">
-        <nav className="-mb-px flex gap-4">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`border-b-2 px-1 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-              }`}
+      <div className="border-b border-gray-200">
+        <div className="-mb-px flex items-end justify-between">
+          <nav className="flex gap-4">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`border-b-2 px-1 py-2 text-sm font-medium transition-colors ${
+                  activeTab === tab.key
+                    ? "border-gray-900 text-gray-900"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                }`}
+              >
+                {tab.label}{" "}
+                <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </nav>
+          {activeTab === "warehouses" && (
+            <Link
+              href={`/${locale}/forwarders/${forwarder.id}/warehouses/new`}
+              className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
-              {tab.label}{" "}
-              <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </nav>
-        {activeTab === "warehouses" && (
-          <Link
-            href={`/${locale}/forwarders/${forwarder.id}/warehouses/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nueva Bodega
-          </Link>
-        )}
-        {activeTab === "couriers" && (
-          <Link
-            href={`/${locale}/couriers/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nuevo Courier
-          </Link>
-        )}
-        {activeTab === "agencies" && (
-          <Link
-            href={`/${locale}/agencies/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nueva Agencia
-          </Link>
-        )}
-        {activeTab === "users" && (
-          <Link
-            href={`/${locale}/forwarders/${forwarder.id}/users/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Invitar Usuario
-          </Link>
-        )}
+              + Nueva Bodega
+            </Link>
+          )}
+          {activeTab === "couriers" && (
+            <Link
+              href={`/${locale}/couriers/new`}
+              className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              + Nuevo Courier
+            </Link>
+          )}
+          {activeTab === "agencies" && (
+            <Link
+              href={`/${locale}/agencies/new`}
+              className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              + Nueva Agencia
+            </Link>
+          )}
+          {activeTab === "users" && (
+            <Link
+              href={`/${locale}/forwarders/${forwarder.id}/users/new`}
+              className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              + Invitar Usuario
+            </Link>
+          )}
+        </div>
       </div>
 
       {activeTab === "warehouses" && (

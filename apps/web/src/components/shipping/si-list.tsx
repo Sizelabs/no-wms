@@ -2,10 +2,11 @@
 
 import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import {
   approveShippingInstruction,
   finalizeShippingInstruction,
@@ -45,6 +46,7 @@ export function SiList({ data }: SiListProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: "", modality: "" });
   const [showFilters, setShowFilters] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = data.filter((si) => {
     if (search) {
@@ -146,9 +148,9 @@ export function SiList({ data }: SiListProps) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               <th className="px-4 py-3">SI #</th>
               <th className="px-4 py-3">Modalidad</th>
@@ -162,8 +164,12 @@ export function SiList({ data }: SiListProps) {
               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {filtered.map((si) => (
+          <VirtualTableBody
+            items={filtered}
+            scrollRef={scrollRef}
+            colSpan={10}
+            emptyMessage="No hay instrucciones de embarque"
+            renderRow={(si) => (
               <tr key={si.id}>
                 <td className="px-4 py-3 font-mono text-xs">{si.si_number}</td>
                 <td className="px-4 py-3 text-xs">
@@ -220,15 +226,8 @@ export function SiList({ data }: SiListProps) {
                   </div>
                 </td>
               </tr>
-            ))}
-            {!filtered.length && (
-              <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
-                  No hay instrucciones de embarque
-                </td>
-              </tr>
             )}
-          </tbody>
+          />
         </table>
       </div>
     </div>

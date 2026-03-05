@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-export async function login(formData: FormData): Promise<void> {
+export async function login(formData: FormData): Promise<string | void> {
   const supabase = await createClient();
 
   const data = {
@@ -15,11 +15,10 @@ export async function login(formData: FormData): Promise<void> {
   const { error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
-    redirect("/es/login?error=" + encodeURIComponent(error.message));
+    return error.message;
   }
 
-  const redirectTo = formData.get("redirect") as string;
-  redirect(redirectTo || "/es");
+  redirect("/es");
 }
 
 export async function signup(formData: FormData): Promise<void> {

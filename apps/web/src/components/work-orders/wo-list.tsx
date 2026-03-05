@@ -3,9 +3,10 @@
 import { WO_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-types";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { filterSelectClass } from "@/components/ui/form-section";
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
 
 interface WorkOrder {
@@ -46,6 +47,7 @@ export function WoList({ data, locale }: WoListProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: "", type: "" });
   const [showFilters, setShowFilters] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = data.filter((wo) => {
     if (search) {
@@ -145,9 +147,9 @@ export function WoList({ data, locale }: WoListProps) {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               <th className="px-4 py-3">OT #</th>
               <th className="px-4 py-3">Tipo</th>
@@ -159,8 +161,12 @@ export function WoList({ data, locale }: WoListProps) {
               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {filtered.map((wo) => (
+          <VirtualTableBody
+            items={filtered}
+            scrollRef={scrollRef}
+            colSpan={8}
+            emptyMessage="No hay órdenes de trabajo"
+            renderRow={(wo) => (
               <tr key={wo.id}>
                 <td className="px-4 py-3 font-mono text-xs">
                   <Link href={`/${locale}/work-orders/${wo.id}`} className="hover:underline">
@@ -237,15 +243,8 @@ export function WoList({ data, locale }: WoListProps) {
                   </div>
                 </td>
               </tr>
-            ))}
-            {!filtered.length && (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
-                  No hay órdenes de trabajo
-                </td>
-              </tr>
             )}
-          </tbody>
+          />
         </table>
       </div>
     </div>

@@ -33,7 +33,7 @@ export async function getUserRoleAssignments(
     }));
   }
 
-  return [{ role: "agency", warehouse_id: null, courier_id: null, agency_id: null }];
+  return [];
 }
 
 /** Roles that don't filter by warehouse (they filter by agency or destination instead, or not at all) */
@@ -119,7 +119,7 @@ export function getScopedCourierIds(
 
 /**
  * Fetch a user's roles from the user_roles table (source of truth).
- * Falls back to ["agency"] if no roles are found.
+ * Returns an empty array if no roles are found.
  */
 export async function getUserRoles(
   supabase: SupabaseClient,

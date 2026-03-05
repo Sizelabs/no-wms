@@ -5,6 +5,8 @@ import { getTranslations } from "next-intl/server";
 import { CourierDetail } from "@/components/couriers/courier-detail";
 import { PageHeader } from "@/components/layout/page-header";
 import { getCourier } from "@/lib/actions/couriers";
+import { getTariffSchedules } from "@/lib/actions/tariffs";
+import { getCourierUsers } from "@/lib/actions/users";
 import { getUserCourierScope } from "@/lib/auth/scope";
 
 export default async function CourierDetailPage({
@@ -15,7 +17,11 @@ export default async function CourierDetailPage({
   const { locale, id } = await params;
   const t = await getTranslations("couriers");
 
-  const { data: courier } = await getCourier(id);
+  const [{ data: courier }, { data: users }, { data: tariffs }] = await Promise.all([
+    getCourier(id),
+    getCourierUsers(id),
+    getTariffSchedules({ courier_id: id }),
+  ]);
   if (!courier) notFound();
 
   const courierIds = await getUserCourierScope();
@@ -33,7 +39,7 @@ export default async function CourierDetailPage({
           </Link>
         )}
       </PageHeader>
-      <CourierDetail courier={courier} />
+      <CourierDetail courier={courier} users={users ?? []} tariffs={tariffs ?? []} />
     </div>
   );
 }

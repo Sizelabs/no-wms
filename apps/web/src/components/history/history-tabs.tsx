@@ -45,27 +45,29 @@ export function HistoryTabs({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 border-b">
-        <button
-          onClick={() => setTab("receipts")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            isReceipts
-              ? "border-b-2 border-gray-900 text-gray-900"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Recibos ({wrCount})
-        </button>
-        <button
-          onClick={() => setTab("packages")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            !isReceipts
-              ? "border-b-2 border-gray-900 text-gray-900"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Paquetes ({pkgCount})
-        </button>
+      <div className="border-b border-gray-200">
+        <div className="-mb-px flex gap-1">
+          <button
+            onClick={() => setTab("receipts")}
+            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              isReceipts
+                ? "border-gray-900 text-gray-900"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Recibos ({wrCount})
+          </button>
+          <button
+            onClick={() => setTab("packages")}
+            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              !isReceipts
+                ? "border-gray-900 text-gray-900"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Paquetes ({pkgCount})
+          </button>
+        </div>
       </div>
 
       {isReceipts ? (

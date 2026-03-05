@@ -16,6 +16,8 @@ import {
   secondaryBtnClass,
   selectClass,
 } from "@/components/ui/form-section";
+import type { Country } from "@/components/ui/location-selects";
+import { LocationSelects } from "@/components/ui/location-selects";
 import { updateCourier } from "@/lib/actions/couriers";
 
 interface Courier {
@@ -33,9 +35,10 @@ interface Courier {
 
 interface CourierEditFormProps {
   courier: Courier;
+  countries: Country[];
 }
 
-export function CourierEditForm({ courier }: CourierEditFormProps) {
+export function CourierEditForm({ courier, countries }: CourierEditFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
   const { notify } = useNotification();
@@ -116,26 +119,11 @@ export function CourierEditForm({ courier }: CourierEditFormProps) {
               className={inputClass}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Ciudad" htmlFor="city">
-              <input
-                id="city"
-                name="city"
-                type="text"
-                defaultValue={courier.city ?? ""}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="País" htmlFor="country">
-              <input
-                id="country"
-                name="country"
-                type="text"
-                defaultValue={courier.country ?? ""}
-                className={inputClass}
-              />
-            </Field>
-          </div>
+          <LocationSelects
+            countries={countries}
+            defaultCountryName={courier.country ?? undefined}
+            defaultCityName={courier.city ?? undefined}
+          />
           <div className="grid grid-cols-2 gap-4">
             <Field label="Teléfono" htmlFor="phone">
               <input

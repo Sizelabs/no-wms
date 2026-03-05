@@ -1,5 +1,8 @@
 "use client";
 
+import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
+import type { Role } from "@no-wms/shared/constants/roles";
+import { TARIFF_SIDE_LABELS, type TariffSide } from "@no-wms/shared/constants/tariff";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -8,16 +11,31 @@ import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
 import { DetailActions } from "@/components/ui/detail-actions";
 import type { DetailAction } from "@/components/ui/detail-actions";
+import { UserList } from "@/components/users/user-list";
 import { deleteCourier } from "@/lib/actions/couriers";
 
 interface CourierWarehouseDestination {
   id: string;
   destination_id: string;
   is_active: boolean;
-  base_rate: number | null;
-  rate_per_kg: number | null;
   transit_days: number | null;
   destinations: { city: string; country_code: string } | null;
+}
+
+interface TariffSchedule {
+  id: string;
+  tariff_side: string;
+  tariff_type: string;
+  courier_id: string | null;
+  agency_id: string | null;
+  modality: string | null;
+  base_fee: number;
+  is_active: boolean;
+  effective_from: string;
+  agencies: { name: string; code: string } | null;
+  destinations: { city: string; country_code: string } | null;
+  shipping_categories: { code: string; name: string } | null;
+  tariff_brackets: { id: string }[];
 }
 
 interface CourierWarehouse {
@@ -54,13 +72,24 @@ interface Courier {
   agencies: Agency[];
 }
 
-interface CourierDetailProps {
-  courier: Courier;
+interface CourierUser {
+  id: string;
+  full_name: string;
+  is_active: boolean;
+  user_roles: { id: string; role: string }[];
 }
 
-type Tab = "info" | "agencies" | "coverage";
+interface CourierDetailProps {
+  courier: Courier;
+  users: CourierUser[];
+  tariffs: TariffSchedule[];
+}
 
-export function CourierDetail({ courier }: CourierDetailProps) {
+type Tab = "info" | "agencies" | "coverage" | "tariffs" | "users";
+
+const USER_TAB_ROLES: Role[] = ["super_admin", "forwarder_admin", "destination_admin"];
+
+export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("info");
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
@@ -69,7 +98,7 @@ export function CourierDetail({ courier }: CourierDetailProps) {
   const userRoles = useUserRoles();
 
   function handleDelete() {
-    if (!confirm(`¿Eliminar "${courier.name}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar permanentemente "${courier.name}"?\n\nSe eliminarán también todas sus agencias, roles de usuario y datos de cobertura asociados.\n\nEsta acción no se puede deshacer.`)) return;
     startTransition(async () => {
       const result = await deleteCourier(courier.id);
       if (result?.error) {
@@ -99,10 +128,14 @@ export function CourierDetail({ courier }: CourierDetailProps) {
     0,
   );
 
+  const showUsersTab = userRoles.some((r) => USER_TAB_ROLES.includes(r));
+
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "info", label: "Información" },
     { key: "agencies", label: "Agencias", count: courier.agencies?.length ?? 0 },
     { key: "coverage", label: "Cobertura", count: totalDestinations },
+    { key: "tariffs", label: "Tarifas", count: tariffs.length },
+    ...(showUsersTab ? [{ key: "users" as const, label: "Usuarios", count: users.length }] : []),
   ];
 
   return (
@@ -131,37 +164,39 @@ export function CourierDetail({ courier }: CourierDetailProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-b">
-        <nav className="-mb-px flex gap-4">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`border-b-2 px-1 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-              }`}
+      <div className="border-b border-gray-200">
+        <div className="-mb-px flex items-end justify-between">
+          <nav className="flex gap-4">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`border-b-2 px-1 py-2 text-sm font-medium transition-colors ${
+                  activeTab === tab.key
+                    ? "border-gray-900 text-gray-900"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                }`}
+              >
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+          {activeTab === "agencies" &&
+            userRoles.some((r) => ["super_admin", "forwarder_admin", "destination_admin"].includes(r)) && (
+            <Link
+              href={`/${locale}/agencies/new?courier_id=${courier.id}`}
+              className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-        {activeTab === "agencies" &&
-          userRoles.some((r) => ["super_admin", "forwarder_admin", "destination_admin"].includes(r)) && (
-          <Link
-            href={`/${locale}/agencies/new?courier_id=${courier.id}`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nueva Agencia
-          </Link>
-        )}
+              + Nueva Agencia
+            </Link>
+          )}
+        </div>
       </div>
 
       {activeTab === "info" && (
@@ -280,8 +315,6 @@ export function CourierDetail({ courier }: CourierDetailProps) {
                   <thead>
                     <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
                       <th className="px-4 py-3">Destino</th>
-                      <th className="px-4 py-3">Tarifa base</th>
-                      <th className="px-4 py-3">$/kg</th>
                       <th className="px-4 py-3">Tránsito</th>
                       <th className="px-4 py-3">Estado</th>
                     </tr>
@@ -289,7 +322,7 @@ export function CourierDetail({ courier }: CourierDetailProps) {
                   <tbody className="divide-y">
                     {(!cw.courier_warehouse_destinations || cw.courier_warehouse_destinations.length === 0) ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-gray-400">
+                        <td colSpan={3} className="px-4 py-4 text-center text-gray-400">
                           Sin destinos configurados.
                         </td>
                       </tr>
@@ -298,12 +331,6 @@ export function CourierDetail({ courier }: CourierDetailProps) {
                         <tr key={cwd.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3 font-medium text-gray-900">
                             {cwd.destinations?.city ?? "—"} ({cwd.destinations?.country_code ?? "—"})
-                          </td>
-                          <td className="px-4 py-3 text-gray-500">
-                            {cwd.base_rate != null ? `$${cwd.base_rate}` : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500">
-                            {cwd.rate_per_kg != null ? `$${cwd.rate_per_kg}` : "—"}
                           </td>
                           <td className="px-4 py-3 text-gray-500">
                             {cwd.transit_days != null ? `${cwd.transit_days} días` : "—"}
@@ -327,6 +354,102 @@ export function CourierDetail({ courier }: CourierDetailProps) {
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {activeTab === "tariffs" && (
+        <div className="space-y-4">
+          {userRoles.some((r) => ["super_admin", "forwarder_admin"].includes(r)) && (
+            <div className="flex justify-end">
+              <Link
+                href={`/${locale}/tariffs/new?tariff_side=forwarder_to_courier&courier_id=${courier.id}`}
+                className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                + Nueva Tarifa
+              </Link>
+            </div>
+          )}
+          <div className="rounded-lg border bg-white">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3">Lado</th>
+                  <th className="px-4 py-3">Destino</th>
+                  <th className="px-4 py-3">Modalidad</th>
+                  <th className="px-4 py-3">Categoría</th>
+                  <th className="px-4 py-3">Rangos</th>
+                  <th className="px-4 py-3">Estado</th>
+                  <th className="px-4 py-3">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {tariffs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                      Sin tarifas configuradas para este courier.
+                    </td>
+                  </tr>
+                ) : (
+                  tariffs.map((t) => (
+                    <tr key={t.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-xs">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          t.tariff_side === "forwarder_to_courier"
+                            ? "bg-blue-50 text-blue-700"
+                            : "bg-purple-50 text-purple-700"
+                        }`}>
+                          {TARIFF_SIDE_LABELS[t.tariff_side as TariffSide] ?? t.tariff_side}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {t.modality ? (MODALITY_LABELS[t.modality as keyof typeof MODALITY_LABELS] ?? t.modality) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {t.shipping_categories ? `${t.shipping_categories.code}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {t.tariff_brackets?.length ?? 0}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          t.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                        }`}>
+                          {t.is_active ? "Activa" : "Inactiva"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/${locale}/tariffs/${t.id}`}
+                          className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
+                        >
+                          Ver
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "users" && (
+        <div className="space-y-4">
+          {userRoles.some((r) => USER_TAB_ROLES.includes(r)) && (
+            <div className="flex justify-end">
+              <Link
+                href={`/${locale}/couriers/${courier.id}/users/new`}
+                className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                + Invitar Usuario
+              </Link>
+            </div>
+          )}
+          <UserList users={users} allowedRoles={USER_TAB_ROLES} />
         </div>
       )}
     </div>

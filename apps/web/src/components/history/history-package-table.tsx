@@ -172,9 +172,9 @@ export function HistoryPackageTable({ data, count, locale, agencies = [], wareho
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-left text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
               <th className="px-3 py-3">Guía</th>
               <th className="px-3 py-3">WR#</th>

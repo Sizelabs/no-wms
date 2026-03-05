@@ -2,10 +2,11 @@
 
 import { INVOICE_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { InvoiceStatusBadge } from "@/components/invoicing/invoice-status-badge";
 import { filterSelectClass } from "@/components/ui/form-section";
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
 interface Invoice {
   id: string;
@@ -30,6 +31,7 @@ export function InvoiceList({ data }: InvoiceListProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: "", agency: "" });
   const [showFilters, setShowFilters] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = data.filter((inv) => {
     if (search) {
@@ -105,9 +107,9 @@ export function InvoiceList({ data }: InvoiceListProps) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               <th className="px-4 py-3">Factura #</th>
               <th className="px-4 py-3">Agencia</th>
@@ -121,8 +123,12 @@ export function InvoiceList({ data }: InvoiceListProps) {
               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {filtered.map((inv) => (
+          <VirtualTableBody
+            items={filtered}
+            scrollRef={scrollRef}
+            colSpan={10}
+            emptyMessage="No hay facturas"
+            renderRow={(inv) => (
               <tr key={inv.id}>
                 <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number}</td>
                 <td className="px-4 py-3 text-xs">
@@ -155,15 +161,8 @@ export function InvoiceList({ data }: InvoiceListProps) {
                   </Link>
                 </td>
               </tr>
-            ))}
-            {!filtered.length && (
-              <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
-                  No hay facturas
-                </td>
-              </tr>
             )}
-          </tbody>
+          />
         </table>
       </div>
     </div>

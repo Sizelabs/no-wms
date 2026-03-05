@@ -13,6 +13,12 @@ export default async function TariffsPage() {
     <div className="space-y-6">
       <PageHeader title={t("tariffs")}>
         <Link
+          href="tariffs/categories"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Categorías
+        </Link>
+        <Link
           href="tariffs/new"
           className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
         >

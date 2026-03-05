@@ -37,6 +37,9 @@ alter index idx_agencies_courrier rename to idx_agencies_courier;
 alter trigger set_courriers_updated_at on couriers rename to set_couriers_updated_at;
 alter trigger audit_courriers on couriers rename to audit_couriers;
 
+-- Drop agencies policy that depends on auth_courrier_ids() before dropping the function
+drop policy if exists "org_select" on agencies;
+
 -- Drop old auth helper
 drop function if exists auth_courrier_ids();
 
@@ -493,7 +496,7 @@ alter table mawbs add constraint mawbs_destination_id_fkey
   foreign key (destination_id) references destinations(id);
 
 -- user_roles
-alter table user_roles drop constraint if exists user_roles_destination_country_id_fkey;
+alter table user_roles drop constraint if exists fk_user_roles_destination;
 alter table user_roles add constraint user_roles_destination_id_fkey
   foreign key (destination_id) references destinations(id);
 

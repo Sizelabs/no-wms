@@ -9,6 +9,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { DtDd, InfoCard, Section } from "@/components/ui/detail-page";
 import { getAgency } from "@/lib/actions/agencies";
 import { getConsigneesByAgency } from "@/lib/actions/consignees";
+import { getTariffSchedules } from "@/lib/actions/tariffs";
+import { getAgencyUsers } from "@/lib/actions/users";
 
 export default async function AgencyDetailPage({
   params,
@@ -17,9 +19,11 @@ export default async function AgencyDetailPage({
 }) {
   const { locale, id } = await params;
 
-  const [agencyResult, consigneesResult] = await Promise.all([
+  const [agencyResult, consigneesResult, usersResult, tariffsResult] = await Promise.all([
     getAgency(id),
     getConsigneesByAgency(id),
+    getAgencyUsers(id),
+    getTariffSchedules({ agency_id: id }),
   ]);
 
   const agency = agencyResult.data;
@@ -81,7 +85,7 @@ export default async function AgencyDetailPage({
         </InfoCard>
       </div>
 
-      <AgencyDetail agencyId={agency.id} consignees={consigneesResult.data ?? []}>
+      <AgencyDetail agencyId={agency.id} consignees={consigneesResult.data ?? []} users={usersResult.data ?? []} tariffs={tariffsResult.data ?? []}>
         {/* Details grid — original info tab content */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Left column */}

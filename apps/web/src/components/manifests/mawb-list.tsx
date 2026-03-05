@@ -1,9 +1,10 @@
 "use client";
 
 import { MAWB_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { filterSelectClass } from "@/components/ui/form-section";
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { updateMawbStatus } from "@/lib/actions/manifests";
 
 interface Hawb {
@@ -56,6 +57,7 @@ export function MawbList({ data }: MawbListProps) {
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = data.filter((m) => {
     if (search) {
@@ -104,9 +106,9 @@ export function MawbList({ data }: MawbListProps) {
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
               <th className="px-4 py-3">MAWB #</th>
               <th className="px-4 py-3">Aerolínea</th>
@@ -120,8 +122,12 @@ export function MawbList({ data }: MawbListProps) {
               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {filtered.map((m) => {
+          <VirtualTableBody
+            items={filtered}
+            scrollRef={scrollRef}
+            colSpan={10}
+            emptyMessage="No hay MAWBs"
+            renderRow={(m) => {
               const nextStatus = STATUS_FLOW[m.status];
               return (
                 <tr key={m.id}>
@@ -161,15 +167,8 @@ export function MawbList({ data }: MawbListProps) {
                   </td>
                 </tr>
               );
-            })}
-            {!filtered.length && (
-              <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
-                  No hay MAWBs
-                </td>
-              </tr>
-            )}
-          </tbody>
+            }}
+          />
         </table>
       </div>
     </div>

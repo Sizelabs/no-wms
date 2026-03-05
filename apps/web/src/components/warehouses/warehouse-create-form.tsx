@@ -3,7 +3,7 @@
 import { Warehouse } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import {
@@ -16,30 +16,13 @@ import {
   secondaryBtnClass,
   selectClass,
 } from "@/components/ui/form-section";
+import type { CityOption, Country } from "@/components/ui/location-selects";
+import { LocationSelects } from "@/components/ui/location-selects";
 import {
-  getCitiesOfState,
-  getStatesOfCountry,
   getTimezoneForCoordinates,
   getTimezonesOfCountry,
 } from "@/lib/actions/locations";
 import { createWarehouse } from "@/lib/actions/warehouses";
-
-interface Country {
-  name: string;
-  isoCode: string;
-  flag: string;
-}
-
-interface StateOption {
-  name: string;
-  isoCode: string;
-}
-
-interface CityOption {
-  name: string;
-  latitude: string | null | undefined;
-  longitude: string | null | undefined;
-}
 
 interface TimezoneOption {
   zoneName: string;
@@ -59,58 +42,22 @@ export function WarehouseCreateForm({
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
-  const [countryCode, setCountryCode] = useState("");
-  const [stateCode, setStateCode] = useState("");
-  const [cityName, setCityName] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
-
-  const [states, setStates] = useState<StateOption[]>([]);
-  const [cities, setCities] = useState<CityOption[]>([]);
   const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
 
-  const selectedCountry = countries.find((c) => c.isoCode === countryCode);
-
-  useEffect(() => {
+  function handleCityChange(city: CityOption | null, countryCode: string) {
     if (!countryCode) {
-      setStates([]);
-      setCities([]);
       setTimezones([]);
       return;
     }
-    Promise.all([
-      getStatesOfCountry(countryCode),
-      getTimezonesOfCountry(countryCode),
-    ]).then(([s, tz]) => {
-      setStates(s);
+    // Load timezones for country
+    getTimezonesOfCountry(countryCode).then((tz) => {
       setTimezones(tz);
       const firstTz = tz[0];
       if (firstTz) setTimezone(firstTz.zoneName);
     });
-  }, [countryCode]);
-
-  useEffect(() => {
-    if (!countryCode || !stateCode) {
-      setCities([]);
-      return;
-    }
-    getCitiesOfState(countryCode, stateCode).then(setCities);
-  }, [countryCode, stateCode]);
-
-  function handleCountryChange(code: string) {
-    setCountryCode(code);
-    setStateCode("");
-    setCityName("");
-  }
-
-  function handleStateChange(code: string) {
-    setStateCode(code);
-    setCityName("");
-  }
-
-  function handleCityChange(name: string) {
-    setCityName(name);
-    const city = cities.find((c) => c.name === name);
-    if (city?.longitude && countryCode) {
+    // If city has coordinates, pick best timezone
+    if (city?.longitude) {
       getTimezoneForCoordinates(countryCode, city.longitude).then((tz) => {
         if (tz) setTimezone(tz);
       });
@@ -121,8 +68,6 @@ export function WarehouseCreateForm({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("organization_id", organizationId);
-    formData.set("country", selectedCountry?.name ?? "");
-    formData.set("city", cityName);
     formData.set("timezone", timezone);
     startTransition(async () => {
       try {
@@ -162,65 +107,18 @@ export function WarehouseCreateForm({
               />
             </Field>
           </div>
-          <Field label="País" htmlFor="country" required>
-            <select
-              id="country"
-              value={countryCode}
-              onChange={(e) => handleCountryChange(e.target.value)}
-              required
-              className={selectClass}
-            >
-              <option value="">Seleccionar...</option>
-              {countries.map((c) => (
-                <option key={c.isoCode} value={c.isoCode}>
-                  {c.name} {c.flag}
-                </option>
-              ))}
-            </select>
-          </Field>
-          {states.length > 0 && (
-            <Field label="Estado / Provincia" htmlFor="state" required>
-              <select
-                id="state"
-                value={stateCode}
-                onChange={(e) => handleStateChange(e.target.value)}
-                required
-                className={selectClass}
-              >
-                <option value="">Seleccionar...</option>
-                {states.map((s) => (
-                  <option key={s.isoCode} value={s.isoCode}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
-          {(cities.length > 0 || (countryCode && states.length === 0)) && (
-            <Field label="Ciudad" htmlFor="city" required>
-              <select
-                id="city"
-                value={cityName}
-                onChange={(e) => handleCityChange(e.target.value)}
-                required
-                className={selectClass}
-              >
-                <option value="">Seleccionar...</option>
-                {cities.map((ci, i) => (
-                  <option key={`${ci.name}-${i}`} value={ci.name}>
-                    {ci.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
+          <LocationSelects
+            countries={countries}
+            required
+            onCityChange={handleCityChange}
+          />
           <Field label="Zona Horaria" htmlFor="timezone" required>
             <select
               id="timezone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               required
-              disabled={!countryCode}
+              disabled={timezones.length === 0}
               className={`${selectClass} disabled:border-gray-100 disabled:bg-gray-50 disabled:text-gray-500`}
             >
               {timezones.map((tz) => (

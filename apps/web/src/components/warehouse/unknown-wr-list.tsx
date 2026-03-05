@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { ClaimUnknownWrModal } from "@/components/warehouse/claim-unknown-wr-modal";
 import { claimUnknownWr } from "@/lib/actions/unknown-wrs";
 
@@ -37,6 +38,7 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
   const [claimError, setClaimError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [reportingWr, setReportingWr] = useState<UnknownWr | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleClaim = useCallback(
     (unknownWrId: string) => {
@@ -87,9 +89,9 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
         />
       </div>
 
-    <div className="rounded-lg border bg-white">
+    <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
       <table className="w-full text-left text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
             <th className="px-4 py-3">WR#</th>
             <th className="px-4 py-3">Guía</th>
@@ -100,113 +102,109 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
             {isAgencyRole && <th className="px-4 py-3">Acción</th>}
           </tr>
         </thead>
-        <tbody className="divide-y">
-          {filtered.length === 0 ? (
-            <tr>
-              <td colSpan={isAgencyRole ? 7 : 6} className="px-4 py-8 text-center text-gray-400">
-                No hay paquetes desconocidos.
+        <VirtualTableBody
+          items={filtered}
+          scrollRef={scrollRef}
+          colSpan={isAgencyRole ? 7 : 6}
+          emptyMessage="No hay paquetes desconocidos."
+          renderRow={(item) => {
+            const claimRecord = Array.isArray(item.unknown_wrs) ? item.unknown_wrs[0] : item.unknown_wrs;
+            const claimStatus = claimRecord?.status ?? "unclaimed";
+            return (
+            <tr key={item.id} className="hover:bg-gray-50">
+              <td className="px-4 py-2.5 font-mono text-xs">
+                {item.wr_number}
               </td>
-            </tr>
-          ) : (
-            filtered.map((item) => {
-              const claimRecord = Array.isArray(item.unknown_wrs) ? item.unknown_wrs[0] : item.unknown_wrs;
-              const claimStatus = claimRecord?.status ?? "unclaimed";
-              return (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2.5 font-mono text-xs">
-                  {item.wr_number}
-                </td>
-                <td className="px-4 py-2.5 font-mono text-xs text-gray-600">
-                  {trackingMasked && item.tracking_number_masked ? (
-                    <span>
-                      <span className="select-none blur-[3px]" aria-hidden="true">
-                        {item.tracking_number_masked.slice(0, -3)}
-                      </span>
-                      <span>{item.tracking_number_masked.slice(-3)}</span>
+              <td className="px-4 py-2.5 font-mono text-xs text-gray-600">
+                {trackingMasked && item.tracking_number_masked ? (
+                  <span>
+                    <span className="select-none blur-[3px]" aria-hidden="true">
+                      {item.tracking_number_masked.slice(0, -3)}
                     </span>
-                  ) : (
-                    item.packages?.[0]?.tracking_number ?? "—"
+                    <span>{item.tracking_number_masked.slice(-3)}</span>
+                  </span>
+                ) : (
+                  item.packages?.[0]?.tracking_number ?? "—"
+                )}
+              </td>
+              <td className="px-4 py-2.5 text-gray-600">
+                {item.packages?.[0]?.sender_name ?? "—"}
+              </td>
+              <td className="px-4 py-2.5 text-gray-600">
+                {(Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? "—"}
+              </td>
+              <td className="px-4 py-2.5 text-gray-600">
+                {item.packages?.[0]?.carrier ?? "—"}
+              </td>
+              <td className="px-4 py-2.5 text-xs text-gray-400">
+                {new Date(item.received_at).toLocaleDateString("es")}
+              </td>
+              {isAgencyRole && (
+                <td className="px-4 py-2.5">
+                  {claimStatus === "unclaimed" && (
+                    <>
+                      {claimingId === item.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={trackingInput}
+                            onChange={(e) => setTrackingInput(e.target.value)}
+                            placeholder="# de guía"
+                            className="w-32 rounded border px-2 py-1 text-xs focus:border-gray-900 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleClaim(item.id)}
+                            disabled={isPending}
+                            className="rounded bg-gray-900 px-2 py-1 text-xs text-white hover:bg-gray-800 disabled:opacity-50"
+                          >
+                            {isPending ? "..." : "OK"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setClaimingId(null);
+                              setClaimError(null);
+                            }}
+                            className="text-xs text-gray-400 hover:text-gray-600"
+                          >
+                            X
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setClaimingId(item.id);
+                              setTrackingInput("");
+                              setClaimError(null);
+                            }}
+                            className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                          >
+                            Reclamar
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setReportingWr(item)}
+                            className="text-xs font-medium text-amber-600 hover:text-amber-800"
+                          >
+                            Sin guía
+                          </button>
+                        </div>
+                      )}
+                      {claimError && claimingId === item.id && (
+                        <p className="mt-1 text-xs text-red-500">{claimError}</p>
+                      )}
+                    </>
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-gray-600">
-                  {item.packages?.[0]?.sender_name ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 text-gray-600">
-                  {(Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 text-gray-600">
-                  {item.packages?.[0]?.carrier ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 text-xs text-gray-400">
-                  {new Date(item.received_at).toLocaleDateString("es")}
-                </td>
-                {isAgencyRole && (
-                  <td className="px-4 py-2.5">
-                    {claimStatus === "unclaimed" && (
-                      <>
-                        {claimingId === item.id ? (
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="text"
-                              value={trackingInput}
-                              onChange={(e) => setTrackingInput(e.target.value)}
-                              placeholder="# de guía"
-                              className="w-32 rounded border px-2 py-1 text-xs focus:border-gray-900 focus:outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleClaim(item.id)}
-                              disabled={isPending}
-                              className="rounded bg-gray-900 px-2 py-1 text-xs text-white hover:bg-gray-800 disabled:opacity-50"
-                            >
-                              {isPending ? "..." : "OK"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setClaimingId(null);
-                                setClaimError(null);
-                              }}
-                              className="text-xs text-gray-400 hover:text-gray-600"
-                            >
-                              X
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setClaimingId(item.id);
-                                setTrackingInput("");
-                                setClaimError(null);
-                              }}
-                              className="text-xs font-medium text-gray-600 hover:text-gray-900"
-                            >
-                              Reclamar
-                            </button>
-                            <span className="text-gray-300">|</span>
-                            <button
-                              type="button"
-                              onClick={() => setReportingWr(item)}
-                              className="text-xs font-medium text-amber-600 hover:text-amber-800"
-                            >
-                              Sin guía
-                            </button>
-                          </div>
-                        )}
-                        {claimError && claimingId === item.id && (
-                          <p className="mt-1 text-xs text-red-500">{claimError}</p>
-                        )}
-                      </>
-                    )}
-                  </td>
-                )}
-              </tr>
-              );
-            })
-          )}
-        </tbody>
+              )}
+            </tr>
+            );
+          }}
+        />
       </table>
     </div>
 

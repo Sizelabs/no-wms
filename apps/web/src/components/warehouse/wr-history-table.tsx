@@ -335,9 +335,9 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-left text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
               <th className="px-3 py-3">
                 <input
@@ -381,7 +381,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                 return (
                 <React.Fragment key={groupKey}>
                   {/* Group header */}
-                  <tr className="border-t-2 border-gray-200 bg-gray-50">
+                  <tr className="sticky top-[41px] z-[5] border-t-2 border-gray-200 bg-gray-50">
                     <td className="px-3 py-2.5">
                       <input
                         type="checkbox"

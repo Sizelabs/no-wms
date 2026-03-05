@@ -19,6 +19,7 @@ export const RESOURCES = [
   "settings",
   "consignees",
   "history",
+  "shipping_categories",
 ] as const;
 
 export type Resource = (typeof RESOURCES)[number];
@@ -53,6 +54,7 @@ export const RESOURCE_LABELS: Record<Resource, string> = {
   settings: "Configuración",
   consignees: "Consignatarios",
   history: "Historial",
+  shipping_categories: "Categorías de Envío",
 };
 
 /** Maps nav item labels (i18n keys) to resource names for nav filtering */
@@ -117,6 +119,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     settings: crud(false, true, true, false),
     consignees: FULL,
     history: READ,
+    shipping_categories: FULL,
   }),
 
   warehouse_admin: makePermMap({
@@ -172,6 +175,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     unknown_wrs: crud(false, true, true, false),
     settings: crud(false, true, true, false),
     history: READ,
+    shipping_categories: READ,
   }),
 
   destination_operator: makePermMap({
@@ -197,5 +201,6 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     tickets: crud(true, true, false, false),
     unknown_wrs: crud(false, true, true, false),
     history: READ,
+    shipping_categories: READ,
   }),
 };

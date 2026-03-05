@@ -96,21 +96,23 @@ export function RolePermissionsPanel({ initialPermissions }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 overflow-x-auto border-b">
-        {CONFIGURABLE_ROLES.map((role) => (
-          <button
-            key={role}
-            type="button"
-            onClick={() => setActiveRole(role)}
-            className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
-              activeRole === role
-                ? "border-gray-900 text-gray-900"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            }`}
-          >
-            {ROLE_LABELS[role]}
-          </button>
-        ))}
+      <div className="border-b border-gray-200">
+        <div className="-mb-px flex items-center gap-2 overflow-x-auto">
+          {CONFIGURABLE_ROLES.map((role) => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => setActiveRole(role)}
+              className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+                activeRole === role
+                  ? "border-gray-900 text-gray-900"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              }`}
+            >
+              {ROLE_LABELS[role]}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex items-center justify-between">

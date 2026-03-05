@@ -29,9 +29,9 @@ export function WarehouseDetailActions({
     {
       label: "Eliminar",
       variant: "danger",
-      roles: ["forwarder_admin"],
+      roles: ["super_admin", "forwarder_admin"],
       onClick: () => {
-        if (!confirm("¿Eliminar esta bodega? Esta acción no se puede deshacer.")) return;
+        if (!confirm("¿Eliminar permanentemente esta bodega?\n\nSe eliminarán también los roles de usuario y datos de cobertura asociados.\n\nEsta acción no se puede deshacer.")) return;
         startTransition(async () => {
           const result = await deleteWarehouse(warehouseId);
           if (result?.error) {

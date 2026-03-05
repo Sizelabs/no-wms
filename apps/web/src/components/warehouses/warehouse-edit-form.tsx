@@ -3,7 +3,7 @@
 import { Warehouse } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import {
@@ -14,8 +14,20 @@ import {
   inputClass,
   primaryBtnClass,
   secondaryBtnClass,
+  selectClass,
 } from "@/components/ui/form-section";
+import type { CityOption, Country } from "@/components/ui/location-selects";
+import { LocationSelects } from "@/components/ui/location-selects";
+import {
+  getTimezoneForCoordinates,
+  getTimezonesOfCountry,
+} from "@/lib/actions/locations";
 import { updateWarehouse } from "@/lib/actions/warehouses";
+
+interface TimezoneOption {
+  zoneName: string;
+  gmtOffsetName: string;
+}
 
 interface WarehouseData {
   id: string;
@@ -28,17 +40,36 @@ interface WarehouseData {
 
 interface WarehouseEditFormProps {
   warehouse: WarehouseData;
+  countries: Country[];
 }
 
-export function WarehouseEditForm({ warehouse }: WarehouseEditFormProps) {
+export function WarehouseEditForm({ warehouse, countries }: WarehouseEditFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
+  const [timezone, setTimezone] = useState(warehouse.timezone);
+  const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
+
+  function handleCityChange(city: CityOption | null, countryCode: string) {
+    if (!countryCode) {
+      setTimezones([]);
+      return;
+    }
+    getTimezonesOfCountry(countryCode).then((tz) => {
+      setTimezones(tz);
+    });
+    if (city?.longitude) {
+      getTimezoneForCoordinates(countryCode, city.longitude).then((tz) => {
+        if (tz) setTimezone(tz);
+      });
+    }
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    formData.set("timezone", timezone);
     startTransition(async () => {
       try {
         await updateWarehouse(warehouse.id, formData);
@@ -78,35 +109,37 @@ export function WarehouseEditForm({ warehouse }: WarehouseEditFormProps) {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Ciudad" htmlFor="city">
-              <input
-                id="city"
-                name="city"
-                type="text"
-                defaultValue={warehouse.city ?? ""}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="País" htmlFor="country">
-              <input
-                id="country"
-                name="country"
-                type="text"
-                defaultValue={warehouse.country ?? ""}
-                className={inputClass}
-              />
-            </Field>
-          </div>
+          <LocationSelects
+            countries={countries}
+            defaultCountryName={warehouse.country ?? undefined}
+            defaultCityName={warehouse.city ?? undefined}
+            required
+            onCityChange={handleCityChange}
+          />
           <Field label="Zona Horaria" htmlFor="timezone" required>
-            <input
-              id="timezone"
-              name="timezone"
-              type="text"
-              required
-              defaultValue={warehouse.timezone}
-              className={inputClass}
-            />
+            {timezones.length > 0 ? (
+              <select
+                id="timezone"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                required
+                className={selectClass}
+              >
+                {timezones.map((tz) => (
+                  <option key={tz.zoneName} value={tz.zoneName}>
+                    {tz.zoneName} ({tz.gmtOffsetName})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="timezone"
+                type="text"
+                readOnly
+                value={timezone}
+                className={inputClass}
+              />
+            )}
           </Field>
         </FormSection>
         <FormActions>

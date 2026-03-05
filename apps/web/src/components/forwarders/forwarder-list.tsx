@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
 interface Organization {
   id: string;
@@ -20,6 +22,7 @@ interface ForwarderListProps {
 export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = forwarders.filter((f) => {
     if (search) {
@@ -42,9 +45,9 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
         />
       </div>
 
-    <div className="rounded-lg border bg-white">
+    <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
       <table className="w-full text-left text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
             <th className="px-4 py-3">Freight Forwarder</th>
             <th className="px-4 py-3">Slug</th>
@@ -54,44 +57,40 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
             <th className="px-4 py-3">Acciones</th>
           </tr>
         </thead>
-        <tbody className="divide-y">
-          {filtered.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                No hay freight forwarders registrados.
-              </td>
-            </tr>
-          ) : (
-            filtered.map((fwd) => {
-              const c = counts[fwd.id] ?? {
-                warehouses: 0,
-                agencies: 0,
-                users: 0,
-              };
-              return (
-                <tr key={fwd.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {fwd.name}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                    {fwd.slug}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{c.warehouses}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.agencies}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.users}</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/${locale}/forwarders/${fwd.id}`}
-                      className="text-xs font-medium text-gray-600 hover:text-gray-900"
-                    >
-                      Ver detalle
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
+        <VirtualTableBody
+          items={filtered}
+          scrollRef={scrollRef}
+          colSpan={6}
+          emptyMessage="No hay freight forwarders registrados."
+          renderRow={(fwd) => {
+            const c = counts[fwd.id] ?? {
+              warehouses: 0,
+              agencies: 0,
+              users: 0,
+            };
+            return (
+              <tr key={fwd.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium text-gray-900">
+                  {fwd.name}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                  {fwd.slug}
+                </td>
+                <td className="px-4 py-3 text-gray-600">{c.warehouses}</td>
+                <td className="px-4 py-3 text-gray-600">{c.agencies}</td>
+                <td className="px-4 py-3 text-gray-600">{c.users}</td>
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/${locale}/forwarders/${fwd.id}`}
+                    className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    Ver detalle
+                  </Link>
+                </td>
+              </tr>
+            );
+          }}
+        />
       </table>
     </div>
     </div>

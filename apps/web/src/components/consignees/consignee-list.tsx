@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { filterSelectClass } from "@/components/ui/form-section";
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
 interface Consignee {
   id: string;
@@ -31,6 +32,7 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = consignees.filter((c) => {
     if (search) {
@@ -70,9 +72,9 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
         </select>
       </div>
 
-    <div className="rounded-lg border bg-white">
+    <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
       <table className="w-full text-left text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
             <th className="px-4 py-3">Casillero</th>
             <th className="px-4 py-3">Nombre</th>
@@ -82,45 +84,41 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
             <th className="px-4 py-3">Estado</th>
           </tr>
         </thead>
-        <tbody className="divide-y">
-          {filtered.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                No hay consignatarios registrados.
+        <VirtualTableBody
+          items={filtered}
+          scrollRef={scrollRef}
+          colSpan={6}
+          emptyMessage="No hay consignatarios registrados."
+          renderRow={(c) => (
+            <tr key={c.id} className="hover:bg-gray-50">
+              <td className="px-4 py-3 font-mono text-xs">{c.casillero}</td>
+              <td className="px-4 py-3 font-medium text-gray-900">
+                <Link
+                  href={`/${locale}/consignees/${c.id}`}
+                  className="hover:underline"
+                >
+                  {c.full_name}
+                </Link>
+              </td>
+              <td className="px-4 py-3 text-gray-500">{c.cedula_ruc ?? "—"}</td>
+              <td className="px-4 py-3 text-gray-500">
+                {getAgencyName(c.agencies)}
+              </td>
+              <td className="px-4 py-3 text-gray-500">{c.city ?? "—"}</td>
+              <td className="px-4 py-3">
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    c.is_active
+                      ? "bg-green-50 text-green-700"
+                      : "bg-red-50 text-red-700"
+                  }`}
+                >
+                  {c.is_active ? "Activo" : "Inactivo"}
+                </span>
               </td>
             </tr>
-          ) : (
-            filtered.map((c) => (
-              <tr key={c.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs">{c.casillero}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  <Link
-                    href={`/${locale}/consignees/${c.id}`}
-                    className="hover:underline"
-                  >
-                    {c.full_name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-gray-500">{c.cedula_ruc ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500">
-                  {getAgencyName(c.agencies)}
-                </td>
-                <td className="px-4 py-3 text-gray-500">{c.city ?? "—"}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      c.is_active
-                        ? "bg-green-50 text-green-700"
-                        : "bg-red-50 text-red-700"
-                    }`}
-                  >
-                    {c.is_active ? "Activo" : "Inactivo"}
-                  </span>
-                </td>
-              </tr>
-            ))
           )}
-        </tbody>
+        />
       </table>
     </div>
     </div>

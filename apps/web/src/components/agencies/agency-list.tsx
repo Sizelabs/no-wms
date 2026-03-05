@@ -4,9 +4,10 @@ import type { AgencyType } from "@no-wms/shared/constants/agency-types";
 import { AGENCY_TYPE_LABELS } from "@no-wms/shared/constants/agency-types";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { filterSelectClass } from "@/components/ui/form-section";
+import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
 interface Agency {
   id: string;
@@ -28,6 +29,7 @@ export function AgencyList({ agencies }: AgencyListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = agencies.filter((a) => {
     if (search) {
@@ -67,9 +69,9 @@ export function AgencyList({ agencies }: AgencyListProps) {
         </select>
       </div>
 
-    <div className="rounded-lg border bg-white">
+    <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
       <table className="w-full text-left text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
             <th className="px-4 py-3">Código</th>
             <th className="px-4 py-3">Nombre</th>
@@ -79,65 +81,61 @@ export function AgencyList({ agencies }: AgencyListProps) {
             <th className="px-4 py-3">Acciones</th>
           </tr>
         </thead>
-        <tbody className="divide-y">
-          {filtered.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                No hay agencias registradas.
+        <VirtualTableBody
+          items={filtered}
+          scrollRef={scrollRef}
+          colSpan={6}
+          emptyMessage="No hay agencias registradas."
+          renderRow={(agency) => (
+            <tr key={agency.id} className="hover:bg-gray-50">
+              <td className="px-4 py-3 font-mono text-xs">{agency.code}</td>
+              <td className="px-4 py-3 font-medium text-gray-900">
+                <Link
+                  href={`/${locale}/agencies/${agency.id}`}
+                  className="hover:underline"
+                >
+                  {agency.name}
+                </Link>
+              </td>
+              <td className="px-4 py-3">
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    agency.type === "corporativo"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {AGENCY_TYPE_LABELS[agency.type]}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-gray-500">
+                {(() => {
+                  const home = agency.agency_destinations?.find((d) => d.is_home)?.destinations;
+                  return home ? `${home.city}, ${home.country_code}` : "—";
+                })()}
+              </td>
+              <td className="px-4 py-3">
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    agency.is_active
+                      ? "bg-green-50 text-green-700"
+                      : "bg-red-50 text-red-700"
+                  }`}
+                >
+                  {agency.is_active ? "Activa" : "Inactiva"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <button
+                  type="button"
+                  className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                >
+                  Editar
+                </button>
               </td>
             </tr>
-          ) : (
-            filtered.map((agency) => (
-              <tr key={agency.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs">{agency.code}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  <Link
-                    href={`/${locale}/agencies/${agency.id}`}
-                    className="hover:underline"
-                  >
-                    {agency.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      agency.type === "corporativo"
-                        ? "bg-blue-50 text-blue-700"
-                        : "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    {AGENCY_TYPE_LABELS[agency.type]}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-500">
-                  {(() => {
-                    const home = agency.agency_destinations?.find((d) => d.is_home)?.destinations;
-                    return home ? `${home.city}, ${home.country_code}` : "—";
-                  })()}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      agency.is_active
-                        ? "bg-green-50 text-green-700"
-                        : "bg-red-50 text-red-700"
-                    }`}
-                  >
-                    {agency.is_active ? "Activa" : "Inactiva"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    className="text-xs font-medium text-gray-600 hover:text-gray-900"
-                  >
-                    Editar
-                  </button>
-                </td>
-              </tr>
-            ))
           )}
-        </tbody>
+        />
       </table>
     </div>
     </div>
