@@ -15,7 +15,7 @@ interface TariffSchedule {
   effective_to: string | null;
   notes: string | null;
   warehouses: { id: string; name: string } | null;
-  charge_types: { id: string; name: string } | null;
+  handling_costs: { id: string; name: string } | null;
   destinations: { id: string; city: string; country_code: string } | null;
   agencies: { id: string; name: string; code: string } | null;
   couriers: { id: string; name: string; code: string } | null;
@@ -60,7 +60,7 @@ export function TariffDetail({ schedule }: TariffDetailProps) {
           <div>
             <dt className="text-xs font-medium uppercase text-gray-500">Costo de Manejo</dt>
             <dd className="mt-1 text-sm font-medium text-gray-900">
-              {schedule.charge_types?.name ?? "—"}
+              {schedule.handling_costs?.name ?? "—"}
             </dd>
           </div>
           <div>

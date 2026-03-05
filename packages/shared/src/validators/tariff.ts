@@ -1,20 +1,20 @@
 import { z } from "zod";
 
-// ── Charge Types ──
+// ── Handling Costs ──
 
-export const createChargeTypeSchema = z.object({
+export const createHandlingCostSchema = z.object({
   name: z.string().min(1, "Nombre requerido"),
   description: z.string().optional(),
 });
 
-export const updateChargeTypeSchema = z.object({
+export const updateHandlingCostSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional().nullable(),
   is_active: z.boolean().optional(),
 });
 
-export type CreateChargeTypeInput = z.infer<typeof createChargeTypeSchema>;
-export type UpdateChargeTypeInput = z.infer<typeof updateChargeTypeSchema>;
+export type CreateHandlingCostInput = z.infer<typeof createHandlingCostSchema>;
+export type UpdateHandlingCostInput = z.infer<typeof updateHandlingCostSchema>;
 
 // ── Modalities ──
 
@@ -38,7 +38,7 @@ export type UpdateModalityInput = z.infer<typeof updateModalitySchema>;
 
 export const createTariffScheduleSchema = z.object({
   warehouse_id: z.string().uuid("Bodega requerida"),
-  charge_type_id: z.string().uuid("Costo de manejo requerido"),
+  handling_cost_id: z.string().uuid("Costo de manejo requerido"),
   destination_id: z.string().uuid().optional().nullable(),
   agency_id: z.string().uuid().optional().nullable(),
   courier_id: z.string().uuid().optional().nullable(),
@@ -56,7 +56,7 @@ export const createTariffScheduleSchema = z.object({
 
 export const updateTariffScheduleSchema = z.object({
   warehouse_id: z.string().uuid().optional(),
-  charge_type_id: z.string().uuid().optional(),
+  handling_cost_id: z.string().uuid().optional(),
   destination_id: z.string().uuid().optional().nullable(),
   agency_id: z.string().uuid().optional().nullable(),
   courier_id: z.string().uuid().optional().nullable(),

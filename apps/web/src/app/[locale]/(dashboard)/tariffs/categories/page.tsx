@@ -6,5 +6,5 @@ export default async function CategoriesRedirectPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  redirect(`/${locale}/settings/charge-types`);
+  redirect(`/${locale}/settings/handling-costs`);
 }

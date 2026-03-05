@@ -1,34 +1,34 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { ChargeTypeList } from "@/components/tariffs/charge-type-list";
-import { getChargeTypes } from "@/lib/actions/tariffs";
+import { HandlingCostList } from "@/components/tariffs/handling-cost-list";
+import { getHandlingCosts } from "@/lib/actions/tariffs";
 import { requirePermission } from "@/lib/auth/require-permission";
 
-export default async function ChargeTypesPage({
+export default async function HandlingCostsPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const { permissions } = await requirePermission(locale, "charge_types", "read");
-  const { data } = await getChargeTypes();
+  const { permissions } = await requirePermission(locale, "handling_costs", "read");
+  const { data } = await getHandlingCosts();
 
-  const canCreate = permissions.charge_types.create;
+  const canCreate = permissions.handling_costs.create;
 
   return (
     <div className="space-y-6">
       <PageHeader title="Handling Costs">
         {canCreate && (
           <Link
-            href="charge-types/new"
+            href="handling-costs/new"
             className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
           >
             + Nuevo Costo de Manejo
           </Link>
         )}
       </PageHeader>
-      <ChargeTypeList data={data ?? []} />
+      <HandlingCostList data={data ?? []} />
     </div>
   );
 }

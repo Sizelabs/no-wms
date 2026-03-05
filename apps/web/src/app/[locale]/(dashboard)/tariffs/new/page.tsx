@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { TariffScheduleForm } from "@/components/tariffs/tariff-schedule-form";
-import { getChargeTypes } from "@/lib/actions/tariffs";
+import { getHandlingCosts } from "@/lib/actions/tariffs";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserAgencyScope, getUserCourierScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
@@ -47,7 +47,7 @@ export default async function NewTariffPage({
     agenciesQuery = agenciesQuery.in("id", agencyScope);
   }
 
-  const [couriersResult, agenciesResult, warehousesResult, destinationsResult, chargeTypesResult] = await Promise.all([
+  const [couriersResult, agenciesResult, warehousesResult, destinationsResult, handlingCostsResult] = await Promise.all([
     courierScope !== null && courierScope.length === 0
       ? Promise.resolve({ data: [] })
       : couriersQuery,
@@ -64,7 +64,7 @@ export default async function NewTariffPage({
       .select("id, city, country_code")
       .eq("is_active", true)
       .order("city"),
-    getChargeTypes(),
+    getHandlingCosts(),
   ]);
 
   return (
@@ -72,7 +72,7 @@ export default async function NewTariffPage({
       <PageHeader title="Nueva Tarifa" />
       <TariffScheduleForm
         warehouses={warehousesResult.data ?? []}
-        chargeTypes={chargeTypesResult.data ?? []}
+        handlingCosts={handlingCostsResult.data ?? []}
         destinations={destinationsResult.data ?? []}
         couriers={couriersResult.data ?? []}
         agencies={agenciesResult.data ?? []}

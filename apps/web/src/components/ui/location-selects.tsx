@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Combobox } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/form-section";
 import {
+  findStateByCity,
   getCitiesOfState,
   getStatesOfCountry,
 } from "@/lib/actions/locations";
@@ -81,15 +82,22 @@ export function LocationSelects({
     }
     getStatesOfCountry(countryCode).then((s) => {
       setStates(s);
-      // On initial load with defaults, resolve the state code from name
       if (!initialized && defaultStateName) {
+        // Resolve state code from name
         const match = s.find((st) => st.name === defaultStateName);
         if (match) {
           setStateCode(match.isoCode);
         }
+      } else if (!initialized && !defaultStateName && defaultCityName) {
+        // No state stored — find which state contains the default city
+        findStateByCity(countryCode, defaultCityName).then((found) => {
+          if (found) {
+            setStateCode(found.isoCode);
+          }
+        });
       }
     });
-  }, [countryCode]); // intentionally omit initialized + defaultStateName to only run on country change
+  }, [countryCode]); // intentionally omit initialized + defaults to only run on country change
 
   // Load cities when state changes
   useEffect(() => {

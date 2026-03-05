@@ -2,8 +2,28 @@
 
 import { revalidatePath } from "next/cache";
 
+import {
+  DEFAULT_MODALITY_CODES,
+  DEFAULT_MODALITY_LABELS,
+} from "@no-wms/shared/constants/modalities";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+const DEFAULT_HANDLING_COST_NAMES = [
+  "Flete Aereo Minimo",
+  "Flete Aereo x KG",
+  "FSC x KG",
+  "SCR x KG",
+  "SED",
+  "MAWB",
+  "HAWB",
+  "Delivery por KG",
+  "DGR",
+  "Ordenes de Trabajo",
+  "Bodegaje",
+  "Handling",
+];
 
 export async function getOrganizations() {
   const supabase = await createClient();
@@ -202,6 +222,24 @@ export async function createOrganization(formData: FormData): Promise<void> {
     await admin.from("organizations").delete().eq("id", org.id);
     throw new Error(roleError.message);
   }
+
+  // 5. Seed default modalities
+  await admin.from("modalities").insert(
+    DEFAULT_MODALITY_CODES.map((code, i) => ({
+      organization_id: org.id,
+      name: DEFAULT_MODALITY_LABELS[code],
+      code,
+      display_order: i + 1,
+    })),
+  );
+
+  // 6. Seed default handling costs
+  await admin.from("handling_costs").insert(
+    DEFAULT_HANDLING_COST_NAMES.map((name) => ({
+      organization_id: org.id,
+      name,
+    })),
+  );
 
   revalidatePath("/settings/forwarders");
 }

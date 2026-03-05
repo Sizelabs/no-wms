@@ -46,7 +46,7 @@ const SETTINGS_GROUPS: SettingsNavGroup[] = [
     items: [
       { label: "destinations", href: "/settings/destinations" },
       { label: "modalities", href: "/settings/modalities", resource: "tariffs" },
-      { label: "chargeTypes", href: "/settings/charge-types", resource: "tariffs" },
+      { label: "handlingCosts", href: "/settings/handling-costs", resource: "tariffs" },
     ],
   },
   {

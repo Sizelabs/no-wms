@@ -28,6 +28,20 @@ export async function getCitiesOfState(
   }));
 }
 
+export async function findStateByCity(
+  countryCode: string,
+  cityName: string,
+) {
+  const states = State.getStatesOfCountry(countryCode) ?? [];
+  for (const state of states) {
+    const cities = City.getCitiesOfState(countryCode, state.isoCode) ?? [];
+    if (cities.some((c) => c.name === cityName)) {
+      return { name: state.name, isoCode: state.isoCode };
+    }
+  }
+  return null;
+}
+
 export async function getTimezoneForCoordinates(
   countryCode: string,
   longitude: string,

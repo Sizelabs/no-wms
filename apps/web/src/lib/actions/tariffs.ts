@@ -23,12 +23,12 @@ async function getAuthProfile() {
   return { supabase, profile };
 }
 
-// ── Charge Types ──
+// ── Handling Costs ──
 
-export async function getChargeTypes() {
+export async function getHandlingCosts() {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("charge_types")
+    .from("handling_costs")
     .select("*")
     .order("display_order")
     .order("name");
@@ -37,10 +37,73 @@ export async function getChargeTypes() {
   return { data, error: null };
 }
 
-export async function getChargeType(id: string) {
+export async function getHandlingCostsWithTariffs(courierId?: string) {
+  const supabase = await createClient();
+
+  const { data: costs, error: costsError } = await supabase
+    .from("handling_costs")
+    .select("id, name, description, is_active, display_order, base_rate, base_rate_unit, base_minimum_charge")
+    .order("display_order")
+    .order("name");
+
+  if (costsError) return { data: null, error: costsError.message };
+
+  if (!courierId) {
+    return {
+      data: (costs ?? []).map((c) => ({
+        ...c,
+        rate: Number(c.base_rate),
+        rate_unit: c.base_rate_unit,
+        minimum_charge: c.base_minimum_charge != null ? Number(c.base_minimum_charge) : null,
+        is_custom: false,
+      })),
+      error: null,
+    };
+  }
+
+  const { data: tariffs, error: tariffsError } = await supabase
+    .from("courier_tariffs")
+    .select("handling_cost_id, rate, rate_unit, minimum_charge")
+    .eq("courier_id", courierId);
+
+  if (tariffsError) return { data: null, error: tariffsError.message };
+
+  const tariffMap = new Map(
+    (tariffs ?? []).map((t) => [t.handling_cost_id, t]),
+  );
+
+  return {
+    data: (costs ?? []).map((c) => {
+      const override = tariffMap.get(c.id);
+      if (override) {
+        const isCustom =
+          Number(override.rate) !== Number(c.base_rate) ||
+          override.rate_unit !== c.base_rate_unit ||
+          Number(override.minimum_charge ?? 0) !== Number(c.base_minimum_charge ?? 0);
+        return {
+          ...c,
+          rate: Number(override.rate),
+          rate_unit: override.rate_unit,
+          minimum_charge: override.minimum_charge != null ? Number(override.minimum_charge) : null,
+          is_custom: isCustom,
+        };
+      }
+      return {
+        ...c,
+        rate: Number(c.base_rate),
+        rate_unit: c.base_rate_unit,
+        minimum_charge: c.base_minimum_charge != null ? Number(c.base_minimum_charge) : null,
+        is_custom: false,
+      };
+    }),
+    error: null,
+  };
+}
+
+export async function getHandlingCost(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("charge_types")
+    .from("handling_costs")
     .select("*")
     .eq("id", id)
     .single();
@@ -49,16 +112,23 @@ export async function getChargeType(id: string) {
   return { data, error: null };
 }
 
-export async function createChargeType(formData: FormData): Promise<{ id: string } | { error: string }> {
+export async function createHandlingCost(formData: FormData): Promise<{ id: string } | { error: string }> {
   const { supabase, profile } = await getAuthProfile();
   if (!profile) return { error: "No autenticado" };
 
+  const baseRate = formData.get("base_rate") as string | null;
+  const baseRateUnit = formData.get("base_rate_unit") as string | null;
+  const baseMinCharge = formData.get("base_minimum_charge") as string | null;
+
   const { data, error } = await supabase
-    .from("charge_types")
+    .from("handling_costs")
     .insert({
       organization_id: profile.organization_id,
       name: formData.get("name") as string,
       description: (formData.get("description") as string) || null,
+      ...(baseRate ? { base_rate: parseFloat(baseRate) } : {}),
+      ...(baseRateUnit ? { base_rate_unit: baseRateUnit } : {}),
+      ...(baseMinCharge ? { base_minimum_charge: parseFloat(baseMinCharge) } : {}),
     })
     .select("id")
     .single();
@@ -67,11 +137,11 @@ export async function createChargeType(formData: FormData): Promise<{ id: string
     if (error.code === "23505") return { error: "Ya existe un costo de manejo con ese nombre" };
     return { error: error.message };
   }
-  revalidatePath("/settings/charge-types");
+  revalidatePath("/settings/handling-costs");
   return { id: data.id };
 }
 
-export async function updateChargeType(id: string, formData: FormData): Promise<{ error?: string }> {
+export async function updateHandlingCost(id: string, formData: FormData): Promise<{ error?: string }> {
   const { supabase, profile } = await getAuthProfile();
   if (!profile) return { error: "No autenticado" };
 
@@ -83,43 +153,109 @@ export async function updateChargeType(id: string, formData: FormData): Promise<
   const isActive = formData.get("is_active");
   if (isActive !== null) updates.is_active = isActive === "true";
 
+  // Base tariff fields
+  const baseRate = formData.get("base_rate") as string | null;
+  if (baseRate !== null && baseRate !== "") updates.base_rate = parseFloat(baseRate);
+  const baseRateUnit = formData.get("base_rate_unit") as string | null;
+  if (baseRateUnit) updates.base_rate_unit = baseRateUnit;
+  const baseMinCharge = formData.get("base_minimum_charge") as string | null;
+  if (baseMinCharge !== null) updates.base_minimum_charge = baseMinCharge ? parseFloat(baseMinCharge) : null;
+
   const { error } = await supabase
-    .from("charge_types")
+    .from("handling_costs")
     .update(updates)
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/settings/charge-types");
+  revalidatePath("/settings/handling-costs");
   return {};
 }
 
-export async function deleteChargeType(id: string): Promise<{ error?: string }> {
+export async function updateCourierTariff(
+  courierId: string,
+  handlingCostId: string,
+  data: { rate: number; rate_unit: string; minimum_charge: number | null },
+): Promise<{ error?: string }> {
   const { supabase, profile } = await getAuthProfile();
   if (!profile) return { error: "No autenticado" };
 
   const { error } = await supabase
-    .from("charge_types")
+    .from("courier_tariffs")
+    .upsert(
+      {
+        organization_id: profile.organization_id,
+        courier_id: courierId,
+        handling_cost_id: handlingCostId,
+        rate: data.rate,
+        rate_unit: data.rate_unit,
+        minimum_charge: data.minimum_charge,
+      },
+      { onConflict: "courier_id,handling_cost_id" },
+    );
+
+  if (error) return { error: error.message };
+  revalidatePath("/settings/handling-costs");
+  return {};
+}
+
+export async function resetCourierTariff(
+  courierId: string,
+  handlingCostId: string,
+): Promise<{ error?: string }> {
+  const { supabase, profile } = await getAuthProfile();
+  if (!profile) return { error: "No autenticado" };
+
+  // Get base values
+  const { data: hc, error: hcError } = await supabase
+    .from("handling_costs")
+    .select("base_rate, base_rate_unit, base_minimum_charge")
+    .eq("id", handlingCostId)
+    .single();
+
+  if (hcError || !hc) return { error: hcError?.message ?? "No encontrado" };
+
+  const { error } = await supabase
+    .from("courier_tariffs")
+    .update({
+      rate: hc.base_rate,
+      rate_unit: hc.base_rate_unit,
+      minimum_charge: hc.base_minimum_charge,
+    })
+    .eq("courier_id", courierId)
+    .eq("handling_cost_id", handlingCostId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/settings/handling-costs");
+  return {};
+}
+
+export async function deleteHandlingCost(id: string): Promise<{ error?: string }> {
+  const { supabase, profile } = await getAuthProfile();
+  if (!profile) return { error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("handling_costs")
     .update({ is_active: false })
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/settings/charge-types");
+  revalidatePath("/settings/handling-costs");
   return {};
 }
 
-export async function reorderChargeTypes(ids: string[]): Promise<{ error?: string }> {
+export async function reorderHandlingCosts(ids: string[]): Promise<{ error?: string }> {
   const { supabase, profile } = await getAuthProfile();
   if (!profile) return { error: "No autenticado" };
 
   for (let i = 0; i < ids.length; i++) {
     const { error } = await supabase
-      .from("charge_types")
+      .from("handling_costs")
       .update({ display_order: i + 1 })
       .eq("id", ids[i]);
     if (error) return { error: error.message };
   }
 
-  revalidatePath("/settings/charge-types");
+  revalidatePath("/settings/handling-costs");
   return {};
 }
 
@@ -249,7 +385,7 @@ export async function toggleWarehouseDestinationModality(
 
 export async function getTariffSchedules(filters?: {
   warehouse_id?: string;
-  charge_type_id?: string;
+  handling_cost_id?: string;
   destination_id?: string;
   agency_id?: string;
   courier_id?: string;
@@ -263,7 +399,7 @@ export async function getTariffSchedules(filters?: {
     .select(`
       *,
       warehouses:warehouse_id(id, name),
-      charge_types:charge_type_id(id, name),
+      handling_costs:handling_cost_id(id, name),
       destinations:destination_id(id, city, country_code),
       agencies:agency_id(id, name, code),
       couriers:courier_id(id, name, code)
@@ -278,7 +414,7 @@ export async function getTariffSchedules(filters?: {
   }
 
   if (filters?.warehouse_id) query = query.eq("warehouse_id", filters.warehouse_id);
-  if (filters?.charge_type_id) query = query.eq("charge_type_id", filters.charge_type_id);
+  if (filters?.handling_cost_id) query = query.eq("handling_cost_id", filters.handling_cost_id);
   if (filters?.destination_id) query = query.eq("destination_id", filters.destination_id);
   if (filters?.agency_id) query = query.eq("agency_id", filters.agency_id);
   if (filters?.courier_id) query = query.eq("courier_id", filters.courier_id);
@@ -298,7 +434,7 @@ export async function getTariffSchedule(id: string) {
     .select(`
       *,
       warehouses:warehouse_id(id, name),
-      charge_types:charge_type_id(id, name),
+      handling_costs:handling_cost_id(id, name),
       destinations:destination_id(id, city, country_code),
       agencies:agency_id(id, name, code),
       couriers:courier_id(id, name, code)
@@ -319,7 +455,7 @@ export async function createTariffSchedule(formData: FormData): Promise<{ id: st
     .insert({
       organization_id: profile.organization_id,
       warehouse_id: formData.get("warehouse_id") as string,
-      charge_type_id: formData.get("charge_type_id") as string,
+      handling_cost_id: formData.get("handling_cost_id") as string,
       destination_id: (formData.get("destination_id") as string) || null,
       agency_id: (formData.get("agency_id") as string) || null,
       courier_id: (formData.get("courier_id") as string) || null,
@@ -348,7 +484,7 @@ export async function updateTariffSchedule(id: string, formData: FormData): Prom
   const updates: Record<string, unknown> = {};
 
   const stringFields = [
-    "warehouse_id", "charge_type_id", "destination_id",
+    "warehouse_id", "handling_cost_id", "destination_id",
     "agency_id", "courier_id", "rate_unit", "currency",
     "effective_from", "effective_to", "notes",
   ];

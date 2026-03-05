@@ -172,10 +172,10 @@ INSERT INTO destinations (id, organization_id, city, country_code, currency, is_
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- 7a. CHARGE TYPES (12, ACME org — migration seeds defaults for all orgs)
+-- 7a. HANDLING COSTS (12, ACME org — migration seeds defaults for all orgs)
 -- ============================================================================
 
-INSERT INTO charge_types (id, organization_id, name, display_order, is_active, created_at, updated_at) VALUES
+INSERT INTO handling_costs (id, organization_id, name, display_order, is_active, created_at, updated_at) VALUES
   ('f1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Flete Aereo Minimo',   1,  true, '2025-11-25T10:00:00Z', '2025-11-25T10:00:00Z'),
   ('f1000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Flete Aereo x KG',     2,  true, '2025-11-25T10:01:00Z', '2025-11-25T10:01:00Z'),
   ('f1000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'FSC x KG',             3,  true, '2025-11-25T10:02:00Z', '2025-11-25T10:02:00Z'),
@@ -2178,12 +2178,12 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 33. TARIFF SCHEDULES (simplified: flat rate + optional scoping)
 -- ============================================================================
--- Uses warehouse + charge_type with optional destination/courier/agency scoping.
+-- Uses warehouse + handling_cost with optional destination/courier/agency scoping.
 -- Warehouse IDs reference ACME warehouses from section 4.
--- Charge type IDs reference section 7a.
+-- Handling cost IDs reference section 7a.
 -- Destination IDs reference section 6.
 
-INSERT INTO tariff_schedules (id, organization_id, warehouse_id, charge_type_id, destination_id, courier_id, agency_id, rate, rate_unit, minimum_charge, currency, is_active, effective_from, notes, created_at, updated_at) VALUES
+INSERT INTO tariff_schedules (id, organization_id, warehouse_id, handling_cost_id, destination_id, courier_id, agency_id, rate, rate_unit, minimum_charge, currency, is_active, effective_from, notes, created_at, updated_at) VALUES
   -- Forwarder base rates for ACME Miami warehouse → Ecuador
   ('f2000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000001', NULL, NULL, 2.5000, 'per_kg', 25.00, 'USD', true, '2025-12-01', 'Flete aereo base EC', '2025-12-01T00:00:00Z', '2025-12-01T00:00:00Z'),
   ('f2000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000003', 'f0000000-0000-0000-0000-000000000001', NULL, NULL, 0.1500, 'per_kg', NULL, 'USD', true, '2025-12-01', 'FSC base EC', '2025-12-01T00:00:00Z', '2025-12-01T00:00:00Z'),
@@ -2493,7 +2493,7 @@ INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, 
 ('forwarder_admin', 'settings',            false, true,  true,  false),
 ('forwarder_admin', 'consignees',          true,  true,  true,  true),
 ('forwarder_admin', 'history',             false, true,  false, false),
-('forwarder_admin', 'charge_types',        true,  true,  true,  true),
+('forwarder_admin', 'handling_costs',        true,  true,  true,  true),
 
 -- warehouse_admin
 ('warehouse_admin', 'warehouses',          false, true,  true,  false),
@@ -2545,7 +2545,7 @@ INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, 
 ('destination_admin', 'unknown_wrs',         false, true,  true,  false),
 ('destination_admin', 'settings',            false, true,  true,  false),
 ('destination_admin', 'history',             false, true,  false, false),
-('destination_admin', 'charge_types',        false, true,  false, false),
+('destination_admin', 'handling_costs',        false, true,  false, false),
 
 -- destination_operator
 ('destination_operator', 'couriers',         false, true,  false, false),
@@ -2569,7 +2569,7 @@ INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, 
 ('agency', 'tickets',             true,  true,  false, false),
 ('agency', 'unknown_wrs',         false, true,  true,  false),
 ('agency', 'history',             false, true,  false, false),
-('agency', 'charge_types',        false, true,  false, false)
+('agency', 'handling_costs',        false, true,  false, false)
 
 ON CONFLICT (role, resource) DO NOTHING;
 

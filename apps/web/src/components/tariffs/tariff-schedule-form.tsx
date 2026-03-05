@@ -20,7 +20,7 @@ interface Warehouse {
   name: string;
 }
 
-interface ChargeType {
+interface HandlingCost {
   id: string;
   name: string;
 }
@@ -34,7 +34,7 @@ interface Destination {
 interface ExistingSchedule {
   id: string;
   warehouse_id: string;
-  charge_type_id: string;
+  handling_cost_id: string;
   destination_id: string | null;
   agency_id: string | null;
   courier_id: string | null;
@@ -50,7 +50,7 @@ interface ExistingSchedule {
 
 interface TariffScheduleFormProps {
   warehouses: Warehouse[];
-  chargeTypes: ChargeType[];
+  handlingCosts: HandlingCost[];
   destinations: Destination[];
   agencies: Entity[];
   couriers: Entity[];
@@ -59,7 +59,7 @@ interface TariffScheduleFormProps {
 
 export function TariffScheduleForm({
   warehouses,
-  chargeTypes,
+  handlingCosts,
   destinations,
   agencies,
   couriers,
@@ -71,13 +71,13 @@ export function TariffScheduleForm({
   const isEditing = !!schedule;
 
   const [warehouseId, setWarehouseId] = useState(schedule?.warehouse_id ?? "");
-  const [chargeTypeId, setChargeTypeId] = useState(schedule?.charge_type_id ?? "");
+  const [handlingCostId, setHandlingCostId] = useState(schedule?.handling_cost_id ?? "");
   const [destinationId, setDestinationId] = useState(schedule?.destination_id ?? "");
   const [agencyId, setAgencyId] = useState(schedule?.agency_id ?? "");
   const [courierId, setCourierId] = useState(schedule?.courier_id ?? "");
 
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
-  const chargeTypeOptions = chargeTypes.map((ct) => ({ value: ct.id, label: ct.name }));
+  const handlingCostOptions = handlingCosts.map((ct) => ({ value: ct.id, label: ct.name }));
   const destinationOptions = destinations.map((d) => ({ value: d.id, label: `${d.city} (${d.country_code})` }));
   const agencyOptions = agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }));
   const courierOptions = couriers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }));
@@ -87,7 +87,7 @@ export function TariffScheduleForm({
     const formData = new FormData(e.currentTarget);
 
     formData.set("warehouse_id", warehouseId);
-    formData.set("charge_type_id", chargeTypeId);
+    formData.set("handling_cost_id", handlingCostId);
     formData.set("destination_id", destinationId || "");
     formData.set("agency_id", agencyId || "");
     formData.set("courier_id", courierId || "");
@@ -116,7 +116,7 @@ export function TariffScheduleForm({
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-6 rounded-lg border bg-white p-6">
-      {/* Warehouse + Charge Type */}
+      {/* Warehouse + Handling Cost */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Bodega</label>
@@ -132,10 +132,10 @@ export function TariffScheduleForm({
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Costo de Manejo</label>
           <Combobox
-            name="_charge_type_id"
-            options={chargeTypeOptions}
-            value={chargeTypeId}
-            onChange={setChargeTypeId}
+            name="_handling_cost_id"
+            options={handlingCostOptions}
+            value={handlingCostId}
+            onChange={setHandlingCostId}
             placeholder="Seleccionar costo de manejo"
             required
           />

@@ -18,7 +18,7 @@ export default async function TariffDetailPage({
     notFound();
   }
 
-  const label = schedule.charge_types?.name ?? "";
+  const label = schedule.handling_costs?.name ?? "";
 
   return (
     <div className="space-y-6">

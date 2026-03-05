@@ -12,7 +12,7 @@ import { deleteTariffSchedule } from "@/lib/actions/tariffs";
 interface TariffSchedule {
   id: string;
   warehouse_id: string;
-  charge_type_id: string;
+  handling_cost_id: string;
   destination_id: string | null;
   agency_id: string | null;
   courier_id: string | null;
@@ -25,7 +25,7 @@ interface TariffSchedule {
   effective_to: string | null;
   notes: string | null;
   warehouses: { id: string; name: string } | null;
-  charge_types: { id: string; name: string } | null;
+  handling_costs: { id: string; name: string } | null;
   destinations: { id: string; city: string; country_code: string } | null;
   agencies: { id: string; name: string; code: string } | null;
   couriers: { id: string; name: string; code: string } | null;
@@ -54,7 +54,7 @@ export function TariffList({ data, warehouses }: TariffListProps) {
     if (search) {
       const q = search.toLowerCase();
       const matches =
-        t.charge_types?.name?.toLowerCase().includes(q) ||
+        t.handling_costs?.name?.toLowerCase().includes(q) ||
         t.destinations?.city?.toLowerCase().includes(q) ||
         t.agencies?.name?.toLowerCase().includes(q) ||
         t.couriers?.name?.toLowerCase().includes(q) ||
@@ -145,7 +145,7 @@ export function TariffList({ data, warehouses }: TariffListProps) {
             renderRow={(t) => (
               <tr key={t.id}>
                 <td className="px-4 py-3 text-xs font-medium text-gray-900">
-                  {t.charge_types?.name ?? "—"}
+                  {t.handling_costs?.name ?? "—"}
                 </td>
                 <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-xs">

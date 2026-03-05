@@ -35,7 +35,7 @@ interface TariffSchedule {
   agency_id: string | null;
   courier_id: string | null;
   warehouses: { name: string } | null;
-  charge_types: { name: string } | null;
+  handling_costs: { name: string } | null;
   destinations: { city: string; country_code: string } | null;
   couriers: { name: string; code: string } | null;
 }
@@ -199,7 +199,7 @@ export function AgencyDetail({ agencyId, consignees, users, tariffs, children }:
                   ) : (
                     overrides.map((t) => (
                       <tr key={t.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-xs font-medium">{t.charge_types?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-xs font-medium">{t.handling_costs?.name ?? "—"}</td>
                         <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
                         <td className="px-4 py-3 text-xs">
                           {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}
@@ -260,7 +260,7 @@ export function AgencyDetail({ agencyId, consignees, users, tariffs, children }:
                   ) : (
                     inherited.map((t) => (
                       <tr key={t.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-xs font-medium">{t.charge_types?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-xs font-medium">{t.handling_costs?.name ?? "—"}</td>
                         <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
                         <td className="px-4 py-3 text-xs">
                           {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}

@@ -5,10 +5,10 @@ import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { inputClass } from "@/components/ui/form-section";
-import { createChargeType, updateChargeType } from "@/lib/actions/tariffs";
+import { createHandlingCost, updateHandlingCost } from "@/lib/actions/tariffs";
 
-interface ChargeTypeFormProps {
-  chargeType?: {
+interface HandlingCostFormProps {
+  handlingCost?: {
     id: string;
     name: string;
     description: string | null;
@@ -16,11 +16,11 @@ interface ChargeTypeFormProps {
   };
 }
 
-export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
+export function HandlingCostForm({ handlingCost }: HandlingCostFormProps) {
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
-  const isEditing = !!chargeType;
+  const isEditing = !!handlingCost;
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,21 +28,21 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
 
     startTransition(async () => {
       if (isEditing) {
-        const result = await updateChargeType(chargeType.id, formData);
+        const result = await updateHandlingCost(handlingCost.id, formData);
         if (result.error) {
           notify(result.error, "error");
         } else {
           notify("Costo de manejo actualizado", "success");
-          router.push("/settings/charge-types");
+          router.push("/settings/handling-costs");
           router.refresh();
         }
       } else {
-        const result = await createChargeType(formData);
+        const result = await createHandlingCost(formData);
         if ("error" in result) {
           notify(result.error, "error");
         } else {
           notify("Costo de manejo creado", "success");
-          router.push("/settings/charge-types");
+          router.push("/settings/handling-costs");
         }
       }
     });
@@ -56,7 +56,7 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
           name="name"
           type="text"
           required
-          defaultValue={chargeType?.name ?? ""}
+          defaultValue={handlingCost?.name ?? ""}
           placeholder="Ej: Flete Aéreo x KG"
           className={inputClass}
         />
@@ -67,7 +67,7 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
         <input
           name="description"
           type="text"
-          defaultValue={chargeType?.description ?? ""}
+          defaultValue={handlingCost?.description ?? ""}
           placeholder="Descripción opcional"
           className={inputClass}
         />
@@ -79,7 +79,7 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
             name="is_active"
             type="checkbox"
             value="true"
-            defaultChecked={chargeType.is_active}
+            defaultChecked={handlingCost.is_active}
             className="h-4 w-4 rounded border-gray-300"
           />
           <label className="text-sm text-gray-700">Activo</label>
