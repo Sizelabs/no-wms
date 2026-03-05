@@ -74,3 +74,36 @@ export async function getUserFullScope(): Promise<UserScope> {
     agencyIds: getScopedAgencyIds(assignments),
   };
 }
+
+/** Roles that only manage the forwarder→courier side */
+const FORWARDER_SIDE_ROLES = new Set([
+  "forwarder_admin",
+  "warehouse_admin",
+  "warehouse_operator",
+  "shipping_clerk",
+]);
+
+/** Roles that only manage the courier→agency side */
+const COURIER_SIDE_ROLES = new Set([
+  "destination_admin",
+  "destination_operator",
+  "agency",
+]);
+
+/**
+ * Returns the tariff side(s) the current user is allowed to access.
+ * - `null` for super_admin (sees both sides)
+ * - A specific side for scoped roles
+ */
+export async function getUserAllowedTariffSide(): Promise<string | null> {
+  const { assignments } = await getUserScopes();
+  if (!assignments || assignments.length === 0) return null; // super_admin
+
+  const roles = assignments.map((a) => a.role);
+
+  if (roles.some((r) => r === "super_admin")) return null;
+  if (roles.some((r) => FORWARDER_SIDE_ROLES.has(r))) return "forwarder_to_courier";
+  if (roles.some((r) => COURIER_SIDE_ROLES.has(r))) return "courier_to_agency";
+
+  return null;
+}

@@ -1,8 +1,7 @@
 "use client";
 
-import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import type { Role } from "@no-wms/shared/constants/roles";
-import { TARIFF_SIDE_LABELS, type TariffSide } from "@no-wms/shared/constants/tariff";
+import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -24,18 +23,17 @@ interface CourierWarehouseDestination {
 
 interface TariffSchedule {
   id: string;
-  tariff_side: string;
-  tariff_type: string;
-  courier_id: string | null;
-  agency_id: string | null;
-  modality: string | null;
-  base_fee: number;
+  rate: number;
+  rate_unit: string;
+  minimum_charge: number | null;
   is_active: boolean;
   effective_from: string;
+  agency_id: string | null;
+  courier_id: string | null;
+  warehouses: { name: string } | null;
+  charge_types: { name: string } | null;
   agencies: { name: string; code: string } | null;
   destinations: { city: string; country_code: string } | null;
-  shipping_categories: { code: string; name: string } | null;
-  tariff_brackets: { id: string }[];
 }
 
 interface CourierWarehouse {
@@ -362,7 +360,7 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
           {userRoles.some((r) => ["super_admin", "forwarder_admin"].includes(r)) && (
             <div className="flex justify-end">
               <Link
-                href={`/${locale}/tariffs/new?tariff_side=forwarder_to_courier&courier_id=${courier.id}`}
+                href={`/${locale}/tariffs/new`}
                 className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
               >
                 + Nueva Tarifa
@@ -373,11 +371,11 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-                  <th className="px-4 py-3">Lado</th>
+                  <th className="px-4 py-3">Tipo de Cargo</th>
+                  <th className="px-4 py-3">Bodega</th>
                   <th className="px-4 py-3">Destino</th>
-                  <th className="px-4 py-3">Modalidad</th>
-                  <th className="px-4 py-3">Categoría</th>
-                  <th className="px-4 py-3">Rangos</th>
+                  <th className="px-4 py-3">Tarifa</th>
+                  <th className="px-4 py-3">Agencia</th>
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Acciones</th>
                 </tr>
@@ -392,26 +390,20 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
                 ) : (
                   tariffs.map((t) => (
                     <tr key={t.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-xs font-medium">{t.charge_types?.name ?? "—"}</td>
+                      <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
                       <td className="px-4 py-3 text-xs">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          t.tariff_side === "forwarder_to_courier"
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-purple-50 text-purple-700"
-                        }`}>
-                          {TARIFF_SIDE_LABELS[t.tariff_side as TariffSide] ?? t.tariff_side}
-                        </span>
+                        {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono">
+                        ${Number(t.rate).toFixed(2)} {RATE_UNIT_LABELS[t.rate_unit as RateUnit] ?? t.rate_unit}
                       </td>
                       <td className="px-4 py-3 text-xs">
-                        {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {t.modality ? (MODALITY_LABELS[t.modality as keyof typeof MODALITY_LABELS] ?? t.modality) : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {t.shipping_categories ? `${t.shipping_categories.code}` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {t.tariff_brackets?.length ?? 0}
+                        {t.agencies ? (
+                          <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            {t.agencies.name}
+                          </span>
+                        ) : "—"}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${

@@ -1,10 +1,8 @@
 "use client";
 
-import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
-import { TARIFF_SIDE_LABELS, type TariffSide } from "@no-wms/shared/constants/tariff";
-import { WORK_ORDER_TYPE_LABELS, type WorkOrderType } from "@no-wms/shared/constants/work-order-types";
+import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff";
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
@@ -13,50 +11,59 @@ import { deleteTariffSchedule } from "@/lib/actions/tariffs";
 
 interface TariffSchedule {
   id: string;
-  tariff_side: string;
-  tariff_type: string;
-  courier_id: string | null;
+  warehouse_id: string;
+  charge_type_id: string;
+  destination_id: string | null;
   agency_id: string | null;
-  modality: string | null;
-  work_order_type: string | null;
-  base_fee: number;
-  weight_unit: string;
+  courier_id: string | null;
+  rate: number;
+  rate_unit: string;
+  minimum_charge: number | null;
+  currency: string;
   is_active: boolean;
   effective_from: string;
   effective_to: string | null;
-  couriers: { id: string; name: string; code: string } | null;
-  agencies: { id: string; name: string; code: string } | null;
+  notes: string | null;
+  warehouses: { id: string; name: string } | null;
+  charge_types: { id: string; name: string } | null;
   destinations: { id: string; city: string; country_code: string } | null;
-  shipping_categories: { id: string; code: string; name: string } | null;
-  tariff_brackets: { id: string }[];
+  agencies: { id: string; name: string; code: string } | null;
+  couriers: { id: string; name: string; code: string } | null;
+}
+
+interface Warehouse {
+  id: string;
+  name: string;
 }
 
 interface TariffListProps {
   data: TariffSchedule[];
+  warehouses: Warehouse[];
 }
 
-export function TariffList({ data }: TariffListProps) {
+export function TariffList({ data, warehouses }: TariffListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [sideFilter, setSideFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState("");
+  const [viewFilter, setViewFilter] = useState<"base" | "overrides" | "">("");
   const [activeFilter, setActiveFilter] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = data.filter((t) => {
     if (search) {
       const q = search.toLowerCase();
       const matches =
-        t.couriers?.name?.toLowerCase().includes(q) ||
-        t.agencies?.name?.toLowerCase().includes(q) ||
+        t.charge_types?.name?.toLowerCase().includes(q) ||
         t.destinations?.city?.toLowerCase().includes(q) ||
-        t.modality?.toLowerCase().includes(q) ||
-        t.work_order_type?.toLowerCase().includes(q);
+        t.agencies?.name?.toLowerCase().includes(q) ||
+        t.couriers?.name?.toLowerCase().includes(q) ||
+        t.notes?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (sideFilter && t.tariff_side !== sideFilter) return false;
-    if (typeFilter && t.tariff_type !== typeFilter) return false;
+    if (warehouseFilter && t.warehouse_id !== warehouseFilter) return false;
+    if (viewFilter === "base" && t.agency_id !== null) return false;
+    if (viewFilter === "overrides" && t.agency_id === null) return false;
     if (activeFilter === "true" && !t.is_active) return false;
     if (activeFilter === "false" && t.is_active) return false;
     return true;
@@ -74,27 +81,6 @@ export function TariffList({ data }: TariffListProps) {
     });
   };
 
-  const getCustomerLabel = (t: TariffSchedule) => {
-    if (t.tariff_side === "forwarder_to_courier") {
-      return t.couriers ? `${t.couriers.name}` : "Base (todos)";
-    }
-    if (t.agency_id && t.agencies) {
-      return `${t.agencies.name}`;
-    }
-    return "Base (todas)";
-  };
-
-  const getDimensionLabel = (t: TariffSchedule) => {
-    if (t.tariff_type === "work_order") {
-      return WORK_ORDER_TYPE_LABELS[t.work_order_type as WorkOrderType] ?? t.work_order_type;
-    }
-    const parts: string[] = [];
-    if (t.destinations) parts.push(`${t.destinations.city} (${t.destinations.country_code})`);
-    if (t.modality) parts.push(MODALITY_LABELS[t.modality as keyof typeof MODALITY_LABELS] ?? t.modality);
-    if (t.shipping_categories) parts.push(`Cat. ${t.shipping_categories.code}`);
-    return parts.join(" / ") || "—";
-  };
-
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
@@ -102,27 +88,27 @@ export function TariffList({ data }: TariffListProps) {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar courier, agencia, destino..."
+          placeholder="Buscar tipo de cargo, destino, agencia..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
         <select
-          value={sideFilter}
-          onChange={(e) => setSideFilter(e.target.value)}
+          value={warehouseFilter}
+          onChange={(e) => setWarehouseFilter(e.target.value)}
           className={filterSelectClass}
         >
-          <option value="">Todos los lados</option>
-          {Object.entries(TARIFF_SIDE_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+          <option value="">Todas las bodegas</option>
+          {warehouses.map((w) => (
+            <option key={w.id} value={w.id}>{w.name}</option>
           ))}
         </select>
         <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
+          value={viewFilter}
+          onChange={(e) => setViewFilter(e.target.value as "base" | "overrides" | "")}
           className={filterSelectClass}
         >
-          <option value="">Todos los tipos</option>
-          <option value="shipping">Envío</option>
-          <option value="work_order">Orden de Trabajo</option>
+          <option value="">Todas las tarifas</option>
+          <option value="base">Tarifas base</option>
+          <option value="overrides">Overrides agencia</option>
         </select>
         <select
           value={activeFilter}
@@ -135,51 +121,54 @@ export function TariffList({ data }: TariffListProps) {
         </select>
       </div>
 
-      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+      <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-4 py-3">Lado</th>
-              <th className="px-4 py-3">Cliente</th>
-              <th className="px-4 py-3">Tipo</th>
-              <th className="px-4 py-3">Dimensión</th>
-              <th className="px-4 py-3">Rangos</th>
+              <th className="px-4 py-3">Tipo de Cargo</th>
+              <th className="px-4 py-3">Bodega</th>
+              <th className="px-4 py-3">Destino</th>
+              <th className="px-4 py-3">Tarifa</th>
+              <th className="px-4 py-3">Mín.</th>
+              <th className="px-4 py-3">Courier</th>
+              <th className="px-4 py-3">Agencia</th>
               <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Vigente desde</th>
+              <th className="px-4 py-3">Vigencia</th>
               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
-            scrollRef={scrollRef}
-            colSpan={8}
+            scrollElement={scrollEl}
+            colSpan={10}
             emptyMessage="No hay tarifas configuradas"
             renderRow={(t) => (
               <tr key={t.id}>
+                <td className="px-4 py-3 text-xs font-medium text-gray-900">
+                  {t.charge_types?.name ?? "—"}
+                </td>
+                <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-xs">
-                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                    t.tariff_side === "forwarder_to_courier"
-                      ? "bg-blue-50 text-blue-700"
-                      : "bg-purple-50 text-purple-700"
-                  }`}>
-                    {TARIFF_SIDE_LABELS[t.tariff_side as TariffSide] ?? t.tariff_side}
+                  {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}
+                </td>
+                <td className="px-4 py-3 text-xs font-mono">
+                  ${Number(t.rate).toFixed(2)}{" "}
+                  <span className="text-gray-400">
+                    {RATE_UNIT_LABELS[t.rate_unit as RateUnit] ?? t.rate_unit}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-xs">
-                  {t.tariff_side === "courier_to_agency" && t.couriers && (
-                    <span className="text-gray-400">{t.couriers.code} → </span>
-                  )}
-                  {getCustomerLabel(t)}
+                  {t.minimum_charge != null ? `$${Number(t.minimum_charge).toFixed(2)}` : "—"}
                 </td>
                 <td className="px-4 py-3 text-xs">
-                  {t.tariff_type === "shipping" ? "Envío" : "OT"}
+                  {t.couriers ? t.couriers.code : "—"}
                 </td>
-                <td className="px-4 py-3 text-xs">{getDimensionLabel(t)}</td>
                 <td className="px-4 py-3 text-xs">
-                  {t.tariff_brackets?.length ?? 0}
-                  {Number(t.base_fee) > 0 && (
-                    <span className="ml-1 text-gray-400">+ ${Number(t.base_fee).toFixed(2)}</span>
-                  )}
+                  {t.agencies ? (
+                    <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      {t.agencies.name}
+                    </span>
+                  ) : "—"}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -194,6 +183,7 @@ export function TariffList({ data }: TariffListProps) {
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {new Date(t.effective_from).toLocaleDateString("es")}
+                  {t.effective_to && ` — ${new Date(t.effective_to).toLocaleDateString("es")}`}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">

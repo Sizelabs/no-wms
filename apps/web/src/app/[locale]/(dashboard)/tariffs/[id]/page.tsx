@@ -18,11 +18,13 @@ export default async function TariffDetailPage({
     notFound();
   }
 
+  const label = schedule.charge_types?.name ?? "";
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Tarifa — ${schedule.couriers?.name ?? schedule.agencies?.name ?? ""}`}
-        description={schedule.destinations?.city}
+        title={`Tarifa — ${label}`}
+        description={schedule.destinations?.city ?? "Todos los destinos"}
       />
       <TariffDetail schedule={schedule} />
     </div>

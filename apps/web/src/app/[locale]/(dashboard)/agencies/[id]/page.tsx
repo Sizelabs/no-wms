@@ -21,12 +21,18 @@ export default async function AgencyDetailPage({
   const { locale, id } = await params;
   await requirePermission(locale, "agencies", "read");
 
-  const [agencyResult, consigneesResult, usersResult, tariffsResult] = await Promise.all([
+  const [agencyResult, consigneesResult, usersResult, overridesResult, baseResult] = await Promise.all([
     getAgency(id),
     getConsigneesByAgency(id),
     getAgencyUsers(id),
     getTariffSchedules({ agency_id: id }),
+    getTariffSchedules({ is_active: true }),
   ]);
+
+  // Combine agency overrides + base rates (where agency_id is null)
+  const overrides = overridesResult.data ?? [];
+  const baseTariffs = (baseResult.data ?? []).filter((t) => t.agency_id === null);
+  const allTariffs = [...overrides, ...baseTariffs];
 
   const agency = agencyResult.data;
   if (agencyResult.error || !agency) {
@@ -87,7 +93,7 @@ export default async function AgencyDetailPage({
         </InfoCard>
       </div>
 
-      <AgencyDetail agencyId={agency.id} consignees={consigneesResult.data ?? []} users={usersResult.data ?? []} tariffs={tariffsResult.data ?? []}>
+      <AgencyDetail agencyId={agency.id} consignees={consigneesResult.data ?? []} users={usersResult.data ?? []} tariffs={allTariffs}>
         {/* Details grid — original info tab content */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Left column */}

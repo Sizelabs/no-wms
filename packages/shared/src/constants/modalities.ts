@@ -1,3 +1,26 @@
+/**
+ * Default modality codes seeded for every organization.
+ * Modalities are now DB-driven — this file exists as a reference
+ * for the default set.
+ *
+ * The old hardcoded MODALITIES/MODALITY_LABELS/MVP_MODALITIES are
+ * kept as deprecated exports for shipping-instruction components
+ * that still use them. Those will be migrated to DB-driven modalities
+ * in a future phase.
+ */
+export const DEFAULT_MODALITY_CODES = ["aerea", "maritima", "courier", "terrestre"] as const;
+export type DefaultModalityCode = (typeof DEFAULT_MODALITY_CODES)[number];
+
+export const DEFAULT_MODALITY_LABELS: Record<DefaultModalityCode, string> = {
+  aerea: "Aérea",
+  maritima: "Marítima",
+  courier: "Courier",
+  terrestre: "Terrestre",
+};
+
+// ── Deprecated exports (used by shipping-instruction components) ──
+
+/** @deprecated Use DB-driven modalities instead */
 export const MODALITIES = {
   COURIER_A: "courier_a",
   COURIER_B: "courier_b",
@@ -11,8 +34,10 @@ export const MODALITIES = {
   FCL: "fcl",
 } as const;
 
+/** @deprecated Use DB-driven modalities instead */
 export type Modality = (typeof MODALITIES)[keyof typeof MODALITIES];
 
+/** @deprecated Use DB-driven modalities instead */
 export const MODALITY_LABELS: Record<Modality, string> = {
   courier_a: "Courier Cat. A",
   courier_b: "Courier Cat. B",
@@ -26,7 +51,7 @@ export const MODALITY_LABELS: Record<Modality, string> = {
   fcl: "FCL (Marítimo)",
 };
 
-/** Modalities available in MVP (Phase 1) */
+/** @deprecated Use DB-driven modalities instead */
 export const MVP_MODALITIES: Modality[] = [
   "courier_a",
   "courier_b",

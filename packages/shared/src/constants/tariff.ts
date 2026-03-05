@@ -1,37 +1,20 @@
-export const TARIFF_SIDES = {
-  FORWARDER_TO_COURIER: "forwarder_to_courier",
-  COURIER_TO_AGENCY: "courier_to_agency",
+export const RATE_UNITS = {
+  FLAT: "flat",
+  PER_KG: "per_kg",
+  PER_LB: "per_lb",
+  PER_CBM: "per_cbm",
+  PER_SHIPMENT: "per_shipment",
 } as const;
 
-export type TariffSide = (typeof TARIFF_SIDES)[keyof typeof TARIFF_SIDES];
+export type RateUnit = (typeof RATE_UNITS)[keyof typeof RATE_UNITS];
 
-export const TARIFF_SIDE_LABELS: Record<TariffSide, string> = {
-  forwarder_to_courier: "Forwarder → Courier",
-  courier_to_agency: "Courier → Agencia",
+export const RATE_UNIT_LABELS: Record<RateUnit, string> = {
+  flat: "Tarifa fija",
+  per_kg: "Por kg",
+  per_lb: "Por lb",
+  per_cbm: "Por m³",
+  per_shipment: "Por envío",
 };
 
-export const TARIFF_TYPES = {
-  SHIPPING: "shipping",
-  WORK_ORDER: "work_order",
-} as const;
-
-export type TariffType = (typeof TARIFF_TYPES)[keyof typeof TARIFF_TYPES];
-
-export const TARIFF_TYPE_LABELS: Record<TariffType, string> = {
-  shipping: "Envío",
-  work_order: "Orden de Trabajo",
-};
-
-export const WEIGHT_UNITS = {
-  KG: "kg",
-  LB: "lb",
-  VOLUMETRIC: "volumetric",
-} as const;
-
-export type WeightUnit = (typeof WEIGHT_UNITS)[keyof typeof WEIGHT_UNITS];
-
-export const WEIGHT_UNIT_LABELS: Record<WeightUnit, string> = {
-  kg: "Kilogramos (kg)",
-  lb: "Libras (lb)",
-  volumetric: "Volumétrico",
-};
+export const CURRENCIES = ["USD"] as const;
+export type Currency = (typeof CURRENCIES)[number];

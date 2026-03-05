@@ -2,9 +2,9 @@ import { notFound, redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { TariffScheduleForm } from "@/components/tariffs/tariff-schedule-form";
-import { getShippingCategories, getTariffSchedule } from "@/lib/actions/tariffs";
+import { getChargeTypes, getTariffSchedule } from "@/lib/actions/tariffs";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { getUserAgencyScope, getUserAllowedTariffSide, getUserCourierScope } from "@/lib/auth/scope";
+import { getUserAgencyScope, getUserCourierScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function EditTariffPage({
@@ -25,10 +25,9 @@ export default async function EditTariffPage({
   const { data: schedule, error } = await getTariffSchedule(id);
   if (error || !schedule) notFound();
 
-  const [courierScope, agencyScope, allowedSide] = await Promise.all([
+  const [courierScope, agencyScope] = await Promise.all([
     getUserCourierScope(),
     getUserAgencyScope(),
-    getUserAllowedTariffSide(),
   ]);
 
   let couriersQuery = supabase
@@ -51,7 +50,7 @@ export default async function EditTariffPage({
     agenciesQuery = agenciesQuery.in("id", agencyScope);
   }
 
-  const [couriersResult, agenciesResult, destinationsResult, categoriesResult] = await Promise.all([
+  const [couriersResult, agenciesResult, warehousesResult, destinationsResult, chargeTypesResult] = await Promise.all([
     courierScope !== null && courierScope.length === 0
       ? Promise.resolve({ data: [] })
       : couriersQuery,
@@ -59,25 +58,30 @@ export default async function EditTariffPage({
       ? Promise.resolve({ data: [] })
       : agenciesQuery,
     supabase
+      .from("warehouses")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name"),
+    supabase
       .from("destinations")
       .select("id, city, country_code")
       .eq("is_active", true)
       .order("city"),
-    getShippingCategories(),
+    getChargeTypes(),
   ]);
 
-  const label = schedule.couriers?.name ?? schedule.agencies?.name ?? "";
+  const label = schedule.charge_types?.name ?? "";
 
   return (
     <div className="space-y-6">
       <PageHeader title={`Editar Tarifa${label ? ` — ${label}` : ""}`} />
       <TariffScheduleForm
+        warehouses={warehousesResult.data ?? []}
+        chargeTypes={chargeTypesResult.data ?? []}
+        destinations={destinationsResult.data ?? []}
         couriers={couriersResult.data ?? []}
         agencies={agenciesResult.data ?? []}
-        destinations={destinationsResult.data ?? []}
-        shippingCategories={categoriesResult.data ?? []}
         schedule={schedule}
-        allowedSide={allowedSide}
       />
     </div>
   );

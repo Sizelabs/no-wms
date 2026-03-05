@@ -1,8 +1,7 @@
 "use client";
 
-import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import type { Role } from "@no-wms/shared/constants/roles";
-import { TARIFF_SIDE_LABELS, type TariffSide } from "@no-wms/shared/constants/tariff";
+import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -28,18 +27,17 @@ interface AgencyUser {
 
 interface TariffSchedule {
   id: string;
-  tariff_side: string;
-  tariff_type: string;
-  courier_id: string | null;
-  agency_id: string | null;
-  modality: string | null;
-  base_fee: number;
+  rate: number;
+  rate_unit: string;
+  minimum_charge: number | null;
   is_active: boolean;
   effective_from: string;
-  couriers: { name: string; code: string } | null;
+  agency_id: string | null;
+  courier_id: string | null;
+  warehouses: { name: string } | null;
+  charge_types: { name: string } | null;
   destinations: { city: string; country_code: string } | null;
-  shipping_categories: { code: string; name: string } | null;
-  tariff_brackets: { id: string }[];
+  couriers: { name: string; code: string } | null;
 }
 
 interface AgencyDetailProps {
@@ -60,6 +58,9 @@ export function AgencyDetail({ agencyId, consignees, users, tariffs, children }:
   const userRoles = useUserRoles();
 
   const showUsersTab = userRoles.some((r) => USER_TAB_ROLES.includes(r));
+
+  const overrides = tariffs.filter((t) => t.agency_id !== null);
+  const inherited = tariffs.filter((t) => t.agency_id === null);
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "info", label: "Información" },
@@ -167,70 +168,124 @@ export function AgencyDetail({ agencyId, consignees, users, tariffs, children }:
       )}
 
       {activeTab === "tariffs" && (
-        <div className="rounded-lg border bg-white">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-                <th className="px-4 py-3">Lado</th>
-                <th className="px-4 py-3">Courier</th>
-                <th className="px-4 py-3">Destino</th>
-                <th className="px-4 py-3">Modalidad</th>
-                <th className="px-4 py-3">Rangos</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {tariffs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                    Sin tarifas configuradas para esta agencia.
-                  </td>
-                </tr>
-              ) : (
-                tariffs.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-xs">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        t.tariff_side === "forwarder_to_courier"
-                          ? "bg-blue-50 text-blue-700"
-                          : "bg-purple-50 text-purple-700"
-                      }`}>
-                        {TARIFF_SIDE_LABELS[t.tariff_side as TariffSide] ?? t.tariff_side}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {t.couriers ? `${t.couriers.name} (${t.couriers.code})` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {t.modality ? (MODALITY_LABELS[t.modality as keyof typeof MODALITY_LABELS] ?? t.modality) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {t.tariff_brackets?.length ?? 0}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        t.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                      }`}>
-                        {t.is_active ? "Activa" : "Inactiva"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/${locale}/tariffs/${t.id}`}
-                        className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
-                      >
-                        Ver
-                      </Link>
-                    </td>
+        <div className="space-y-6">
+          {/* Agency-specific overrides */}
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-gray-700">
+              Overrides de esta agencia
+              <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                {overrides.length}
+              </span>
+            </h3>
+            <div className="rounded-lg border bg-white">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-4 py-3">Tipo de Cargo</th>
+                    <th className="px-4 py-3">Bodega</th>
+                    <th className="px-4 py-3">Destino</th>
+                    <th className="px-4 py-3">Tarifa</th>
+                    <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3">Acciones</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y">
+                  {overrides.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                        Sin overrides para esta agencia.
+                      </td>
+                    </tr>
+                  ) : (
+                    overrides.map((t) => (
+                      <tr key={t.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-xs font-medium">{t.charge_types?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-mono">
+                          ${Number(t.rate).toFixed(2)} {RATE_UNIT_LABELS[t.rate_unit as RateUnit] ?? t.rate_unit}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            t.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                          }`}>
+                            {t.is_active ? "Activa" : "Inactiva"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/${locale}/tariffs/${t.id}`}
+                            className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
+                          >
+                            Ver
+                          </Link>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Inherited base rates */}
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-gray-700">
+              Tarifas base heredadas
+              <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                {inherited.length}
+              </span>
+            </h3>
+            <div className="rounded-lg border bg-white">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-4 py-3">Tipo de Cargo</th>
+                    <th className="px-4 py-3">Bodega</th>
+                    <th className="px-4 py-3">Destino</th>
+                    <th className="px-4 py-3">Tarifa</th>
+                    <th className="px-4 py-3">Courier</th>
+                    <th className="px-4 py-3">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {inherited.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                        Sin tarifas base.
+                      </td>
+                    </tr>
+                  ) : (
+                    inherited.map((t) => (
+                      <tr key={t.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-xs font-medium">{t.charge_types?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-mono">
+                          ${Number(t.rate).toFixed(2)} {RATE_UNIT_LABELS[t.rate_unit as RateUnit] ?? t.rate_unit}
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {t.couriers ? `${t.couriers.name} (${t.couriers.code})` : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/${locale}/tariffs/${t.id}`}
+                            className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
+                          >
+                            Ver
+                          </Link>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

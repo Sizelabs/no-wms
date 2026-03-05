@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { TariffList } from "@/components/tariffs/tariff-list";
 import { getTariffSchedules } from "@/lib/actions/tariffs";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function TariffsPage({
   params,
@@ -14,7 +15,12 @@ export default async function TariffsPage({
   const { locale } = await params;
   const { permissions } = await requirePermission(locale, "tariffs", "read");
   const t = await getTranslations("nav");
-  const { data } = await getTariffSchedules();
+  const supabase = await createClient();
+
+  const [{ data }, warehousesResult] = await Promise.all([
+    getTariffSchedules(),
+    supabase.from("warehouses").select("id, name").eq("is_active", true).order("name"),
+  ]);
 
   const canCreate = permissions.tariffs.create;
 
@@ -22,10 +28,16 @@ export default async function TariffsPage({
     <div className="space-y-6">
       <PageHeader title={t("tariffs")}>
         <Link
-          href="tariffs/categories"
+          href="tariffs/charge-types"
           className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
-          Categorías
+          Tipos de Cargo
+        </Link>
+        <Link
+          href="tariffs/modalities"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Modalidades
         </Link>
         {canCreate && (
           <Link
@@ -36,7 +48,7 @@ export default async function TariffsPage({
           </Link>
         )}
       </PageHeader>
-      <TariffList data={data ?? []} />
+      <TariffList data={data ?? []} warehouses={warehousesResult.data ?? []} />
     </div>
   );
 }
