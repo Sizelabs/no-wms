@@ -20,7 +20,7 @@ export default async function CouriersPage({
   // Destination roles scoped to a single courier → go straight to detail
   const courierIds = await getUserCourierScope();
   if (courierIds && courierIds.length === 1) {
-    redirect(`/${locale}/couriers/${courierIds[0]}`);
+    redirect(`/${locale}/settings/couriers/${courierIds[0]}`);
   }
 
   const { data: couriers } = await getCouriers();
@@ -32,7 +32,7 @@ export default async function CouriersPage({
       <PageHeader title={t("title")}>
         {canCreate && (
           <Link
-            href={`/${locale}/couriers/new`}
+            href={`/${locale}/settings/couriers/new`}
             className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
           >
             + {t("new")}

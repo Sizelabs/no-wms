@@ -34,7 +34,7 @@ export default async function CourierDetailPage({
       <PageHeader title={`${t("detail")} — ${courier.name}`}>
         {!isScopedToSingle && (
           <Link
-            href={`/${locale}/couriers`}
+            href={`/${locale}/settings/couriers`}
             className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
             Volver a couriers

@@ -24,7 +24,7 @@ export default async function WarehousesPage({
       <PageHeader title={t("warehouses")}>
         {canCreate && (
           <Link
-            href={`/${locale}/warehouses/new`}
+            href={`/${locale}/settings/warehouses/new`}
             className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
           >
             + Nueva Bodega

@@ -51,7 +51,7 @@ export default async function UsersPage({
       <PageHeader title={t("users")}>
         {canCreate && (
           <Link
-            href={`/${locale}/users/new`}
+            href={`/${locale}/settings/users/new`}
             className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
           >
             + Invitar Usuario
