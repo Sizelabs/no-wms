@@ -88,8 +88,8 @@ ON CONFLICT (courier_id, handling_cost_id) DO NOTHING;
 -- 5. Seed default role_permissions for courier_tariffs
 -- ============================================================================
 
-INSERT INTO role_permissions (role, resource, action)
-SELECT role, 'courier_tariffs', action
+INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, can_delete)
+SELECT role, 'courier_tariffs', can_create, can_read, can_update, can_delete
 FROM role_permissions
 WHERE resource = 'handling_costs'
-ON CONFLICT (role, resource, action) DO NOTHING;
+ON CONFLICT (role, resource) DO NOTHING;
