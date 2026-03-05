@@ -7,9 +7,10 @@ import { setPassword } from "@/lib/actions/auth";
 
 interface SetPasswordFormProps {
   locale: string;
+  email: string;
 }
 
-export function SetPasswordForm({ locale }: SetPasswordFormProps) {
+export function SetPasswordForm({ locale, email }: SetPasswordFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +44,14 @@ export function SetPasswordForm({ locale }: SetPasswordFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <input
+        type="email"
+        name="email"
+        autoComplete="username"
+        value={email}
+        readOnly
+        hidden
+      />
       <div>
         <label
           htmlFor="password"

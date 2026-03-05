@@ -32,7 +32,7 @@ export default async function SetPasswordPage({
             Configura tu contraseña para acceder a la plataforma.
           </p>
         </div>
-        <SetPasswordForm locale={locale} />
+        <SetPasswordForm locale={locale} email={user.email ?? ""} />
       </div>
     </main>
   );
