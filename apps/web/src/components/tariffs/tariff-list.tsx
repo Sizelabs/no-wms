@@ -88,7 +88,7 @@ export function TariffList({ data, warehouses }: TariffListProps) {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar tipo de cargo, destino, agencia..."
+          placeholder="Buscar costo de manejo, destino, agencia..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
         <select
@@ -125,7 +125,7 @@ export function TariffList({ data, warehouses }: TariffListProps) {
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-4 py-3">Tipo de Cargo</th>
+              <th className="px-4 py-3">Costo de Manejo</th>
               <th className="px-4 py-3">Bodega</th>
               <th className="px-4 py-3">Destino</th>
               <th className="px-4 py-3">Tarifa</th>

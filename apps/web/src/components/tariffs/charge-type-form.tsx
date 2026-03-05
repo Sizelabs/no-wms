@@ -32,7 +32,7 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
         if (result.error) {
           notify(result.error, "error");
         } else {
-          notify("Tipo de cargo actualizado", "success");
+          notify("Costo de manejo actualizado", "success");
           router.push("/settings/charge-types");
           router.refresh();
         }
@@ -41,7 +41,7 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
         if ("error" in result) {
           notify(result.error, "error");
         } else {
-          notify("Tipo de cargo creado", "success");
+          notify("Costo de manejo creado", "success");
           router.push("/settings/charge-types");
         }
       }
@@ -92,7 +92,7 @@ export function ChargeTypeForm({ chargeType }: ChargeTypeFormProps) {
           disabled={isPending}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
         >
-          {isPending ? "Guardando..." : isEditing ? "Actualizar" : "Crear Tipo de Cargo"}
+          {isPending ? "Guardando..." : isEditing ? "Actualizar" : "Crear Costo de Manejo"}
         </button>
         <button
           type="button"

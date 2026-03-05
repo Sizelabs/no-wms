@@ -54,7 +54,7 @@ export const RESOURCE_LABELS: Record<Resource, string> = {
   settings: "Configuración",
   consignees: "Consignatarios",
   history: "Historial",
-  charge_types: "Tipos de Cargo",
+  charge_types: "Costos de Manejo",
 };
 
 /** Maps nav item labels (i18n keys) to resource names for nav filtering */

@@ -40,13 +40,13 @@ export function ChargeTypeList({ data }: ChargeTypeListProps) {
   });
 
   const handleDeactivate = (id: string) => {
-    if (!confirm("¿Desactivar este tipo de cargo?")) return;
+    if (!confirm("¿Desactivar este costo de manejo?")) return;
     startTransition(async () => {
       const result = await deleteChargeType(id);
       if (result.error) {
         notify(result.error, "error");
       } else {
-        notify("Tipo de cargo desactivado", "success");
+        notify("Costo de manejo desactivado", "success");
       }
     });
   };
@@ -58,7 +58,7 @@ export function ChargeTypeList({ data }: ChargeTypeListProps) {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar tipo de cargo..."
+          placeholder="Buscar costo de manejo..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
         <select
@@ -87,7 +87,7 @@ export function ChargeTypeList({ data }: ChargeTypeListProps) {
             items={filtered}
             scrollElement={scrollEl}
             colSpan={5}
-            emptyMessage="No hay tipos de cargo registrados."
+            emptyMessage="No hay costos de manejo registrados."
             renderRow={(ct) => (
               <tr key={ct.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-xs text-gray-400">{ct.display_order}</td>

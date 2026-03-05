@@ -64,7 +64,7 @@ export async function createChargeType(formData: FormData): Promise<{ id: string
     .single();
 
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe un tipo de cargo con ese nombre" };
+    if (error.code === "23505") return { error: "Ya existe un costo de manejo con ese nombre" };
     return { error: error.message };
   }
   revalidatePath("/settings/charge-types");

@@ -38,7 +38,7 @@ export type UpdateModalityInput = z.infer<typeof updateModalitySchema>;
 
 export const createTariffScheduleSchema = z.object({
   warehouse_id: z.string().uuid("Bodega requerida"),
-  charge_type_id: z.string().uuid("Tipo de cargo requerido"),
+  charge_type_id: z.string().uuid("Costo de manejo requerido"),
   destination_id: z.string().uuid().optional().nullable(),
   agency_id: z.string().uuid().optional().nullable(),
   courier_id: z.string().uuid().optional().nullable(),

@@ -371,7 +371,7 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-                  <th className="px-4 py-3">Tipo de Cargo</th>
+                  <th className="px-4 py-3">Costo de Manejo</th>
                   <th className="px-4 py-3">Bodega</th>
                   <th className="px-4 py-3">Destino</th>
                   <th className="px-4 py-3">Tarifa</th>

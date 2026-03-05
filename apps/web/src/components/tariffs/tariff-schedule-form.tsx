@@ -130,13 +130,13 @@ export function TariffScheduleForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Tipo de Cargo</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Costo de Manejo</label>
           <Combobox
             name="_charge_type_id"
             options={chargeTypeOptions}
             value={chargeTypeId}
             onChange={setChargeTypeId}
-            placeholder="Seleccionar tipo de cargo"
+            placeholder="Seleccionar costo de manejo"
             required
           />
         </div>

@@ -18,13 +18,13 @@ export default async function ChargeTypesPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tipos de Cargo">
+      <PageHeader title="Handling Costs">
         {canCreate && (
           <Link
             href="charge-types/new"
             className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
           >
-            + Nuevo Tipo de Cargo
+            + Nuevo Costo de Manejo
           </Link>
         )}
       </PageHeader>

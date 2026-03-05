@@ -58,7 +58,7 @@ export function TariffDetail({ schedule }: TariffDetailProps) {
 
         <dl className="mt-4 grid gap-4 sm:grid-cols-3">
           <div>
-            <dt className="text-xs font-medium uppercase text-gray-500">Tipo de Cargo</dt>
+            <dt className="text-xs font-medium uppercase text-gray-500">Costo de Manejo</dt>
             <dd className="mt-1 text-sm font-medium text-gray-900">
               {schedule.charge_types?.name ?? "—"}
             </dd>

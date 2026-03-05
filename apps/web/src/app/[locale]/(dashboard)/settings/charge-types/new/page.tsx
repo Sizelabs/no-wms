@@ -12,7 +12,7 @@ export default async function NewChargeTypePage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Nuevo Tipo de Cargo" />
+      <PageHeader title="Nuevo Costo de Manejo" />
       <ChargeTypeForm />
     </div>
   );

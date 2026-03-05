@@ -31,7 +31,7 @@ export default async function TariffsPage({
           href="tariffs/charge-types"
           className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
-          Tipos de Cargo
+          Handling Costs
         </Link>
         <Link
           href="tariffs/modalities"
