@@ -21,6 +21,7 @@ export const RESOURCES = [
   "history",
   "handling_costs",
   "modalities",
+  "destinations",
 ] as const;
 
 export type Resource = (typeof RESOURCES)[number];
@@ -57,6 +58,7 @@ export const RESOURCE_LABELS: Record<Resource, string> = {
   history: "Historial",
   handling_costs: "Costos de Manejo",
   modalities: "Modalidades de Envío",
+  destinations: "Destinos",
 };
 
 /** Maps nav item labels (i18n keys) to resource names for nav filtering */
@@ -123,6 +125,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     history: READ,
     handling_costs: FULL,
     modalities: FULL,
+    destinations: FULL,
   }),
 
   warehouse_admin: makePermMap({
@@ -180,6 +183,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     history: READ,
     handling_costs: READ,
     modalities: READ,
+    destinations: READ,
   }),
 
   destination_operator: makePermMap({
