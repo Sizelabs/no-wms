@@ -24,6 +24,8 @@ export default async function HandlingCostsPage({
   ]);
 
   const canCreate = permissions.handling_costs.create;
+  const canUpdate = permissions.handling_costs.update;
+  const canDelete = permissions.handling_costs.delete;
 
   const couriers = (couriersData ?? []).map((c) => ({
     id: c.id,
@@ -47,6 +49,8 @@ export default async function HandlingCostsPage({
       <HandlingCostList
         data={data ?? []}
         selectedCourierId={courierId}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
       />
     </div>
   );

@@ -8,7 +8,7 @@ export default async function NewModalityPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  await requirePermission(locale, "tariffs", "create");
+  await requirePermission(locale, "modalities", "create");
 
   return (
     <div className="space-y-6">

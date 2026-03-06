@@ -2494,6 +2494,7 @@ INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, 
 ('forwarder_admin', 'consignees',          true,  true,  true,  true),
 ('forwarder_admin', 'history',             false, true,  false, false),
 ('forwarder_admin', 'handling_costs',        true,  true,  true,  true),
+('forwarder_admin', 'modalities',            true,  true,  true,  true),
 
 -- warehouse_admin
 ('warehouse_admin', 'warehouses',          false, true,  true,  false),
@@ -2546,6 +2547,7 @@ INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, 
 ('destination_admin', 'settings',            false, true,  true,  false),
 ('destination_admin', 'history',             false, true,  false, false),
 ('destination_admin', 'handling_costs',        false, true,  false, false),
+('destination_admin', 'modalities',            false, true,  false, false),
 
 -- destination_operator
 ('destination_operator', 'couriers',         false, true,  false, false),
@@ -2569,7 +2571,8 @@ INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, 
 ('agency', 'tickets',             true,  true,  false, false),
 ('agency', 'unknown_wrs',         false, true,  true,  false),
 ('agency', 'history',             false, true,  false, false),
-('agency', 'handling_costs',        false, true,  false, false)
+('agency', 'handling_costs',        false, true,  false, false),
+('agency', 'modalities',            false, true,  false, false)
 
 ON CONFLICT (role, resource) DO NOTHING;
 

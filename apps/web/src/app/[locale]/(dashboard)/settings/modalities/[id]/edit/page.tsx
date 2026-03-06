@@ -11,7 +11,7 @@ export default async function EditModalityPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-  await requirePermission(locale, "tariffs", "update");
+  await requirePermission(locale, "modalities", "update");
   const { data: modality, error } = await getModality(id);
 
   if (error || !modality) notFound();

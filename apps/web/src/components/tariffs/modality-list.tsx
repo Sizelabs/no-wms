@@ -31,9 +31,11 @@ interface ModalityRow {
 interface ModalityListProps {
   data: ModalityRow[];
   selectedCourierId?: string;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
-export function ModalityList({ data, selectedCourierId }: ModalityListProps) {
+export function ModalityList({ data, selectedCourierId, canUpdate = false, canDelete = false }: ModalityListProps) {
   const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -253,13 +255,15 @@ export function ModalityList({ data, selectedCourierId }: ModalityListProps) {
                       </>
                     ) : (
                       <>
-                        <button
-                          onClick={() => startEditing(m)}
-                          className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
-                        >
-                          Tarifa
-                        </button>
-                        {selectedCourierId && m.is_custom && (
+                        {canUpdate && (
+                          <button
+                            onClick={() => startEditing(m)}
+                            className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                          >
+                            Tarifa
+                          </button>
+                        )}
+                        {canUpdate && selectedCourierId && m.is_custom && (
                           <button
                             onClick={() => handleResetToBase(m.id)}
                             disabled={isPending}
@@ -268,7 +272,7 @@ export function ModalityList({ data, selectedCourierId }: ModalityListProps) {
                             Restaurar
                           </button>
                         )}
-                        {!selectedCourierId && (
+                        {canUpdate && !selectedCourierId && (
                           <Link
                             href={`/${locale}/settings/modalities/${m.id}/edit`}
                             className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
@@ -276,7 +280,7 @@ export function ModalityList({ data, selectedCourierId }: ModalityListProps) {
                             Editar
                           </Link>
                         )}
-                        {!selectedCourierId && m.is_active && (
+                        {canDelete && !selectedCourierId && m.is_active && (
                           <button
                             onClick={() => handleDeactivate(m.id)}
                             disabled={isPending}

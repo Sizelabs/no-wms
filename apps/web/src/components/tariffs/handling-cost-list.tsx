@@ -30,9 +30,11 @@ interface HandlingCostRow {
 interface HandlingCostListProps {
   data: HandlingCostRow[];
   selectedCourierId?: string;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
-export function HandlingCostList({ data, selectedCourierId }: HandlingCostListProps) {
+export function HandlingCostList({ data, selectedCourierId, canUpdate = false, canDelete = false }: HandlingCostListProps) {
   const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -247,13 +249,15 @@ export function HandlingCostList({ data, selectedCourierId }: HandlingCostListPr
                       </>
                     ) : (
                       <>
-                        <button
-                          onClick={() => startEditing(hc)}
-                          className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
-                        >
-                          Tarifa
-                        </button>
-                        {selectedCourierId && hc.is_custom && (
+                        {canUpdate && (
+                          <button
+                            onClick={() => startEditing(hc)}
+                            className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                          >
+                            Tarifa
+                          </button>
+                        )}
+                        {canUpdate && selectedCourierId && hc.is_custom && (
                           <button
                             onClick={() => handleResetToBase(hc.id)}
                             disabled={isPending}
@@ -262,7 +266,7 @@ export function HandlingCostList({ data, selectedCourierId }: HandlingCostListPr
                             Restaurar
                           </button>
                         )}
-                        {!selectedCourierId && (
+                        {canUpdate && !selectedCourierId && (
                           <Link
                             href={`/${locale}/settings/handling-costs/${hc.id}/edit`}
                             className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
@@ -270,7 +274,7 @@ export function HandlingCostList({ data, selectedCourierId }: HandlingCostListPr
                             Editar
                           </Link>
                         )}
-                        {!selectedCourierId && hc.is_active && (
+                        {canDelete && !selectedCourierId && hc.is_active && (
                           <button
                             onClick={() => handleDeactivate(hc.id)}
                             disabled={isPending}

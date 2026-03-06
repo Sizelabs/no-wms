@@ -16,14 +16,16 @@ export default async function ModalitiesPage({
 }) {
   const { locale } = await params;
   const { courier: courierId } = await searchParams;
-  const { permissions } = await requirePermission(locale, "tariffs", "read");
+  const { permissions } = await requirePermission(locale, "modalities", "read");
 
   const [{ data }, { data: couriersData }] = await Promise.all([
     getModalitiesWithTariffs(courierId),
     getCouriers(),
   ]);
 
-  const canCreate = permissions.tariffs.create;
+  const canCreate = permissions.modalities.create;
+  const canUpdate = permissions.modalities.update;
+  const canDelete = permissions.modalities.delete;
 
   const couriers = (couriersData ?? []).map((c) => ({
     id: c.id,
@@ -47,6 +49,8 @@ export default async function ModalitiesPage({
       <ModalityList
         data={data ?? []}
         selectedCourierId={courierId}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
       />
     </div>
   );
