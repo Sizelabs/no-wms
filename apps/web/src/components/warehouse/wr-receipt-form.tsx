@@ -1,5 +1,6 @@
 "use client";
 
+import { detectCarrier } from "@no-wms/shared/constants/carrier-detection";
 import { CARRIERS } from "@no-wms/shared/constants/carriers";
 import { PACKAGE_TYPES } from "@no-wms/shared/constants/package-types";
 import {
@@ -23,7 +24,9 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { FormCard, FormSection } from "@/components/ui/form-section";
 import type { UploadedPhoto } from "@/components/ui/photo-upload";
 import { PhotoUpload } from "@/components/ui/photo-upload";
+import { useNotification } from "@/components/layout/notification";
 import { quickCreateConsignee, searchConsignees } from "@/lib/actions/consignees";
+import { createClient } from "@/lib/supabase/client";
 import {
   checkDuplicateTracking,
   checkWrNumberUnique,
@@ -59,6 +62,8 @@ interface Consignee {
   casillero: string;
   cedula_ruc: string | null;
   city: string | null;
+  agency_id: string;
+  agencies: { code: string } | { code: string }[] | null;
 }
 
 interface PackageData {
@@ -109,14 +114,10 @@ function emptyPackage(tracking = ""): PackageData {
   };
 }
 
-function detectCarrier(tracking: string): string {
-  const t = tracking.trim().toUpperCase();
-  if (t.startsWith("1Z")) return "UPS";
-  if (t.startsWith("TBA")) return "Amazon";
-  if (/^\d{10}$/.test(t)) return "DHL";
-  if (/^\d{20,22}$/.test(t) && t.startsWith("9")) return "USPS";
-  if (/^\d{12,15}$/.test(t)) return "FedEx";
-  return "";
+function consigneeAgencyCode(c: Consignee): string {
+  if (!c.agencies) return "";
+  const a = Array.isArray(c.agencies) ? c.agencies[0] : c.agencies;
+  return a?.code ?? "";
 }
 
 const inputCls =
@@ -137,6 +138,7 @@ export function WrReceiptForm({
   locale,
 }: WrReceiptFormProps) {
   const router = useRouter();
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
 
   // Phase: scan → form → success
@@ -179,7 +181,6 @@ export function WrReceiptForm({
   // Refs
   const scanInputRef = useRef<HTMLInputElement>(null);
   const formTopRef = useRef<HTMLDivElement>(null);
-  const errorRef = useRef<HTMLDivElement>(null);
   const consigneeListRef = useRef<HTMLDivElement>(null);
 
   // Computed
@@ -190,12 +191,43 @@ export function WrReceiptForm({
   const allowMultiPackage = selectedAgency?.allow_multi_package ?? true;
   const isUnknownAgency = agencyId === "unknown";
 
-  const selectedConsignee = useMemo(
-    () => consignees.find((c) => c.id === consigneeId),
-    [consignees, consigneeId],
-  );
+  const [selectedConsignee, setSelectedConsignee] = useState<Consignee | null>(null);
 
   const masterTrackingRef = useRef<HTMLInputElement>(null);
+  const masterTrackingMouseDown = useRef(false);
+  const savedRef = useRef(false);
+
+  // ---------------------------------------------------------------------------
+  // Storage cleanup — delete orphaned uploads when form is abandoned
+  // ---------------------------------------------------------------------------
+
+  const cleanupUploads = useCallback(() => {
+    const photoPaths = packages.flatMap((p) => p.photos.map((ph) => ph.storagePath));
+    const attachPaths = attachments.map((a) => a.storagePath);
+
+    if (photoPaths.length === 0 && attachPaths.length === 0) return;
+
+    const supabase = createClient();
+    if (photoPaths.length > 0) {
+      supabase.storage.from("wr-photos").remove(photoPaths);
+    }
+    if (attachPaths.length > 0) {
+      supabase.storage.from("wr-attachments").remove(attachPaths);
+    }
+  }, [packages, attachments]);
+
+  // Keep cleanup ref current so the unmount effect uses latest state
+  const cleanupRef = useRef(cleanupUploads);
+  cleanupRef.current = cleanupUploads;
+
+  // Cleanup on unmount if WR was never saved
+  useEffect(() => {
+    return () => {
+      if (!savedRef.current) {
+        cleanupRef.current();
+      }
+    };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Package helpers
@@ -234,13 +266,16 @@ export function WrReceiptForm({
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    if (!agencyId || agencyId === "unknown" || consigneeSearch.length < 2) {
+    if (consigneeSearch.length < 2) {
       setConsignees([]);
       return;
     }
 
+    // Search within agency if selected, otherwise search globally
+    const searchAgency = agencyId && agencyId !== "unknown" ? agencyId : null;
+
     const timeout = setTimeout(async () => {
-      const result = await searchConsignees(agencyId, consigneeSearch);
+      const result = await searchConsignees(searchAgency, consigneeSearch);
       if (result.data) {
         setConsignees(result.data);
         setConsigneeHighlight(result.data.length > 0 ? 0 : -1);
@@ -257,6 +292,25 @@ export function WrReceiptForm({
       item?.scrollIntoView({ block: "nearest" });
     }
   }, [consigneeHighlight]);
+
+  // ---------------------------------------------------------------------------
+  // Select consignee (with auto-agency inference)
+  // ---------------------------------------------------------------------------
+
+  const selectConsignee = useCallback(
+    (c: Consignee) => {
+      setConsigneeId(c.id);
+      setSelectedConsignee(c);
+      setConsigneeSearch("");
+      setConsignees([]);
+      setConsigneeHighlight(-1);
+      // Auto-infer agency if none selected
+      if (!agencyId && c.agency_id) {
+        setAgencyId(c.agency_id);
+      }
+    },
+    [agencyId],
+  );
 
   // ---------------------------------------------------------------------------
   // WR number uniqueness check (debounced)
@@ -301,9 +355,18 @@ export function WrReceiptForm({
         return;
       }
 
-      // Auto-detect carrier
+      // Auto-detect carrier and apply intelligent defaults
       const detected = detectCarrier(tracking);
-      if (detected) setCarrier(detected);
+      if (detected) {
+        setCarrier(detected);
+        if (detected === "Amazon") {
+          setShipperName("Amazon");
+          // Amazon almost always ships in boxes
+          setPackages((prev) =>
+            prev.map((p, i) => (i === 0 ? { ...p, package_type: "Box" } : p)),
+          );
+        }
+      }
 
       // Pre-fill master tracking with first package tracking
       setMasterTracking(tracking);
@@ -332,59 +395,53 @@ export function WrReceiptForm({
   // ---------------------------------------------------------------------------
 
   const handleQuickCreate = useCallback(async () => {
-    if (!newConsigneeName.trim()) return;
+    if (!newConsigneeName.trim() || !agencyId || agencyId === "unknown") return;
     setCreatingConsignee(true);
     const fd = new FormData();
     fd.set("agency_id", agencyId);
     fd.set("full_name", newConsigneeName.trim());
     const result = await quickCreateConsignee(fd);
     if (result.data) {
-      setConsigneeId(result.data.id);
-      setConsigneeSearch(result.data.full_name);
-      setConsignees((prev) => [
-        ...prev,
-        {
-          id: result.data!.id,
-          full_name: result.data!.full_name,
-          casillero: result.data!.casillero,
-          cedula_ruc: null,
-          city: null,
-        },
-      ]);
+      const newConsignee: Consignee = {
+        id: result.data.id,
+        full_name: result.data.full_name,
+        casillero: result.data.casillero,
+        cedula_ruc: null,
+        city: null,
+        agency_id: agencyId,
+        agencies: { code: selectedAgency?.code ?? "" },
+      };
+      setConsigneeId(newConsignee.id);
+      setSelectedConsignee(newConsignee);
+      setConsigneeSearch("");
+      setConsignees([]);
       setShowQuickCreate(false);
       setNewConsigneeName("");
     } else {
-      setError(result.error ?? "Error al crear destinatario");
+      notify(result.error ?? "Error al crear destinatario", "error");
     }
     setCreatingConsignee(false);
-  }, [agencyId, newConsigneeName]);
+  }, [agencyId, newConsigneeName, selectedAgency?.code]);
 
   // ---------------------------------------------------------------------------
   // Submit
   // ---------------------------------------------------------------------------
 
   const handleSubmit = useCallback(() => {
-    const showError = (msg: string) => {
-      setError(msg);
-      requestAnimationFrame(() => {
-        errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-    };
-
     // Validate required fields
-    if (!agencyId) {
-      showError("Seleccione una agencia");
+    if (!carrier) {
+      notify("Seleccione un transportista", "error");
       return;
     }
-    if (!carrier) {
-      showError("Seleccione un transportista");
+    if (!agencyId) {
+      notify("Seleccione una agencia destino", "error");
       return;
     }
 
     // Validate all packages have tracking
     for (let i = 0; i < packages.length; i++) {
       if (!packages[i]!.tracking_number.trim()) {
-        showError(`Paquete ${i + 1}: ingrese el número de guía`);
+        notify(`Paquete ${i + 1}: falta el número de guía`, "error");
         return;
       }
     }
@@ -394,20 +451,19 @@ export function WrReceiptForm({
     const totalPhotos = packages.reduce((sum, p) => sum + p.photos.length, 0);
     const minRequired = anyDamaged ? 3 : 1;
     if (totalPhotos < minRequired) {
-      showError(
+      notify(
         anyDamaged
-          ? "Se requieren mínimo 3 fotos para paquetes dañados"
-          : "Se requiere al menos 1 foto",
+          ? "Se requieren mínimo 3 fotos cuando hay daño"
+          : "Agregue al menos 1 foto del paquete",
+        "error",
       );
       return;
     }
 
     if (wrNumberError) {
-      showError("El número de recibo ya existe. Elija otro.");
+      notify("El número de recibo ya existe — elija otro", "error");
       return;
     }
-
-    setError(null);
 
     startTransition(async () => {
       try {
@@ -476,16 +532,17 @@ export function WrReceiptForm({
         }
 
         const result = await createWarehouseReceipt(formData);
+        savedRef.current = true;
         setCreatedWr(result);
         setPhase("success");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error al crear recibo");
+        notify(err instanceof Error ? err.message : "Error al crear recibo", "error");
       }
     });
   }, [
     warehouseId, agencyId, consigneeId, notes, warehouseLocationId,
     shipperName, masterTracking, description, wrNumber,
-    defaultWrNumber, carrier, packages, attachments, wrNumberError,
+    defaultWrNumber, carrier, packages, attachments, wrNumberError, notify,
   ]);
 
   // ---------------------------------------------------------------------------
@@ -494,8 +551,10 @@ export function WrReceiptForm({
 
   // Reset form — keep warehouse, agency, and carrier (they repeat between receipts)
   const resetForAnother = useCallback(() => {
+    savedRef.current = false;
     setPackages([emptyPackage()]);
     setConsigneeId("");
+    setSelectedConsignee(null);
     setConsigneeSearch("");
     setConsignees([]);
     setShipperName("");
@@ -628,13 +687,6 @@ export function WrReceiptForm({
 
   return (
     <div ref={formTopRef} className="mx-auto max-w-2xl space-y-4">
-      {/* Error display */}
-      {error && (
-        <div ref={errorRef} className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
       {/* ----------------------------------------------------------------- */}
       {/* WR Header + Shipment + Details Card                               */}
       {/* ----------------------------------------------------------------- */}
@@ -658,75 +710,72 @@ export function WrReceiptForm({
                 )}
               </div>
             </div>
-            {warehouses.length > 1 && (
-              <div>
-                <label className="mb-1.5 block text-sm text-gray-600">Bodega</label>
-                <select
-                  value={warehouseId}
-                  onChange={(e) => setWarehouseId(e.target.value)}
-                  className={inputCls}
-                >
-                  {warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} ({w.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">Master Tracking</label>
+              <input
+                ref={masterTrackingRef}
+                type="text"
+                value={masterTracking}
+                onChange={(e) => setMasterTracking(e.target.value)}
+                onMouseDown={() => {
+                  if (document.activeElement !== masterTrackingRef.current) {
+                    masterTrackingMouseDown.current = true;
+                  }
+                }}
+                onMouseUp={(e) => {
+                  if (masterTrackingMouseDown.current) {
+                    masterTrackingMouseDown.current = false;
+                    e.preventDefault();
+                    e.currentTarget.select();
+                  }
+                }}
+                onFocus={(e) => e.target.select()}
+                placeholder="AWB / Master tracking"
+                className={`${inputCls} font-mono`}
+              />
+            </div>
           </div>
+          {warehouses.length > 1 && (
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">Bodega</label>
+              <select
+                value={warehouseId}
+                onChange={(e) => setWarehouseId(e.target.value)}
+                className={inputCls}
+              >
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </FormSection>
 
         {/* Shipment Info */}
-        <FormSection title="Envío" icon={Truck} description="Agencia, remitente y destinatario">
-          {/* Agency selection */}
+        <FormSection title="Envío" icon={Truck} description="Transportista, destinatario y agencia">
+          {/* Carrier */}
           <div>
             <label className="mb-1.5 block text-sm text-gray-600">
-              Agencia destino <span className="text-red-400">*</span>
+              Transportista <span className="text-red-400">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {agencies.map((a) => (
+            <div className="grid grid-cols-4 gap-2">
+              {CARRIERS.map((c) => (
                 <button
-                  key={a.id}
+                  key={c}
                   type="button"
-                  onClick={() => {
-                    setAgencyId(a.id);
-                    setConsigneeId("");
-                    setConsigneeSearch("");
-                  }}
+                  onClick={() => setCarrier(c)}
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                    agencyId === a.id
+                    carrier === c
                       ? "border-gray-900 bg-gray-900 text-white"
                       : "border-gray-200 text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  {a.code}
+                  {c}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setAgencyId("unknown");
-                  setConsigneeId("");
-                  setConsigneeSearch("");
-                }}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                  agencyId === "unknown"
-                    ? "border-amber-600 bg-amber-600 text-white"
-                    : "border-amber-200 text-amber-700 hover:bg-amber-50"
-                }`}
-              >
-                ?
-              </button>
             </div>
-            {selectedAgency && (
-              <p className="mt-1.5 text-xs text-gray-500">{selectedAgency.name}</p>
-            )}
-            {isUnknownAgency && (
-              <p className="mt-1.5 text-xs text-amber-600">
-                Se registrará como WR desconocido. Las agencias podrán reclamarlo después.
-              </p>
-            )}
           </div>
 
           {/* Shipper */}
@@ -744,133 +793,143 @@ export function WrReceiptForm({
           </div>
 
           {/* Consignee */}
-          {!isUnknownAgency && (
-            <div>
-              <label className="mb-1.5 block text-sm text-gray-600">Destinatario</label>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">Destinatario</label>
 
-              {/* Show selected chip OR search input */}
-              {selectedConsignee ? (
-                <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-gray-900">{selectedConsignee.full_name}</span>
-                    <span className="font-mono text-xs text-gray-400">
-                      {selectedConsignee.casillero}
+            {/* Show selected chip OR search input */}
+            {selectedConsignee ? (
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-gray-900">{selectedConsignee.full_name}</span>
+                  <span className="font-mono text-xs text-gray-400">
+                    {selectedConsignee.casillero}
+                  </span>
+                  {consigneeAgencyCode(selectedConsignee) && (
+                    <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                      {consigneeAgencyCode(selectedConsignee)}
                     </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConsigneeId("");
-                      setConsigneeSearch("");
-                      setConsignees([]);
-                    }}
-                    className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+                  )}
                 </div>
-              ) : (
-                <>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={consigneeSearch}
-                      onChange={(e) => {
-                        setConsigneeSearch(e.target.value);
-                        setConsigneeHighlight(0);
-                      }}
-                      onKeyDown={(e) => {
-                        if (!consignees.length) return;
-                        switch (e.key) {
-                          case "ArrowDown":
-                            e.preventDefault();
-                            setConsigneeHighlight((i) =>
-                              i < consignees.length - 1 ? i + 1 : 0,
-                            );
-                            break;
-                          case "ArrowUp":
-                            e.preventDefault();
-                            setConsigneeHighlight((i) =>
-                              i > 0 ? i - 1 : consignees.length - 1,
-                            );
-                            break;
-                          case "Enter":
-                            e.preventDefault();
-                            if (consigneeHighlight >= 0 && consignees[consigneeHighlight]) {
-                              const c = consignees[consigneeHighlight]!;
-                              setConsigneeId(c.id);
-                              setConsigneeSearch(c.full_name);
-                            }
-                            break;
-                          case "Escape":
-                            e.preventDefault();
-                            setConsignees([]);
-                            setConsigneeHighlight(-1);
-                            break;
-                        }
-                      }}
-                      placeholder="Buscar por nombre o casillero..."
-                      autoComplete="nope"
-                      role="combobox"
-                      aria-autocomplete="list"
-                      aria-expanded={consignees.length > 0}
-                      className={inputCls}
-                    />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConsigneeId("");
+                    setSelectedConsignee(null);
+                    setConsigneeSearch("");
+                    setConsignees([]);
+                  }}
+                  className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={consigneeSearch}
+                    onChange={(e) => {
+                      setConsigneeSearch(e.target.value);
+                      setConsigneeHighlight(0);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!consignees.length) return;
+                      switch (e.key) {
+                        case "ArrowDown":
+                          e.preventDefault();
+                          setConsigneeHighlight((i) =>
+                            i < consignees.length - 1 ? i + 1 : 0,
+                          );
+                          break;
+                        case "ArrowUp":
+                          e.preventDefault();
+                          setConsigneeHighlight((i) =>
+                            i > 0 ? i - 1 : consignees.length - 1,
+                          );
+                          break;
+                        case "Enter":
+                          e.preventDefault();
+                          if (consigneeHighlight >= 0 && consignees[consigneeHighlight]) {
+                            selectConsignee(consignees[consigneeHighlight]!);
+                          }
+                          break;
+                        case "Escape":
+                          e.preventDefault();
+                          setConsignees([]);
+                          setConsigneeHighlight(-1);
+                          break;
+                      }
+                    }}
+                    placeholder="Buscar por nombre o casillero..."
+                    autoComplete="nope"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={consignees.length > 0}
+                    className={inputCls}
+                  />
 
-                    {consignees.length > 0 && (
-                      <div
-                        ref={consigneeListRef}
-                        className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
-                      >
-                        {consignees.map((c, i) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              setConsigneeId(c.id);
-                              setConsigneeSearch(c.full_name);
-                            }}
-                            onMouseEnter={() => setConsigneeHighlight(i)}
-                            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
-                              i === consigneeHighlight
-                                ? "bg-gray-100 text-gray-900"
-                                : "text-gray-700 hover:bg-gray-50"
-                            }`}
-                          >
-                            <div>
-                              <span className="font-medium">{c.full_name}</span>
-                              <span className="ml-2 font-mono text-xs text-gray-400">
-                                {c.casillero}
-                              </span>
-                            </div>
-                            <span className="text-xs text-gray-400">
-                              {c.cedula_ruc ?? c.city ?? ""}
+                  {consignees.length > 0 && (
+                    <div
+                      ref={consigneeListRef}
+                      className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+                    >
+                      {consignees.map((c, i) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => selectConsignee(c)}
+                          onMouseEnter={() => setConsigneeHighlight(i)}
+                          className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
+                            i === consigneeHighlight
+                              ? "bg-gray-100 text-gray-900"
+                              : "text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{c.full_name}</span>
+                            <span className="font-mono text-xs text-gray-400">
+                              {c.casillero}
                             </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                            {!agencyId && consigneeAgencyCode(c) && (
+                              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                                {consigneeAgencyCode(c)}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {c.cedula_ruc ?? c.city ?? ""}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                   {consigneeSearch.length >= 2 &&
                     consignees.length === 0 &&
                     !showQuickCreate && (
                       <div className="mt-1.5 text-xs text-gray-400">
-                        No se encontró destinatario.{" "}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowQuickCreate(true);
-                            setNewConsigneeName(consigneeSearch);
-                          }}
-                          className="text-gray-900 underline"
-                        >
-                          Crear nuevo
-                        </button>
+                        No se encontró destinatario.
+                        {agencyId && agencyId !== "unknown" && (
+                          <>
+                            {" "}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowQuickCreate(true);
+                                setNewConsigneeName(consigneeSearch);
+                              }}
+                              className="text-gray-900 underline"
+                            >
+                              Crear nuevo
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
 
-                  {showQuickCreate && (
+                  {showQuickCreate && agencyId && agencyId !== "unknown" && (
                     <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
                       <p className="text-xs font-medium text-blue-700">
                         Crear destinatario rápido
@@ -904,44 +963,59 @@ export function WrReceiptForm({
                 </>
               )}
             </div>
-          )}
 
-          {/* Carrier */}
+          {/* Agency selection */}
           <div>
             <label className="mb-1.5 block text-sm text-gray-600">
-              Transportista <span className="text-red-400">*</span>
+              Agencia destino <span className="text-red-400">*</span>
             </label>
-            <div className="grid grid-cols-4 gap-2">
-              {CARRIERS.map((c) => (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {agencies.map((a) => (
                 <button
-                  key={c}
+                  key={a.id}
                   type="button"
-                  onClick={() => setCarrier(c)}
+                  onClick={() => {
+                    setAgencyId(a.id);
+                    setConsigneeId("");
+                    setSelectedConsignee(null);
+                    setConsigneeSearch("");
+                  }}
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                    carrier === c
+                    agencyId === a.id
                       ? "border-gray-900 bg-gray-900 text-white"
                       : "border-gray-200 text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  {c}
+                  {a.code}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setAgencyId("unknown");
+                  setConsigneeId("");
+                  setSelectedConsignee(null);
+                  setConsigneeSearch("");
+                }}
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  agencyId === "unknown"
+                    ? "border-amber-600 bg-amber-600 text-white"
+                    : "border-amber-200 text-amber-700 hover:bg-amber-50"
+                }`}
+              >
+                ?
+              </button>
             </div>
+            {selectedAgency && (
+              <p className="mt-1.5 text-xs text-gray-500">{selectedAgency.name}</p>
+            )}
+            {isUnknownAgency && (
+              <p className="mt-1.5 text-xs text-amber-600">
+                Se registrará como WR desconocido. Las agencias podrán reclamarlo después.
+              </p>
+            )}
           </div>
 
-          {/* Master Tracking */}
-          <div>
-            <label className="mb-1.5 block text-sm text-gray-600">Master Tracking</label>
-            <input
-              ref={masterTrackingRef}
-              type="text"
-              value={masterTracking}
-              onChange={(e) => setMasterTracking(e.target.value)}
-              onFocus={(e) => e.target.select()}
-              placeholder="Número de master tracking / AWB"
-              className={`${inputCls} font-mono`}
-            />
-          </div>
         </FormSection>
 
         {/* Description & Notes */}
@@ -1038,6 +1112,7 @@ export function WrReceiptForm({
         <button
           type="button"
           onClick={() => {
+            cleanupUploads();
             setPhase("scan");
             setError(null);
           }}

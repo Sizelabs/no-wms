@@ -65,12 +65,14 @@ export function FileUpload({
           continue;
         }
 
-        const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+        const { data: urlData } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(fileName, 60 * 60);
 
         newFiles.push({
           id: crypto.randomUUID(),
           storagePath: fileName,
-          url: urlData.publicUrl,
+          url: urlData?.signedUrl ?? "",
           fileName: file.name,
         });
       }

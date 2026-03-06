@@ -255,17 +255,22 @@ export async function deleteConsignee(id: string) {
 // Search consignees (updated — includes casillero, searches by casillero too)
 // ---------------------------------------------------------------------------
 
-export async function searchConsignees(agencyId: string, query: string) {
+export async function searchConsignees(agencyId: string | null, query: string) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let q = supabase
     .from("consignees")
-    .select("id, full_name, casillero, cedula_ruc, city")
-    .eq("agency_id", agencyId)
+    .select("id, full_name, casillero, cedula_ruc, city, agency_id, agencies(code)")
     .eq("is_active", true)
     .or(`full_name.ilike.%${query}%,casillero.ilike.%${query}%`)
     .order("full_name")
     .limit(20);
+
+  if (agencyId) {
+    q = q.eq("agency_id", agencyId);
+  }
+
+  const { data, error } = await q;
 
   if (error) {
     return { data: null, error: error.message };
