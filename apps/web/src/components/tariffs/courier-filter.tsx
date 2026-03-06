@@ -7,11 +7,16 @@ import { filterSelectClass } from "@/components/ui/form-section";
 interface CourierFilterProps {
   couriers: { id: string; name: string; code: string }[];
   selectedCourierId?: string;
+  /** When true, the user is courier-scoped — hide "Tarifa Base (todos)" option */
+  isCourierScoped?: boolean;
 }
 
-export function CourierFilter({ couriers, selectedCourierId }: CourierFilterProps) {
+export function CourierFilter({ couriers, selectedCourierId, isCourierScoped }: CourierFilterProps) {
   const router = useRouter();
   const pathname = usePathname();
+
+  // Hide filter entirely if courier-scoped with only one courier
+  if (isCourierScoped && couriers.length <= 1) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -30,7 +35,7 @@ export function CourierFilter({ couriers, selectedCourierId }: CourierFilterProp
         onChange={handleChange}
         className={filterSelectClass + " min-w-[200px]"}
       >
-        <option value="">Tarifa Base (todos)</option>
+        {!isCourierScoped && <option value="">Tarifa Base (todos)</option>}
         {couriers.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name} ({c.code})
