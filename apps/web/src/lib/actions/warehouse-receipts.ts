@@ -27,8 +27,22 @@ export async function checkDuplicateTracking(trackingNumber: string) {
   return wr ? { id: data.warehouse_receipt_id, wr_number: wr.wr_number, received_at: wr.received_at } : null;
 }
 
-export async function generateWrNumber(): Promise<string> {
+export async function generateWrNumber(prefix?: string): Promise<string> {
   const supabase = await createClient();
+
+  // Resolve prefix from org if not provided
+  let wrPrefix = prefix;
+  if (!wrPrefix) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id, organizations(wr_prefix, slug)")
+      .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
+      .single();
+
+    const orgRaw = profile?.organizations;
+    const org = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as { wr_prefix: string | null; slug: string } | null | undefined;
+    wrPrefix = org?.wr_prefix ?? org?.slug?.slice(0, 3).toUpperCase() ?? "WR";
+  }
 
   // Get current max WR number for this org
   const { data } = await supabase
@@ -39,13 +53,22 @@ export async function generateWrNumber(): Promise<string> {
     .maybeSingle();
 
   if (!data?.wr_number) {
-    return "GLP0001";
+    return `${wrPrefix}0001`;
   }
 
   // Extract numeric part and increment
   const match = data.wr_number.match(/(\d+)$/);
   const nextNum = match ? parseInt(match[1]!, 10) + 1 : 1;
-  return `GLP${String(nextNum).padStart(4, "0")}`;
+  return `${wrPrefix}${String(nextNum).padStart(4, "0")}`;
+}
+
+export async function checkWrNumberUnique(wrNumber: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("warehouse_receipts")
+    .select("id", { count: "exact", head: true })
+    .eq("wr_number", wrNumber);
+  return (count ?? 0) === 0;
 }
 
 export async function createWarehouseReceipt(formData: FormData): Promise<{ id: string; wr_number: string }> {
@@ -94,6 +117,10 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     warehouse_location_id: (formData.get("warehouse_location_id") as string) || undefined,
     notes: (formData.get("notes") as string) || undefined,
     client_id: (formData.get("client_id") as string) || undefined,
+    shipper_name: (formData.get("shipper_name") as string) || undefined,
+    master_tracking: (formData.get("master_tracking") as string) || undefined,
+    description: (formData.get("description") as string) || undefined,
+    wr_number: (formData.get("wr_number") as string) || undefined,
     packages: packagesRaw,
   };
 
@@ -132,8 +159,18 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     return { ...pkg, volumetric_weight_lb: volumetricWeightLb, billable_weight_lb: billableWeightLb };
   });
 
-  // Generate WR number
-  const wrNumber = await generateWrNumber();
+  // WR number: use provided or auto-generate
+  let wrNumber: string;
+  if (input.wr_number?.trim()) {
+    wrNumber = input.wr_number.trim();
+    // Validate uniqueness
+    const isUnique = await checkWrNumberUnique(wrNumber);
+    if (!isUnique) {
+      throw new Error(`El número de recibo "${wrNumber}" ya existe. Elija otro.`);
+    }
+  } else {
+    wrNumber = await generateWrNumber();
+  }
 
   // Get org ID from user profile
   const { data: profile } = await supabase
@@ -159,6 +196,9 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       consignee_id: input.consignee_id ?? null,
       warehouse_location_id: input.warehouse_location_id ?? null,
       notes: input.notes ?? null,
+      shipper_name: input.shipper_name ?? null,
+      master_tracking: input.master_tracking ?? null,
+      description: input.description ?? null,
       received_by: user.id,
       client_id: input.client_id ?? null,
     })
@@ -188,6 +228,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       dgr_class: pkg.dgr_class ?? null,
       is_damaged: pkg.is_damaged,
       damage_description: pkg.damage_description ?? null,
+      notes: pkg.notes ?? null,
       sender_name: pkg.sender_name ?? null,
       pieces_count: pkg.pieces_count,
       package_type: pkg.package_type ?? null,
@@ -238,6 +279,29 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     } catch {
       // Photo save failure shouldn't block WR creation
       console.error("Failed to save photo records");
+    }
+  }
+
+  // Save attachment records
+  const attachmentsJson = formData.get("attachments") as string | null;
+  if (attachmentsJson) {
+    try {
+      const attachmentRecords = JSON.parse(attachmentsJson) as Array<{
+        storage_path: string;
+        file_name: string;
+      }>;
+      if (attachmentRecords.length) {
+        await supabase.from("wr_attachments").insert(
+          attachmentRecords.map((a) => ({
+            organization_id: profile.organization_id,
+            warehouse_receipt_id: wr.id,
+            storage_path: a.storage_path,
+            file_name: a.file_name,
+          })),
+        );
+      }
+    } catch {
+      console.error("Failed to save attachment records");
     }
   }
 

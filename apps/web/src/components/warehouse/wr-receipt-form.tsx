@@ -6,13 +6,33 @@ import {
   calculateBillableWeight,
   calculateVolumetricWeight,
 } from "@no-wms/shared/validators/warehouse-receipt";
+import {
+  ArrowLeft,
+  Building2,
+  FileText,
+  Package,
+  ScanBarcode,
+  Truck,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
+import type { UploadedFile } from "@/components/ui/file-upload";
+import { FileUpload } from "@/components/ui/file-upload";
+import { FormCard, FormSection } from "@/components/ui/form-section";
 import type { UploadedPhoto } from "@/components/ui/photo-upload";
 import { PhotoUpload } from "@/components/ui/photo-upload";
 import { quickCreateConsignee, searchConsignees } from "@/lib/actions/consignees";
-import { checkDuplicateTracking, createWarehouseReceipt } from "@/lib/actions/warehouse-receipts";
+import {
+  checkDuplicateTracking,
+  checkWrNumberUnique,
+  createWarehouseReceipt,
+} from "@/lib/actions/warehouse-receipts";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface Agency {
   id: string;
@@ -43,187 +63,178 @@ interface Consignee {
 
 interface PackageData {
   tracking_number: string;
-  carrier: string;
   actual_weight_lb: string;
   length_in: string;
   width_in: string;
   height_in: string;
   content_description: string;
+  pkg_notes: string;
   is_dgr: boolean;
   dgr_class: string;
   is_damaged: boolean;
   damage_description: string;
-  sender_name: string;
   pieces_count: string;
   package_type: string;
-}
-
-function emptyPackage(): PackageData {
-  return {
-    tracking_number: "",
-    carrier: "",
-    actual_weight_lb: "",
-    length_in: "",
-    width_in: "",
-    height_in: "",
-    content_description: "",
-    is_dgr: false,
-    dgr_class: "",
-    is_damaged: false,
-    damage_description: "",
-    sender_name: "",
-    pieces_count: "1",
-    package_type: "Box",
-  };
+  photos: UploadedPhoto[];
 }
 
 interface WrReceiptFormProps {
   agencies: Agency[];
   warehouses: Warehouse[];
   warehouseLocations?: WarehouseLocation[];
+  defaultWrNumber: string;
   locale: string;
 }
 
-type Step =
-  | "agency"
-  | "tracking"
-  | "carrier"
-  | "weight"
-  | "photos"
-  | "consignee"
-  | "details"
-  | "confirm";
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-const STEPS: Step[] = [
-  "agency",
-  "tracking",
-  "carrier",
-  "weight",
-  "photos",
-  "consignee",
-  "details",
-  "confirm",
-];
+function emptyPackage(tracking = ""): PackageData {
+  return {
+    tracking_number: tracking,
+    actual_weight_lb: "",
+    length_in: "",
+    width_in: "",
+    height_in: "",
+    content_description: "",
+    pkg_notes: "",
+    is_dgr: false,
+    dgr_class: "",
+    is_damaged: false,
+    damage_description: "",
+    pieces_count: "1",
+    package_type: "Box",
+    photos: [],
+  };
+}
 
-const STEP_LABELS: Record<Step, string> = {
-  agency: "Agencia",
-  tracking: "Guía",
-  carrier: "Transportista",
-  weight: "Peso / Dimensiones",
-  photos: "Fotos",
-  consignee: "Destinatario",
-  details: "Detalles",
-  confirm: "Confirmar",
-};
+function detectCarrier(tracking: string): string {
+  const t = tracking.trim().toUpperCase();
+  if (t.startsWith("1Z")) return "UPS";
+  if (t.startsWith("TBA")) return "Amazon";
+  if (/^\d{10}$/.test(t)) return "DHL";
+  if (/^\d{20,22}$/.test(t) && t.startsWith("9")) return "USPS";
+  if (/^\d{12,15}$/.test(t)) return "FedEx";
+  return "";
+}
 
-export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], locale }: WrReceiptFormProps) {
+const inputCls =
+  "h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 focus:outline-none transition-colors";
+
+const textareaCls =
+  "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 focus:outline-none transition-colors";
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function WrReceiptForm({
+  agencies,
+  warehouses,
+  warehouseLocations = [],
+  defaultWrNumber,
+  locale,
+}: WrReceiptFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  // Form state
-  const [step, setStep] = useState<Step>("agency");
-  const [error, setError] = useState<string | null>(null);
-  const [createdWr, setCreatedWr] = useState<{ id: string; wr_number: string } | null>(null);
+  // Phase: scan → form → success
+  const [phase, setPhase] = useState<"scan" | "form" | "success">("scan");
 
-  // Field values
+  // WR-level state
+  const [wrNumber, setWrNumber] = useState(defaultWrNumber);
+  const [wrNumberError, setWrNumberError] = useState<string | null>(null);
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [agencyId, setAgencyId] = useState("");
+  const [shipperName, setShipperName] = useState("");
   const [consigneeId, setConsigneeId] = useState("");
   const [consigneeSearch, setConsigneeSearch] = useState("");
   const [consignees, setConsignees] = useState<Consignee[]>([]);
+  const [consigneeHighlight, setConsigneeHighlight] = useState(-1);
+  const [carrier, setCarrier] = useState("");
+  const [masterTracking, setMasterTracking] = useState("");
+  const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
+  const [attachments, setAttachments] = useState<UploadedFile[]>([]);
   const [warehouseLocationId, setWarehouseLocationId] = useState("");
-  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  // Packages state (1+ packages per WR)
+  // Package state
   const [packages, setPackages] = useState<PackageData[]>([emptyPackage()]);
-  const [currentPackageIndex, setCurrentPackageIndex] = useState(0);
-  const pkg = packages[currentPackageIndex]!;
 
-  // Quick-create consignee
+  // UI state
+  const [error, setError] = useState<string | null>(null);
+  const [createdWr, setCreatedWr] = useState<{ id: string; wr_number: string } | null>(null);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [newConsigneeName, setNewConsigneeName] = useState("");
   const [creatingConsignee, setCreatingConsignee] = useState(false);
-
-  // Duplicate check state
   const [duplicateInfo, setDuplicateInfo] = useState<{
     wr_number: string;
     received_at: string;
   } | null>(null);
 
+  // Scanning state (for loading indicator on scan gate)
+  const [isScanning, setIsScanning] = useState(false);
+
   // Refs
-  const trackingRef = useRef<HTMLInputElement>(null);
+  const scanInputRef = useRef<HTMLInputElement>(null);
+  const formTopRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const consigneeListRef = useRef<HTMLDivElement>(null);
 
-  // Package helpers
-  const updatePackage = useCallback(
-    (field: keyof PackageData, value: string | boolean) => {
-      setPackages((prev) =>
-        prev.map((p, i) => (i === currentPackageIndex ? { ...p, [field]: value } : p)),
-      );
-    },
-    [currentPackageIndex],
-  );
-
-  const addPackage = useCallback(() => {
-    setPackages((prev) => [...prev, emptyPackage()]);
-    setCurrentPackageIndex((prev) => prev + 1);
-  }, []);
-
-  const removePackage = useCallback(
-    (index: number) => {
-      if (packages.length <= 1) return;
-      setPackages((prev) => prev.filter((_, i) => i !== index));
-      setCurrentPackageIndex((prev) => (prev >= index && prev > 0 ? prev - 1 : prev));
-    },
-    [packages.length],
-  );
-
-  // Computed values (derived from current package)
-  const volumetricWeight = useMemo(() => {
-    const l = parseFloat(pkg.length_in);
-    const w = parseFloat(pkg.width_in);
-    const h = parseFloat(pkg.height_in);
-    if (l > 0 && w > 0 && h > 0) {
-      return calculateVolumetricWeight(l, w, h, 166);
-    }
-    return null;
-  }, [pkg.length_in, pkg.width_in, pkg.height_in]);
-
-  const billableWeight = useMemo(() => {
-    const actual = parseFloat(pkg.actual_weight_lb) || null;
-    return calculateBillableWeight(actual, volumetricWeight);
-  }, [pkg.actual_weight_lb, volumetricWeight]);
-
+  // Computed
   const selectedAgency = useMemo(
     () => agencies.find((a) => a.id === agencyId),
     [agencies, agencyId],
   );
-
   const allowMultiPackage = selectedAgency?.allow_multi_package ?? true;
+  const isUnknownAgency = agencyId === "unknown";
 
   const selectedConsignee = useMemo(
     () => consignees.find((c) => c.id === consigneeId),
     [consignees, consigneeId],
   );
 
-  const isUnknownAgency = agencyId === "unknown";
-  const activeSteps = useMemo(
-    () => (isUnknownAgency ? STEPS.filter((s) => s !== "consignee") : STEPS),
-    [isUnknownAgency],
+  const masterTrackingRef = useRef<HTMLInputElement>(null);
+
+  // ---------------------------------------------------------------------------
+  // Package helpers
+  // ---------------------------------------------------------------------------
+
+  const updatePackage = useCallback(
+    (index: number, field: keyof PackageData, value: string | boolean | UploadedPhoto[]) => {
+      setPackages((prev) =>
+        prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
+      );
+    },
+    [],
   );
-  const stepIndex = activeSteps.indexOf(step);
+
+  const addPackage = useCallback(() => {
+    setPackages((prev) => [...prev, emptyPackage()]);
+  }, []);
+
+  const removePackage = useCallback(
+    (index: number) => {
+      if (packages.length <= 1) return;
+      setPackages((prev) => prev.filter((_, i) => i !== index));
+    },
+    [packages.length],
+  );
 
   // Trim to single package when agency disallows multi-package
   useEffect(() => {
     if (!allowMultiPackage && packages.length > 1) {
       setPackages((prev) => [prev[0]!]);
-      setCurrentPackageIndex(0);
     }
   }, [allowMultiPackage, packages.length]);
 
-  // Consignee search
+  // ---------------------------------------------------------------------------
+  // Consignee search (debounced)
+  // ---------------------------------------------------------------------------
+
   useEffect(() => {
-    if (!agencyId || consigneeSearch.length < 2) {
+    if (!agencyId || agencyId === "unknown" || consigneeSearch.length < 2) {
       setConsignees([]);
       return;
     }
@@ -232,68 +243,94 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
       const result = await searchConsignees(agencyId, consigneeSearch);
       if (result.data) {
         setConsignees(result.data);
+        setConsigneeHighlight(result.data.length > 0 ? 0 : -1);
       }
     }, 300);
 
     return () => clearTimeout(timeout);
   }, [agencyId, consigneeSearch]);
 
-  // Focus tracking input when step changes
+  // Scroll highlighted consignee into view
   useEffect(() => {
-    if (step === "tracking") {
-      trackingRef.current?.focus();
+    if (consigneeHighlight >= 0 && consigneeListRef.current) {
+      const item = consigneeListRef.current.children[consigneeHighlight] as HTMLElement | undefined;
+      item?.scrollIntoView({ block: "nearest" });
     }
-  }, [step]);
+  }, [consigneeHighlight]);
 
-  const goNext = useCallback(() => {
-    const idx = activeSteps.indexOf(step);
-    if (idx < activeSteps.length - 1) {
-      setStep(activeSteps[idx + 1]!);
-      setError(null);
+  // ---------------------------------------------------------------------------
+  // WR number uniqueness check (debounced)
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!wrNumber.trim() || wrNumber === defaultWrNumber) {
+      setWrNumberError(null);
+      return;
     }
-  }, [step, activeSteps]);
 
-  const goBack = useCallback(() => {
-    const idx = activeSteps.indexOf(step);
-    if (idx > 0) {
-      setStep(activeSteps[idx - 1]!);
-      setError(null);
-    }
-  }, [step, activeSteps]);
+    const timeout = setTimeout(async () => {
+      const isUnique = await checkWrNumberUnique(wrNumber.trim());
+      setWrNumberError(isUnique ? null : "Este número ya existe");
+    }, 500);
 
-  // Validate and advance from tracking step (checks first package's tracking)
-  const handleTrackingNext = useCallback(async () => {
-    const firstTracking = packages[0]?.tracking_number.trim() ?? "";
-    if (!firstTracking) {
+    return () => clearTimeout(timeout);
+  }, [wrNumber, defaultWrNumber]);
+
+  // ---------------------------------------------------------------------------
+  // Scan gate handler
+  // ---------------------------------------------------------------------------
+
+  const handleScan = useCallback(async () => {
+    const tracking = packages[0]?.tracking_number.trim() ?? "";
+    if (!tracking) {
       setError("Ingrese el número de guía");
       return;
     }
 
-    // Validate all packages have tracking numbers
-    for (let i = 0; i < packages.length; i++) {
-      if (!packages[i]!.tracking_number.trim()) {
-        setError(`Paquete ${i + 1}: ingrese el número de guía`);
-        setCurrentPackageIndex(i);
+    setError(null);
+    setIsScanning(true);
+
+    try {
+      const duplicate = await checkDuplicateTracking(tracking);
+
+      if (duplicate) {
+        setDuplicateInfo(duplicate);
+        setError(
+          `Esta guía ya fue recibida el ${new Date(duplicate.received_at).toLocaleDateString("es")}.`,
+        );
         return;
       }
+
+      // Auto-detect carrier
+      const detected = detectCarrier(tracking);
+      if (detected) setCarrier(detected);
+
+      // Pre-fill master tracking with first package tracking
+      setMasterTracking(tracking);
+
+      setDuplicateInfo(null);
+      setPhase("form");
+
+      // Scroll to top of form
+      requestAnimationFrame(() => {
+        formTopRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
+    } finally {
+      setIsScanning(false);
     }
+  }, [packages]);
 
-    setError(null);
-    const duplicate = await checkDuplicateTracking(firstTracking);
-
-    if (duplicate) {
-      setDuplicateInfo(duplicate);
-      setError(
-        `Esta guía ya fue recibida el ${new Date(duplicate.received_at).toLocaleDateString("es")}.`,
-      );
-      return;
+  // Focus scan input on mount
+  useEffect(() => {
+    if (phase === "scan") {
+      scanInputRef.current?.focus();
     }
+  }, [phase]);
 
-    setDuplicateInfo(null);
-    goNext();
-  }, [packages, goNext]);
+  // ---------------------------------------------------------------------------
+  // Quick-create consignee
+  // ---------------------------------------------------------------------------
 
-  // Quick-create consignee handler
   const handleQuickCreate = useCallback(async () => {
     if (!newConsigneeName.trim()) return;
     setCreatingConsignee(true);
@@ -304,7 +341,16 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     if (result.data) {
       setConsigneeId(result.data.id);
       setConsigneeSearch(result.data.full_name);
-      setConsignees((prev) => [...prev, { id: result.data!.id, full_name: result.data!.full_name, casillero: result.data!.casillero, cedula_ruc: null, city: null }]);
+      setConsignees((prev) => [
+        ...prev,
+        {
+          id: result.data!.id,
+          full_name: result.data!.full_name,
+          casillero: result.data!.casillero,
+          cedula_ruc: null,
+          city: null,
+        },
+      ]);
       setShowQuickCreate(false);
       setNewConsigneeName("");
     } else {
@@ -313,34 +359,55 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     setCreatingConsignee(false);
   }, [agencyId, newConsigneeName]);
 
-  // Reset form for "Register Another Box"
-  const resetForAnother = useCallback(() => {
-    // Keep warehouse and agency, reset everything else
-    setPackages([emptyPackage()]);
-    setCurrentPackageIndex(0);
-    setConsigneeId("");
-    setConsigneeSearch("");
-    setConsignees([]);
-    setNotes("");
-    setWarehouseLocationId("");
-    setPhotos([]);
-    setDuplicateInfo(null);
-    setCreatedWr(null);
-    setError(null);
-    setStep("tracking");
-  }, []);
-
-  // Check if any package is damaged (for photo validation)
-  const anyPackageDamaged = packages.some((p) => p.is_damaged);
-
+  // ---------------------------------------------------------------------------
   // Submit
+  // ---------------------------------------------------------------------------
+
   const handleSubmit = useCallback(() => {
-    // Validate photo count
-    const minRequired = anyPackageDamaged ? 3 : 1;
-    if (photos.length < minRequired) {
-      setError(anyPackageDamaged ? "Se requieren mínimo 3 fotos para paquetes dañados" : "Se requiere al menos 1 foto");
+    const showError = (msg: string) => {
+      setError(msg);
+      requestAnimationFrame(() => {
+        errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    };
+
+    // Validate required fields
+    if (!agencyId) {
+      showError("Seleccione una agencia");
       return;
     }
+    if (!carrier) {
+      showError("Seleccione un transportista");
+      return;
+    }
+
+    // Validate all packages have tracking
+    for (let i = 0; i < packages.length; i++) {
+      if (!packages[i]!.tracking_number.trim()) {
+        showError(`Paquete ${i + 1}: ingrese el número de guía`);
+        return;
+      }
+    }
+
+    // Validate photo count
+    const anyDamaged = packages.some((p) => p.is_damaged);
+    const totalPhotos = packages.reduce((sum, p) => sum + p.photos.length, 0);
+    const minRequired = anyDamaged ? 3 : 1;
+    if (totalPhotos < minRequired) {
+      showError(
+        anyDamaged
+          ? "Se requieren mínimo 3 fotos para paquetes dañados"
+          : "Se requiere al menos 1 foto",
+      );
+      return;
+    }
+
+    if (wrNumberError) {
+      showError("El número de recibo ya existe. Elija otro.");
+      return;
+    }
+
+    setError(null);
 
     startTransition(async () => {
       try {
@@ -352,63 +419,128 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
         if (consigneeId) formData.set("consignee_id", consigneeId);
         if (notes) formData.set("notes", notes);
         if (warehouseLocationId) formData.set("warehouse_location_id", warehouseLocationId);
-        formData.set("packages", JSON.stringify(packages.map((p) => ({
-          tracking_number: p.tracking_number.trim(),
-          carrier: p.carrier,
-          actual_weight_lb: p.actual_weight_lb || null,
-          length_in: p.length_in || null,
-          width_in: p.width_in || null,
-          height_in: p.height_in || null,
-          content_description: p.content_description || null,
-          is_dgr: p.is_dgr,
-          dgr_class: p.dgr_class || null,
-          is_damaged: p.is_damaged,
-          damage_description: p.is_damaged ? p.damage_description : null,
-          sender_name: p.sender_name || null,
-          pieces_count: parseInt(p.pieces_count, 10) || 1,
-          package_type: p.package_type || null,
-        }))));
-        formData.set("photos", JSON.stringify(photos.map((p) => ({
-          storage_path: p.storagePath,
-          file_name: p.fileName,
-          is_damage_photo: p.isDamagePhoto,
-        }))));
+        if (shipperName.trim()) formData.set("shipper_name", shipperName.trim());
+        if (masterTracking.trim()) formData.set("master_tracking", masterTracking.trim());
+        if (description.trim()) formData.set("description", description.trim());
+        if (wrNumber.trim() && wrNumber !== defaultWrNumber) {
+          formData.set("wr_number", wrNumber.trim());
+        }
+
+        formData.set(
+          "packages",
+          JSON.stringify(
+            packages.map((p) => ({
+              tracking_number: p.tracking_number.trim(),
+              carrier,
+              actual_weight_lb: p.actual_weight_lb || null,
+              length_in: p.length_in || null,
+              width_in: p.width_in || null,
+              height_in: p.height_in || null,
+              content_description: p.content_description || null,
+              is_dgr: p.is_dgr,
+              dgr_class: p.dgr_class || null,
+              is_damaged: p.is_damaged,
+              damage_description: p.is_damaged ? p.damage_description : null,
+              sender_name: null,
+              pieces_count: parseInt(p.pieces_count, 10) || 1,
+              package_type: p.package_type || null,
+              notes: p.pkg_notes || null,
+            })),
+          ),
+        );
+
+        // Collect all photos from all packages
+        const allPhotos = packages.flatMap((p) => p.photos);
+        formData.set(
+          "photos",
+          JSON.stringify(
+            allPhotos.map((p) => ({
+              storage_path: p.storagePath,
+              file_name: p.fileName,
+              is_damage_photo: p.isDamagePhoto,
+            })),
+          ),
+        );
+
+        // Attachments
+        if (attachments.length) {
+          formData.set(
+            "attachments",
+            JSON.stringify(
+              attachments.map((a) => ({
+                storage_path: a.storagePath,
+                file_name: a.fileName,
+              })),
+            ),
+          );
+        }
 
         const result = await createWarehouseReceipt(formData);
         setCreatedWr(result);
+        setPhase("success");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al crear recibo");
       }
     });
   }, [
-    warehouseId, agencyId, consigneeId, notes,
-    warehouseLocationId, packages, anyPackageDamaged, photos,
+    warehouseId, agencyId, consigneeId, notes, warehouseLocationId,
+    shipperName, masterTracking, description, wrNumber,
+    defaultWrNumber, carrier, packages, attachments, wrNumberError,
   ]);
 
-  // Success state — show summary + actions
-  if (createdWr) {
+  // ---------------------------------------------------------------------------
+  // Reset for another
+  // ---------------------------------------------------------------------------
+
+  // Reset form — keep warehouse, agency, and carrier (they repeat between receipts)
+  const resetForAnother = useCallback(() => {
+    setPackages([emptyPackage()]);
+    setConsigneeId("");
+    setConsigneeSearch("");
+    setConsignees([]);
+    setShipperName("");
+    setMasterTracking("");
+    setDescription("");
+    setNotes("");
+    setAttachments([]);
+    setWarehouseLocationId("");
+    setDuplicateInfo(null);
+    setCreatedWr(null);
+    setError(null);
+    setPhase("scan");
+  }, []);
+
+  // =========================================================================
+  // RENDER: Success
+  // =========================================================================
+
+  if (phase === "success" && createdWr) {
     return (
       <div className="mx-auto max-w-lg space-y-4">
-        <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-          <div className="text-2xl">✓</div>
-          <h3 className="mt-2 text-lg font-semibold text-green-800">Recibo creado</h3>
+        <div className="rounded-xl border border-green-200 bg-green-50 p-8 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+            <Package className="h-6 w-6 text-green-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-green-800">Recibo creado</h3>
           <p className="mt-1 font-mono text-sm text-green-700">{createdWr.wr_number}</p>
-          <p className="text-sm text-green-600">
-            {packages[0]?.tracking_number ?? ""}{packages.length > 1 ? ` (+${packages.length - 1} más)` : ""} • {isUnknownAgency ? "Desconocido" : selectedAgency?.name}
+          <p className="mt-1 text-sm text-green-600">
+            {packages[0]?.tracking_number ?? ""}
+            {packages.length > 1 ? ` (+${packages.length - 1} más)` : ""} •{" "}
+            {isUnknownAgency ? "Desconocido" : selectedAgency?.name}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex-1 rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Imprimir Etiqueta
           </button>
           <button
             type="button"
             onClick={resetForAnother}
-            className="flex-1 rounded-md bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+            className="flex-1 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 transition-colors"
           >
             Registrar Otra Caja
           </button>
@@ -416,7 +548,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
         <button
           type="button"
           onClick={() => router.push(`/${locale}/inventory/${createdWr.id}`)}
-          className="w-full text-center text-sm text-gray-500 hover:text-gray-700 underline"
+          className="w-full text-center text-sm text-gray-500 underline hover:text-gray-700"
         >
           Ver detalle del recibo
         </button>
@@ -424,65 +556,135 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
     );
   }
 
-  return (
-    <div className="mx-auto max-w-lg space-y-4">
-      {/* Progress bar */}
-      <div className="flex gap-1">
-        {activeSteps.map((s, i) => (
-          <div
-            key={s}
-            className={`h-1 flex-1 rounded-full ${
-              i <= stepIndex ? "bg-gray-900" : "bg-gray-200"
-            }`}
+  // =========================================================================
+  // RENDER: Scan Gate
+  // =========================================================================
+
+  if (phase === "scan") {
+    return (
+      <div className="mx-auto max-w-lg">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+              <ScanBarcode className="h-6 w-6 text-gray-600" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">Escanear Paquete</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Escanee con lector de códigos o escriba el número de guía
+            </p>
+          </div>
+
+          <input
+            ref={scanInputRef}
+            type="text"
+            value={packages[0]?.tracking_number ?? ""}
+            onChange={(e) => updatePackage(0, "tracking_number", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleScan();
+              }
+            }}
+            placeholder="Número de guía / Tracking"
+            autoFocus
+            className="w-full rounded-lg border border-gray-300 px-4 py-4 text-center font-mono text-lg tracking-wider text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200 focus:outline-none transition-colors"
           />
-        ))}
-      </div>
 
-      <div className="text-xs font-medium text-gray-500">
-        Paso {stepIndex + 1} de {activeSteps.length}: {STEP_LABELS[step]}
-      </div>
+          {error && (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+              {duplicateInfo && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/${locale}/warehouse-receipts`)}
+                  className="ml-2 underline"
+                >
+                  Ver recibo existente
+                </button>
+              )}
+            </div>
+          )}
 
+          <button
+            type="button"
+            onClick={handleScan}
+            disabled={isScanning}
+            className="mt-4 w-full rounded-lg bg-gray-900 py-3 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            {isScanning ? "Verificando..." : "Continuar"}
+          </button>
+
+          <p className="mt-3 text-center text-xs text-gray-400">
+            Presione Enter para continuar
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // RENDER: Receipt Form
+  // =========================================================================
+
+  return (
+    <div ref={formTopRef} className="mx-auto max-w-2xl space-y-4">
       {/* Error display */}
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div ref={errorRef} className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
-          {duplicateInfo && (
-            <button
-              type="button"
-              onClick={() => router.push(`/${locale}/warehouse-receipts`)}
-              className="ml-2 underline"
-            >
-              Ver recibo existente
-            </button>
-          )}
         </div>
       )}
 
-      {/* Step content */}
-      <div className="rounded-lg border bg-white p-4">
-        {/* STEP: Agency */}
-        {step === "agency" && (
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
-              Seleccionar bodega
-            </label>
-            <select
-              value={warehouseId}
-              onChange={(e) => setWarehouseId(e.target.value)}
-              disabled={warehouses.length <= 1}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
-            >
-              {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name} ({w.code})
-                </option>
-              ))}
-            </select>
+      {/* ----------------------------------------------------------------- */}
+      {/* WR Header + Shipment + Details Card                               */}
+      {/* ----------------------------------------------------------------- */}
+      <FormCard>
+        {/* WR Number + Warehouse */}
+        <FormSection title="Recibo de Almacén" icon={Building2}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">
+                Número de recibo
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={wrNumber}
+                  onChange={(e) => setWrNumber(e.target.value.toUpperCase())}
+                  className={`${inputCls} font-mono ${wrNumberError ? "border-red-300 focus:border-red-400 focus:ring-red-200" : ""}`}
+                />
+                {wrNumberError && (
+                  <p className="mt-1 text-xs text-red-500">{wrNumberError}</p>
+                )}
+              </div>
+            </div>
+            {warehouses.length > 1 && (
+              <div>
+                <label className="mb-1.5 block text-sm text-gray-600">Bodega</label>
+                <select
+                  value={warehouseId}
+                  onChange={(e) => setWarehouseId(e.target.value)}
+                  className={inputCls}
+                >
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({w.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </FormSection>
 
-            <label className="block text-sm font-medium text-gray-700">
-              Seleccionar agencia
+        {/* Shipment Info */}
+        <FormSection title="Envío" icon={Truck} description="Agencia, remitente y destinatario">
+          {/* Agency selection */}
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">
+              Agencia destino <span className="text-red-400">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {agencies.map((a) => (
                 <button
                   key={a.id}
@@ -492,7 +694,7 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                     setConsigneeId("");
                     setConsigneeSearch("");
                   }}
-                  className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     agencyId === a.id
                       ? "border-gray-900 bg-gray-900 text-white"
                       : "border-gray-200 text-gray-700 hover:bg-gray-50"
@@ -508,133 +710,215 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
                   setConsigneeId("");
                   setConsigneeSearch("");
                 }}
-                className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                   agencyId === "unknown"
                     ? "border-amber-600 bg-amber-600 text-white"
                     : "border-amber-200 text-amber-700 hover:bg-amber-50"
                 }`}
               >
-                Desconocido
+                ?
               </button>
             </div>
             {selectedAgency && (
-              <p className="text-sm text-gray-500">{selectedAgency.name}</p>
+              <p className="mt-1.5 text-xs text-gray-500">{selectedAgency.name}</p>
             )}
-            {agencyId === "unknown" && (
-              <p className="text-sm text-amber-600">
-                El paquete se registrará como WR desconocido. Las agencias podrán reclamarlo después.
+            {isUnknownAgency && (
+              <p className="mt-1.5 text-xs text-amber-600">
+                Se registrará como WR desconocido. Las agencias podrán reclamarlo después.
               </p>
             )}
           </div>
-        )}
 
-        {/* STEP: Tracking */}
-        {step === "tracking" && (
-          <div className="space-y-3">
-            {/* Package tabs when multiple packages */}
-            {packages.length > 1 && (
-              <div className="flex items-center gap-1 border-b pb-2">
-                {packages.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setCurrentPackageIndex(i)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                      currentPackageIndex === i
-                        ? "bg-gray-900 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    Paquete {i + 1}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <label className="block text-sm font-medium text-gray-700">
-              {packages.length > 1 ? `Paquete ${currentPackageIndex + 1} — ` : ""}Número de guía / Tracking
+          {/* Shipper */}
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">
+              Shipper / Remitente
             </label>
             <input
-              ref={trackingRef}
               type="text"
-              value={pkg.tracking_number}
-              onChange={(e) => updatePackage("tracking_number", e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleTrackingNext();
-                }
-              }}
-              placeholder="Escanee o escriba el tracking..."
-              autoFocus
-              className="w-full rounded-md border border-gray-300 px-3 py-3 text-lg font-mono focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+              value={shipperName}
+              onChange={(e) => setShipperName(e.target.value)}
+              placeholder="Nombre del remitente"
+              className={inputCls}
             />
-            <p className="text-xs text-gray-400">
-              Escanee con lector de códigos o escriba manualmente. Presione Enter para continuar.
-            </p>
-
-            {/* Add / Remove package buttons */}
-            {allowMultiPackage && (
-              <div className="flex items-center gap-2 border-t pt-2">
-                <button
-                  type="button"
-                  onClick={addPackage}
-                  className="rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50"
-                >
-                  + Agregar paquete
-                </button>
-                {packages.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removePackage(currentPackageIndex)}
-                    className="rounded-md border border-dashed border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:border-red-300 hover:bg-red-50"
-                  >
-                    Eliminar paquete {currentPackageIndex + 1}
-                  </button>
-                )}
-                {packages.length > 1 && (
-                  <span className="ml-auto text-xs text-gray-400">
-                    {packages.length} paquete{packages.length > 1 ? "s" : ""}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
-        )}
 
-        {/* STEP: Carrier */}
-        {step === "carrier" && (
-          <div className="space-y-3">
-            {/* Package tabs when multiple packages */}
-            {packages.length > 1 && (
-              <div className="flex items-center gap-1 border-b pb-2">
-                {packages.map((_, i) => (
+          {/* Consignee */}
+          {!isUnknownAgency && (
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">Destinatario</label>
+
+              {/* Show selected chip OR search input */}
+              {selectedConsignee ? (
+                <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-medium text-gray-900">{selectedConsignee.full_name}</span>
+                    <span className="font-mono text-xs text-gray-400">
+                      {selectedConsignee.casillero}
+                    </span>
+                  </div>
                   <button
-                    key={i}
                     type="button"
-                    onClick={() => setCurrentPackageIndex(i)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                      currentPackageIndex === i
-                        ? "bg-gray-900 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+                    onClick={() => {
+                      setConsigneeId("");
+                      setConsigneeSearch("");
+                      setConsignees([]);
+                    }}
+                    className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
                   >
-                    Paq. {i + 1}
+                    <X className="h-3.5 w-3.5" />
                   </button>
-                ))}
-              </div>
-            )}
-            <label className="block text-sm font-medium text-gray-700">
-              {packages.length > 1 ? `Paquete ${currentPackageIndex + 1} — ` : ""}Transportista
+                </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={consigneeSearch}
+                      onChange={(e) => {
+                        setConsigneeSearch(e.target.value);
+                        setConsigneeHighlight(0);
+                      }}
+                      onKeyDown={(e) => {
+                        if (!consignees.length) return;
+                        switch (e.key) {
+                          case "ArrowDown":
+                            e.preventDefault();
+                            setConsigneeHighlight((i) =>
+                              i < consignees.length - 1 ? i + 1 : 0,
+                            );
+                            break;
+                          case "ArrowUp":
+                            e.preventDefault();
+                            setConsigneeHighlight((i) =>
+                              i > 0 ? i - 1 : consignees.length - 1,
+                            );
+                            break;
+                          case "Enter":
+                            e.preventDefault();
+                            if (consigneeHighlight >= 0 && consignees[consigneeHighlight]) {
+                              const c = consignees[consigneeHighlight]!;
+                              setConsigneeId(c.id);
+                              setConsigneeSearch(c.full_name);
+                            }
+                            break;
+                          case "Escape":
+                            e.preventDefault();
+                            setConsignees([]);
+                            setConsigneeHighlight(-1);
+                            break;
+                        }
+                      }}
+                      placeholder="Buscar por nombre o casillero..."
+                      autoComplete="nope"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={consignees.length > 0}
+                      className={inputCls}
+                    />
+
+                    {consignees.length > 0 && (
+                      <div
+                        ref={consigneeListRef}
+                        className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+                      >
+                        {consignees.map((c, i) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setConsigneeId(c.id);
+                              setConsigneeSearch(c.full_name);
+                            }}
+                            onMouseEnter={() => setConsigneeHighlight(i)}
+                            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
+                              i === consigneeHighlight
+                                ? "bg-gray-100 text-gray-900"
+                                : "text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            <div>
+                              <span className="font-medium">{c.full_name}</span>
+                              <span className="ml-2 font-mono text-xs text-gray-400">
+                                {c.casillero}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-400">
+                              {c.cedula_ruc ?? c.city ?? ""}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {consigneeSearch.length >= 2 &&
+                    consignees.length === 0 &&
+                    !showQuickCreate && (
+                      <div className="mt-1.5 text-xs text-gray-400">
+                        No se encontró destinatario.{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowQuickCreate(true);
+                            setNewConsigneeName(consigneeSearch);
+                          }}
+                          className="text-gray-900 underline"
+                        >
+                          Crear nuevo
+                        </button>
+                      </div>
+                    )}
+
+                  {showQuickCreate && (
+                    <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+                      <p className="text-xs font-medium text-blue-700">
+                        Crear destinatario rápido
+                      </p>
+                      <input
+                        type="text"
+                        value={newConsigneeName}
+                        onChange={(e) => setNewConsigneeName(e.target.value)}
+                        placeholder="Nombre completo"
+                        className={inputCls}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleQuickCreate}
+                          disabled={creatingConsignee || !newConsigneeName.trim()}
+                          className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                        >
+                          {creatingConsignee ? "Creando..." : "Crear"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowQuickCreate(false)}
+                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Carrier */}
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">
+              Transportista <span className="text-red-400">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {CARRIERS.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => updatePackage("carrier", c)}
-                  className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
-                    pkg.carrier === c
+                  onClick={() => setCarrier(c)}
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    carrier === c
                       ? "border-gray-900 bg-gray-900 text-white"
                       : "border-gray-200 text-gray-700 hover:bg-gray-50"
                   }`}
@@ -644,460 +928,421 @@ export function WrReceiptForm({ agencies, warehouses, warehouseLocations = [], l
               ))}
             </div>
           </div>
-        )}
 
-        {/* STEP: Weight & Dimensions */}
-        {step === "weight" && (
-          <div className="space-y-4">
-            {/* Package tabs when multiple packages */}
-            {packages.length > 1 && (
-              <div className="flex items-center gap-1 border-b pb-2">
-                {packages.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setCurrentPackageIndex(i)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                      currentPackageIndex === i
-                        ? "bg-gray-900 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    Paq. {i + 1}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {packages.length > 1 ? `Paquete ${currentPackageIndex + 1} — ` : ""}Peso real (lb)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={pkg.actual_weight_lb}
-                onChange={(e) => updatePackage("actual_weight_lb", e.target.value)}
-                placeholder="0.00"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="block text-xs font-medium text-gray-700">Largo (in)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={pkg.length_in}
-                  onChange={(e) => updatePackage("length_in", e.target.value)}
-                  placeholder="0"
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700">Ancho (in)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={pkg.width_in}
-                  onChange={(e) => updatePackage("width_in", e.target.value)}
-                  placeholder="0"
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700">Alto (in)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={pkg.height_in}
-                  onChange={(e) => updatePackage("height_in", e.target.value)}
-                  placeholder="0"
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Weight summary */}
-            <div className="rounded-md bg-gray-50 p-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Peso real</span>
-                <span className="font-mono">{pkg.actual_weight_lb || "—"} lb</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Peso volumétrico</span>
-                <span className="font-mono">
-                  {volumetricWeight ? volumetricWeight.toFixed(2) : "—"} lb
-                </span>
-              </div>
-              <div className="mt-1 flex justify-between border-t pt-1 font-medium">
-                <span>Peso facturable</span>
-                <span className="font-mono">{billableWeight.toFixed(2)} lb</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP: Photos */}
-        {step === "photos" && (
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
-              Fotos del paquete
-            </label>
-            <PhotoUpload
-              bucket="wr-photos"
-              folder={`${warehouseId}/${Date.now()}`}
-              minPhotos={anyPackageDamaged ? 3 : 1}
-              maxPhotos={10}
-              isDamageMode={anyPackageDamaged}
-              onPhotosChange={setPhotos}
-            />
-          </div>
-        )}
-
-        {/* STEP: Consignee */}
-        {step === "consignee" && (
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
-              Destinatario
-            </label>
+          {/* Master Tracking */}
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">Master Tracking</label>
             <input
+              ref={masterTrackingRef}
               type="text"
-              value={consigneeSearch}
-              onChange={(e) => setConsigneeSearch(e.target.value)}
-              placeholder="Buscar por nombre o casillero..."
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+              value={masterTracking}
+              onChange={(e) => setMasterTracking(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              placeholder="Número de master tracking / AWB"
+              className={`${inputCls} font-mono`}
             />
-
-            {consignees.length > 0 && (
-              <div className="max-h-48 overflow-y-auto rounded-md border">
-                {consignees.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      setConsigneeId(c.id);
-                      setConsigneeSearch(c.full_name);
-                    }}
-                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50 ${
-                      consigneeId === c.id ? "bg-gray-100" : ""
-                    }`}
-                  >
-                    <div>
-                      <span className="font-medium">{c.full_name}</span>
-                      <span className="ml-2 font-mono text-xs text-gray-400">{c.casillero}</span>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {c.cedula_ruc ?? c.city ?? ""}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {consigneeSearch.length >= 2 && consignees.length === 0 && !showQuickCreate && (
-              <div className="text-xs text-gray-400">
-                <p>No se encontró destinatario.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowQuickCreate(true);
-                    setNewConsigneeName(consigneeSearch);
-                  }}
-                  className="mt-1 text-gray-900 underline"
-                >
-                  Crear destinatario nuevo
-                </button>
-              </div>
-            )}
-
-            {showQuickCreate && (
-              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 space-y-2">
-                <p className="text-xs font-medium text-blue-700">Crear destinatario rápido</p>
-                <input
-                  type="text"
-                  value={newConsigneeName}
-                  onChange={(e) => setNewConsigneeName(e.target.value)}
-                  placeholder="Nombre completo"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleQuickCreate}
-                    disabled={creatingConsignee || !newConsigneeName.trim()}
-                    className="rounded bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-                  >
-                    {creatingConsignee ? "Creando..." : "Crear"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickCreate(false)}
-                    className="rounded border px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {selectedConsignee && (
-              <div className="rounded-md bg-gray-50 p-2 text-sm">
-                Seleccionado: <span className="font-medium">{selectedConsignee.full_name}</span>
-                <span className="ml-2 font-mono text-xs text-gray-500">{selectedConsignee.casillero}</span>
-              </div>
-            )}
           </div>
-        )}
+        </FormSection>
 
-        {/* STEP: Details */}
-        {step === "details" && (
-          <div className="space-y-4">
-            {/* Package tabs when multiple packages */}
-            {packages.length > 1 && (
-              <div className="flex items-center gap-1 border-b pb-2">
-                {packages.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setCurrentPackageIndex(i)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                      currentPackageIndex === i
-                        ? "bg-gray-900 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    Paq. {i + 1}
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* Description & Notes */}
+        <FormSection title="Descripción" icon={FileText}>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">
+              Descripción del envío
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              placeholder="Descripción general del contenido..."
+              className={textareaCls}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">Notas</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Observaciones adicionales..."
+              className={textareaCls}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-600">
+              Adjuntos
+            </label>
+            <FileUpload
+              bucket="wr-attachments"
+              folder={`${warehouseId}/${Date.now()}`}
+              onFilesChange={setAttachments}
+            />
+          </div>
+        </FormSection>
 
-            {packages.length > 1 && (
-              <p className="text-xs font-medium text-gray-500">
-                Paquete {currentPackageIndex + 1} de {packages.length}
-              </p>
-            )}
-
-            <div className="flex gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Piezas</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={pkg.pieces_count}
-                  onChange={(e) => updatePackage("pieces_count", e.target.value)}
-                  className="mt-1 w-24 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Tipo de paquete</label>
-                <select
-                  value={pkg.package_type}
-                  onChange={(e) => updatePackage("package_type", e.target.value)}
-                  className="mt-1 w-36 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-                >
-                  {PACKAGE_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {warehouseLocations.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Ubicación en bodega
-                </label>
-                <select
-                  value={warehouseLocationId}
-                  onChange={(e) => setWarehouseLocationId(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-                >
-                  <option value="">Sin asignar</option>
-                  {warehouseLocations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.zone_name ? `${loc.zone_name} — ` : ""}{loc.location_code}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
+        {/* Warehouse Location (if available) */}
+        {warehouseLocations.length > 0 && (
+          <FormSection title="Ubicación" icon={Building2}>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Nombre del remitente
+              <label className="mb-1.5 block text-sm text-gray-600">
+                Ubicación en bodega
               </label>
-              <input
-                type="text"
-                value={pkg.sender_name}
-                onChange={(e) => updatePackage("sender_name", e.target.value)}
-                placeholder="Opcional"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-              />
+              <select
+                value={warehouseLocationId}
+                onChange={(e) => setWarehouseLocationId(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">Sin asignar</option>
+                {warehouseLocations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.zone_name ? `${loc.zone_name} — ` : ""}
+                    {loc.location_code}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={pkg.is_damaged}
-                  onChange={(e) => updatePackage("is_damaged", e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                Paquete dañado
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={pkg.is_dgr}
-                  onChange={(e) => updatePackage("is_dgr", e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                Mercancía peligrosa (DGR)
-              </label>
-            </div>
-
-            {pkg.is_damaged && (
-              <div>
-                <label className="block text-sm font-medium text-red-700">
-                  Descripción del daño (requerido)
-                </label>
-                <textarea
-                  value={pkg.damage_description}
-                  onChange={(e) => updatePackage("damage_description", e.target.value)}
-                  rows={3}
-                  className="mt-1 w-full rounded-md border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Notas</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                placeholder="Observaciones adicionales..."
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-              />
-            </div>
-          </div>
+          </FormSection>
         )}
+      </FormCard>
 
-        {/* STEP: Confirm */}
-        {step === "confirm" && (
-          <div className="space-y-3">
-            <h3 className="font-medium text-gray-900">Resumen del recibo</h3>
-            <div className="divide-y rounded-md border text-sm">
-              <div className="flex justify-between px-3 py-2">
-                <span className="text-gray-500">Agencia</span>
-                <span className={`font-medium ${isUnknownAgency ? "text-amber-600" : ""}`}>
-                  {isUnknownAgency ? "Desconocido" : selectedAgency?.name}
-                </span>
-              </div>
-              <div className="flex justify-between px-3 py-2">
-                <span className="text-gray-500">Destinatario</span>
-                <span>{selectedConsignee?.full_name ?? "—"}</span>
-              </div>
-              <div className="flex justify-between px-3 py-2">
-                <span className="text-gray-500">Paquetes</span>
-                <span>{packages.length}</span>
-              </div>
-            </div>
+      {/* ----------------------------------------------------------------- */}
+      {/* Package Cards                                                      */}
+      {/* ----------------------------------------------------------------- */}
+      {packages.map((pkg, pkgIndex) => (
+        <PackageCard
+          key={pkgIndex}
+          pkg={pkg}
+          index={pkgIndex}
+          total={packages.length}
+          warehouseId={warehouseId}
+          onUpdate={(field, value) => updatePackage(pkgIndex, field, value)}
+          onRemove={packages.length > 1 ? () => removePackage(pkgIndex) : undefined}
+        />
+      ))}
 
-            {/* Per-package summary */}
-            {packages.map((p, i) => (
-              <div key={i} className="divide-y rounded-md border text-sm">
-                {packages.length > 1 && (
-                  <div className="bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600">
-                    Paquete {i + 1}
-                  </div>
-                )}
-                <div className="flex justify-between px-3 py-2">
-                  <span className="text-gray-500">Guía</span>
-                  <span className="font-mono">{p.tracking_number}</span>
-                </div>
-                <div className="flex justify-between px-3 py-2">
-                  <span className="text-gray-500">Transportista</span>
-                  <span>{p.carrier}</span>
-                </div>
-                {(p.actual_weight_lb || p.length_in) && (
-                  <div className="flex justify-between px-3 py-2">
-                    <span className="text-gray-500">Peso</span>
-                    <span className="font-mono">{p.actual_weight_lb || "—"} lb</span>
-                  </div>
-                )}
-                <div className="flex justify-between px-3 py-2">
-                  <span className="text-gray-500">Piezas</span>
-                  <span>{p.pieces_count}</span>
-                </div>
-                <div className="flex justify-between px-3 py-2">
-                  <span className="text-gray-500">Tipo</span>
-                  <span>{p.package_type || "—"}</span>
-                </div>
-                {p.is_damaged && (
-                  <div className="flex justify-between px-3 py-2 text-red-700">
-                    <span>Dañado</span>
-                    <span>Sí</span>
-                  </div>
-                )}
-                {p.is_dgr && (
-                  <div className="flex justify-between px-3 py-2 text-orange-700">
-                    <span>DGR</span>
-                    <span>Sí</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+      {/* Add package button */}
+      {allowMultiPackage && (
+        <button
+          type="button"
+          onClick={addPackage}
+          className="w-full rounded-xl border-2 border-dashed border-gray-200 py-3 text-sm font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+        >
+          + Agregar paquete
+        </button>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Actions                                                            */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="flex items-center justify-between pt-2 pb-8">
+        <button
+          type="button"
+          onClick={() => {
+            setPhase("scan");
+            setError(null);
+          }}
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isPending || !!wrNumberError}
+          className="rounded-lg bg-gray-900 px-8 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
+        >
+          {isPending ? "Guardando..." : "Crear Recibo"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PackageCard sub-component
+// ---------------------------------------------------------------------------
+
+function PackageCard({
+  pkg,
+  index,
+  total,
+  warehouseId,
+  onUpdate,
+  onRemove,
+}: {
+  pkg: PackageData;
+  index: number;
+  total: number;
+  warehouseId: string;
+  onUpdate: (field: keyof PackageData, value: string | boolean | UploadedPhoto[]) => void;
+  onRemove?: () => void;
+}) {
+  const volumetricWeight = useMemo(() => {
+    const l = parseFloat(pkg.length_in);
+    const w = parseFloat(pkg.width_in);
+    const h = parseFloat(pkg.height_in);
+    if (l > 0 && w > 0 && h > 0) {
+      return calculateVolumetricWeight(l, w, h, 166);
+    }
+    return null;
+  }, [pkg.length_in, pkg.width_in, pkg.height_in]);
+
+  const billableWeight = useMemo(() => {
+    const actual = parseFloat(pkg.actual_weight_lb) || null;
+    return calculateBillableWeight(actual, volumetricWeight);
+  }, [pkg.actual_weight_lb, volumetricWeight]);
+
+  const [photoFolder] = useState(
+    () => `${warehouseId}/${Date.now()}-pkg${index}`,
+  );
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      {/* Package header */}
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-gray-500" />
+          <h3 className="text-sm font-semibold text-gray-900">
+            Paquete {index + 1}
+            {total > 1 && (
+              <span className="ml-1 text-xs font-normal text-gray-400">
+                de {total}
+              </span>
+            )}
+          </h3>
+        </div>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+            title="Quitar paquete"
+          >
+            <X className="h-4 w-4" />
+          </button>
         )}
       </div>
 
-      {/* Navigation buttons */}
-      <div className="flex gap-2">
-        {stepIndex > 0 && (
-          <button
-            type="button"
-            onClick={goBack}
-            className="rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Atrás
-          </button>
+      <div className="space-y-4 px-5 py-4">
+        {/* Tracking number */}
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">
+            Número de guía <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={pkg.tracking_number}
+            onChange={(e) => onUpdate("tracking_number", e.target.value)}
+            placeholder="Tracking number"
+            className={`${inputCls} font-mono`}
+            readOnly={index === 0}
+          />
+          {index === 0 && (
+            <p className="mt-1 text-xs text-gray-400">Escaneado en el paso anterior</p>
+          )}
+        </div>
+
+        {/* Weight + Dimensions */}
+        <div className="grid grid-cols-4 gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Peso (lb)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={pkg.actual_weight_lb}
+              onChange={(e) => onUpdate("actual_weight_lb", e.target.value)}
+              placeholder="0.00"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Largo (in)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={pkg.length_in}
+              onChange={(e) => onUpdate("length_in", e.target.value)}
+              placeholder="0"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Ancho (in)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={pkg.width_in}
+              onChange={(e) => onUpdate("width_in", e.target.value)}
+              placeholder="0"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Alto (in)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={pkg.height_in}
+              onChange={(e) => onUpdate("height_in", e.target.value)}
+              placeholder="0"
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        {/* Weight summary */}
+        {(pkg.actual_weight_lb || volumetricWeight) && (
+          <div className="flex items-center gap-4 rounded-lg bg-gray-50 px-3 py-2 text-sm">
+            <div className="flex items-center gap-1">
+              <span className="text-gray-500">Vol:</span>
+              <span className="font-mono text-gray-700">
+                {volumetricWeight ? volumetricWeight.toFixed(2) : "—"} lb
+              </span>
+            </div>
+            <div className="h-4 w-px bg-gray-200" />
+            <div className="flex items-center gap-1">
+              <span className="text-gray-500">Facturable:</span>
+              <span className="font-mono font-medium text-gray-900">
+                {billableWeight.toFixed(2)} lb
+              </span>
+            </div>
+          </div>
         )}
 
-        <div className="flex-1" />
+        {/* Type + Pieces */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Tipo de paquete
+            </label>
+            <select
+              value={pkg.package_type}
+              onChange={(e) => onUpdate("package_type", e.target.value)}
+              className={inputCls}
+            >
+              {PACKAGE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Piezas
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={pkg.pieces_count}
+              onChange={(e) => onUpdate("pieces_count", e.target.value)}
+              className={inputCls}
+            />
+          </div>
+        </div>
 
-        {step === "tracking" ? (
-          <button
-            type="button"
-            onClick={handleTrackingNext}
-            className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            Verificar y continuar
-          </button>
-        ) : step === "confirm" ? (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isPending}
-            className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-          >
-            {isPending ? "Guardando..." : "Confirmar Recibo"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={
-              (step === "agency" && !agencyId) ||
-              (step === "carrier" && !pkg.carrier)
-            }
-            className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-          >
-            Siguiente
-          </button>
+        {/* Photos */}
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">Fotos</label>
+          <PhotoUpload
+            bucket="wr-photos"
+            folder={photoFolder}
+            minPhotos={pkg.is_damaged ? 3 : 1}
+            maxPhotos={10}
+            isDamageMode={pkg.is_damaged}
+            onPhotosChange={(photos) => onUpdate("photos", photos)}
+          />
+        </div>
+
+        {/* Content description */}
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">
+            Descripción del contenido
+          </label>
+          <input
+            type="text"
+            value={pkg.content_description}
+            onChange={(e) => onUpdate("content_description", e.target.value)}
+            placeholder="Ej: Electrónicos, ropa, repuestos..."
+            className={inputCls}
+          />
+        </div>
+
+        {/* Package notes */}
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">
+            Notas del paquete
+          </label>
+          <textarea
+            value={pkg.pkg_notes}
+            onChange={(e) => onUpdate("pkg_notes", e.target.value)}
+            rows={2}
+            placeholder="Observaciones sobre este paquete..."
+            className={textareaCls}
+          />
+        </div>
+
+        {/* DGR + Damage flags */}
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={pkg.is_damaged}
+              onChange={(e) => onUpdate("is_damaged", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+            />
+            Paquete dañado
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={pkg.is_dgr}
+              onChange={(e) => onUpdate("is_dgr", e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+            />
+            Mercancía peligrosa (DGR)
+          </label>
+        </div>
+
+        {/* Damage description */}
+        {pkg.is_damaged && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-red-700">
+              Descripción del daño <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              value={pkg.damage_description}
+              onChange={(e) => onUpdate("damage_description", e.target.value)}
+              rows={2}
+              placeholder="Describa el daño observado..."
+              className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:ring-1 focus:ring-red-200 focus:outline-none transition-colors"
+            />
+          </div>
+        )}
+
+        {/* DGR class */}
+        {pkg.is_dgr && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-orange-700">
+              Clase DGR
+            </label>
+            <input
+              type="text"
+              value={pkg.dgr_class}
+              onChange={(e) => onUpdate("dgr_class", e.target.value)}
+              placeholder="Ej: Clase 3 - Líquidos inflamables"
+              className={inputCls}
+            />
+          </div>
         )}
       </div>
     </div>

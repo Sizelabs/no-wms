@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WrReceiptForm } from "@/components/warehouse/wr-receipt-form";
+import { generateWrNumber } from "@/lib/actions/warehouse-receipts";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
@@ -23,7 +24,6 @@ export default async function NewWarehouseReceiptPage({
     redirect(`/${locale}/login`);
   }
 
-  // Fetch agencies and warehouses for the form
   const warehouseScope = await getUserWarehouseScope();
 
   let warehousesQuery = supabase
@@ -36,11 +36,16 @@ export default async function NewWarehouseReceiptPage({
     warehousesQuery = warehousesQuery.in("id", warehouseScope);
   }
 
-  const [agenciesResult, warehousesResult] = await Promise.all([
-    supabase.from("agencies").select("id, name, code, allow_multi_package").eq("is_active", true).order("name"),
+  const [agenciesResult, warehousesResult, defaultWrNumber] = await Promise.all([
+    supabase
+      .from("agencies")
+      .select("id, name, code, allow_multi_package")
+      .eq("is_active", true)
+      .order("name"),
     warehouseScope !== null && warehouseScope.length === 0
       ? Promise.resolve({ data: [] })
       : warehousesQuery,
+    generateWrNumber(),
   ]);
 
   const agencies = agenciesResult.data ?? [];
@@ -52,6 +57,7 @@ export default async function NewWarehouseReceiptPage({
       <WrReceiptForm
         agencies={agencies}
         warehouses={warehouses}
+        defaultWrNumber={defaultWrNumber}
         locale={locale}
       />
     </div>
