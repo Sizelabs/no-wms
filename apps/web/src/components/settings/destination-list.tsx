@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { upsertCourierDestination } from "@/lib/actions/couriers";
 import { deleteDestination } from "@/lib/actions/destinations";
 
 interface DestinationRow {
@@ -19,17 +20,25 @@ interface DestinationRow {
   is_active: boolean;
 }
 
+interface CourierWithDestinations {
+  id: string;
+  name: string;
+  organization_id: string;
+  courier_destinations: { destination_id: string; is_active: boolean }[];
+}
+
 interface DestinationListProps {
   data: DestinationRow[];
   canUpdate?: boolean;
   canDelete?: boolean;
+  couriers?: CourierWithDestinations[];
 }
 
 function formatLocation(d: DestinationRow): string {
   return [d.city, d.state, d.country_name ?? d.country_code].filter(Boolean).join(", ");
 }
 
-export function DestinationList({ data, canUpdate = false, canDelete = false }: DestinationListProps) {
+export function DestinationList({ data, canUpdate = false, canDelete = false, couriers = [] }: DestinationListProps) {
   const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -88,13 +97,18 @@ export function DestinationList({ data, canUpdate = false, canDelete = false }: 
               <th className="px-4 py-3">Destino</th>
               <th className="px-4 py-3">Moneda</th>
               <th className="px-4 py-3">Estado</th>
+              {couriers.map((c) => (
+                <th key={c.id} className="px-4 py-3 text-center">
+                  {couriers.length === 1 ? "Cobertura" : c.name}
+                </th>
+              ))}
               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={4}
+            colSpan={4 + couriers.length}
             emptyMessage="No hay destinos registrados."
             renderRow={(d) => (
               <tr key={d.id} className="hover:bg-gray-50">
@@ -111,6 +125,41 @@ export function DestinationList({ data, canUpdate = false, canDelete = false }: 
                     {d.is_active ? "Activo" : "Inactivo"}
                   </span>
                 </td>
+                {couriers.map((c) => {
+                  const cd = c.courier_destinations.find(
+                    (cd) => cd.destination_id === d.id,
+                  );
+                  const isEnabled = cd?.is_active ?? false;
+                  return (
+                    <td key={c.id} className="px-4 py-3 text-center">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isEnabled}
+                        disabled={isPending}
+                        onClick={() => {
+                          startTransition(async () => {
+                            await upsertCourierDestination(
+                              c.id,
+                              d.id,
+                              c.organization_id,
+                              !isEnabled,
+                            );
+                          });
+                        }}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                          isEnabled ? "bg-green-600" : "bg-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                            isEnabled ? "translate-x-4.5" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    </td>
+                  );
+                })}
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     {canUpdate && (
