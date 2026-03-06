@@ -36,11 +36,13 @@ export function Topbar({ userName, userRole, userEmail, orgName, locale }: Topba
         <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="text-sm font-medium leading-tight text-gray-900">{userName}</p>
-            {orgName && (
-              <p className="text-xs leading-tight text-gray-500">
-                {orgName} <span className="text-gray-300">|</span> {userRole}
-              </p>
-            )}
+            <p className="text-xs leading-tight text-gray-500">
+              {orgName ? (
+                <>{orgName} <span className="text-gray-300">|</span> {userRole}</>
+              ) : (
+                userRole
+              )}
+            </p>
           </div>
           <UserMenu
             userName={userName}
