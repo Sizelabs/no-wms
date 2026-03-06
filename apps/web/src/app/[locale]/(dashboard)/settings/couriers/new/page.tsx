@@ -3,7 +3,6 @@ import { getTranslations } from "next-intl/server";
 
 import { CourierCreateForm } from "@/components/couriers/courier-create-form";
 import { PageHeader } from "@/components/layout/page-header";
-import { getAllCountries } from "@/lib/actions/locations";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,15 +29,10 @@ export default async function NewCourierPage({
 
   if (!profile?.organization_id) redirect(`/${locale}`);
 
-  const countries = await getAllCountries();
-
   return (
     <div className="space-y-6">
       <PageHeader title={t("new")} />
-      <CourierCreateForm
-        organizationId={profile.organization_id}
-        countries={countries}
-      />
+      <CourierCreateForm organizationId={profile.organization_id} />
     </div>
   );
 }

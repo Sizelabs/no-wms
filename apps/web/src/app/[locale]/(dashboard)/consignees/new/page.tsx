@@ -4,7 +4,6 @@ import { ConsigneeCreateForm } from "@/components/consignees/consignee-create-fo
 import { PageHeader } from "@/components/layout/page-header";
 import { getAgencies } from "@/lib/actions/agencies";
 import { generateCasillero } from "@/lib/actions/consignees";
-import { getAllCountries } from "@/lib/actions/locations";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function NewConsigneePage({
@@ -18,10 +17,7 @@ export default async function NewConsigneePage({
   await requirePermission(locale, "consignees", "create");
   const { agency_id } = await searchParams;
 
-  const [{ data: agencies }, countries] = await Promise.all([
-    getAgencies(),
-    getAllCountries(),
-  ]);
+  const { data: agencies } = await getAgencies();
   if (!agencies) {
     notFound();
   }
@@ -48,7 +44,6 @@ export default async function NewConsigneePage({
       <PageHeader title="Nuevo Consignatario" />
       <ConsigneeCreateForm
         agencies={agencyOptions}
-        countries={countries}
         defaultAgencyId={agency_id}
         defaultCasillero={defaultCasillero}
       />

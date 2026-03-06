@@ -18,7 +18,7 @@ export default async function EditDestinationPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`Editar — ${destination.city} (${destination.country_code})`} />
+      <PageHeader title={`Editar — ${[destination.city, destination.state, destination.country_code].filter(Boolean).join(", ")}`} />
       <DestinationForm destination={destination} />
     </div>
   );

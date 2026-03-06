@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { CityTypeahead } from "@/components/ui/city-typeahead";
 import {
   Field,
   FormActions,
@@ -16,8 +17,7 @@ import {
   secondaryBtnClass,
   selectClass,
 } from "@/components/ui/form-section";
-import type { CityOption, Country } from "@/components/ui/location-selects";
-import { LocationSelects } from "@/components/ui/location-selects";
+import type { CitySearchResult } from "@/lib/actions/locations";
 import {
   getTimezoneForCoordinates,
   getTimezonesOfCountry,
@@ -40,10 +40,9 @@ interface WarehouseData {
 
 interface WarehouseEditFormProps {
   warehouse: WarehouseData;
-  countries: Country[];
 }
 
-export function WarehouseEditForm({ warehouse, countries }: WarehouseEditFormProps) {
+export function WarehouseEditForm({ warehouse }: WarehouseEditFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
   const { notify } = useNotification();
@@ -51,16 +50,16 @@ export function WarehouseEditForm({ warehouse, countries }: WarehouseEditFormPro
   const [timezone, setTimezone] = useState(warehouse.timezone);
   const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
 
-  function handleCityChange(city: CityOption | null, countryCode: string) {
-    if (!countryCode) {
+  function handleCitySelect(result: CitySearchResult | null) {
+    if (!result) {
       setTimezones([]);
       return;
     }
-    getTimezonesOfCountry(countryCode).then((tz) => {
+    getTimezonesOfCountry(result.countryCode).then((tz) => {
       setTimezones(tz);
     });
-    if (city?.longitude) {
-      getTimezoneForCoordinates(countryCode, city.longitude).then((tz) => {
+    if (result.longitude) {
+      getTimezoneForCoordinates(result.countryCode, result.longitude).then((tz) => {
         if (tz) setTimezone(tz);
       });
     }
@@ -110,13 +109,18 @@ export function WarehouseEditForm({ warehouse, countries }: WarehouseEditFormPro
               />
             </Field>
           </div>
-          <LocationSelects
-            countries={countries}
-            defaultCountryName={warehouse.country ?? undefined}
-            defaultCityName={warehouse.city ?? undefined}
-            required
-            onCityChange={handleCityChange}
-          />
+          <Field label="Ubicación" htmlFor="location_city" required>
+            <CityTypeahead
+              id="location_city"
+              defaultCity={warehouse.city ?? ""}
+              defaultCountry={warehouse.country ?? ""}
+              countryFieldName="country"
+              countryCodeFieldName={null}
+              stateFieldName={null}
+              onSelect={handleCitySelect}
+              required
+            />
+          </Field>
           <Field label="Zona Horaria" htmlFor="timezone" required>
             {timezones.length > 0 ? (
               <select

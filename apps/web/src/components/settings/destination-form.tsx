@@ -4,14 +4,17 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { inputClass, selectClass } from "@/components/ui/form-section";
+import { CityTypeahead } from "@/components/ui/city-typeahead";
+import { selectClass } from "@/components/ui/form-section";
 import { createDestination, updateDestination } from "@/lib/actions/destinations";
 
 interface DestinationFormProps {
   destination?: {
     id: string;
     city: string;
+    state: string | null;
     country_code: string;
+    country_name: string | null;
     currency: string;
     is_active: boolean;
   };
@@ -52,27 +55,13 @@ export function DestinationForm({ destination }: DestinationFormProps) {
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-xl space-y-4 rounded-lg border bg-white p-6">
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Ciudad</label>
-        <input
-          name="city"
-          type="text"
+        <label className="mb-1 block text-sm font-medium text-gray-700">Destino</label>
+        <CityTypeahead
+          defaultCity={destination?.city}
+          defaultState={destination?.state ?? ""}
+          defaultCountryCode={destination?.country_code}
+          defaultCountry={destination?.country_name ?? ""}
           required
-          defaultValue={destination?.city ?? ""}
-          placeholder="Ej: Panama City"
-          className={inputClass}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Código de País</label>
-        <input
-          name="country_code"
-          type="text"
-          required
-          maxLength={3}
-          defaultValue={destination?.country_code ?? ""}
-          placeholder="Ej: PA"
-          className={inputClass}
         />
       </div>
 

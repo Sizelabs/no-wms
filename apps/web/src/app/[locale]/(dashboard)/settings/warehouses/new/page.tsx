@@ -3,7 +3,6 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WarehouseCreateForm } from "@/components/warehouses/warehouse-create-form";
-import { getAllCountries } from "@/lib/actions/locations";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,15 +29,10 @@ export default async function NewWarehousePage({
 
   if (!profile?.organization_id) redirect(`/${locale}`);
 
-  const countries = await getAllCountries();
-
   return (
     <div className="space-y-6">
       <PageHeader title={`${t("warehouses")} — Nueva`} />
-      <WarehouseCreateForm
-        organizationId={profile.organization_id}
-        countries={countries}
-      />
+      <WarehouseCreateForm organizationId={profile.organization_id} />
     </div>
   );
 }

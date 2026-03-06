@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { CityTypeahead } from "@/components/ui/city-typeahead";
 import {
   Field,
   FormActions,
@@ -16,8 +17,6 @@ import {
   secondaryBtnClass,
   selectClass,
 } from "@/components/ui/form-section";
-import type { Country } from "@/components/ui/location-selects";
-import { LocationSelects } from "@/components/ui/location-selects";
 import { updateCourier } from "@/lib/actions/couriers";
 
 interface Courier {
@@ -35,10 +34,9 @@ interface Courier {
 
 interface CourierEditFormProps {
   courier: Courier;
-  countries: Country[];
 }
 
-export function CourierEditForm({ courier, countries }: CourierEditFormProps) {
+export function CourierEditForm({ courier }: CourierEditFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
   const { notify } = useNotification();
@@ -120,11 +118,16 @@ export function CourierEditForm({ courier, countries }: CourierEditFormProps) {
               className={inputClass}
             />
           </Field>
-          <LocationSelects
-            countries={countries}
-            defaultCountryName={courier.country ?? undefined}
-            defaultCityName={courier.city ?? undefined}
-          />
+          <Field label="Ciudad" htmlFor="location_city">
+            <CityTypeahead
+              id="location_city"
+              defaultCity={courier.city ?? ""}
+              defaultCountry={courier.country ?? ""}
+              countryFieldName="country"
+              countryCodeFieldName={null}
+              stateFieldName={null}
+            />
+          </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Teléfono" htmlFor="phone">
               <input

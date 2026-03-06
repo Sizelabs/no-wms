@@ -3,7 +3,6 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WarehouseCreateForm } from "@/components/warehouses/warehouse-create-form";
-import { getAllCountries } from "@/lib/actions/locations";
 import { getOrganization } from "@/lib/actions/organizations";
 import { requirePermission } from "@/lib/auth/require-permission";
 
@@ -16,10 +15,7 @@ export default async function ForwarderNewWarehousePage({
   await requirePermission(locale, "warehouses", "create");
   const t = await getTranslations("nav");
 
-  const [{ data: forwarder }, countries] = await Promise.all([
-    getOrganization(id),
-    getAllCountries(),
-  ]);
+  const { data: forwarder } = await getOrganization(id);
   if (!forwarder) notFound();
 
   return (
@@ -28,7 +24,7 @@ export default async function ForwarderNewWarehousePage({
         title={`${t("warehouses")} — Nueva`}
         description={forwarder.name}
       />
-      <WarehouseCreateForm organizationId={id} countries={countries} />
+      <WarehouseCreateForm organizationId={id} />
     </div>
   );
 }

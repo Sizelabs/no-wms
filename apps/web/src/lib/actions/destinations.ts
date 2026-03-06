@@ -1,5 +1,6 @@
 "use server";
 
+import { Country } from "country-state-city";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
@@ -20,16 +21,28 @@ async function getAuthProfile() {
   return { supabase, profile };
 }
 
+/** Resolve country name from ISO code for display */
+function resolveCountryName(countryCode: string): string | null {
+  const c = Country.getCountryByCode(countryCode);
+  return c?.name ?? null;
+}
+
 export async function getDestinationsList() {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("destinations")
-    .select("id, city, country_code, currency, is_active, created_at")
+    .select("id, city, state, country_code, currency, is_active, created_at")
     .order("city");
 
   if (error) return { data: null, error: error.message };
-  return { data, error: null };
+
+  const enriched = (data ?? []).map((d) => ({
+    ...d,
+    country_name: resolveCountryName(d.country_code),
+  }));
+
+  return { data: enriched, error: null };
 }
 
 export async function getDestination(id: string) {
@@ -41,26 +54,37 @@ export async function getDestination(id: string) {
     .single();
 
   if (error) return { data: null, error: error.message };
-  return { data, error: null };
+
+  return {
+    data: data ? { ...data, country_name: resolveCountryName(data.country_code) } : null,
+    error: null,
+  };
 }
 
 export async function createDestination(formData: FormData): Promise<{ id: string } | { error: string }> {
   const { supabase, profile } = await getAuthProfile();
   if (!profile) return { error: "No autenticado" };
 
+  const city = formData.get("city") as string;
+  const state = formData.get("state") as string;
+  const countryCode = formData.get("country_code") as string;
+
+  if (!city || !countryCode) return { error: "Ciudad y país son requeridos" };
+
   const { data, error } = await supabase
     .from("destinations")
     .insert({
       organization_id: profile.organization_id,
-      city: formData.get("city") as string,
-      country_code: formData.get("country_code") as string,
+      city,
+      state: state || null,
+      country_code: countryCode,
       currency: (formData.get("currency") as string) || "USD",
     })
     .select("id")
     .single();
 
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe un destino con esa ciudad y código de país" };
+    if (error.code === "23505") return { error: "Ya existe un destino con esa ciudad y país" };
     return { error: error.message };
   }
   revalidatePath("/settings/destinations");
@@ -72,10 +96,18 @@ export async function updateDestination(id: string, formData: FormData): Promise
   if (!profile) return { error: "No autenticado" };
 
   const updates: Record<string, unknown> = {};
-  for (const field of ["city", "country_code", "currency"]) {
-    const val = formData.get(field) as string | null;
-    if (val !== null) updates[field] = val || null;
-  }
+
+  const city = formData.get("city") as string | null;
+  const state = formData.get("state") as string | null;
+  const countryCode = formData.get("country_code") as string | null;
+
+  if (city !== null) updates.city = city || null;
+  if (state !== null) updates.state = state || null;
+  if (countryCode !== null) updates.country_code = countryCode || null;
+
+  const currency = formData.get("currency") as string | null;
+  if (currency !== null) updates.currency = currency || null;
+
   const isActive = formData.get("is_active");
   if (isActive !== null) updates.is_active = isActive === "true";
 

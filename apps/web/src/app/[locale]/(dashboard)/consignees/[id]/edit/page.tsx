@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { ConsigneeEditForm } from "@/components/consignees/consignee-edit-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { getConsignee } from "@/lib/actions/consignees";
-import { getAllCountries } from "@/lib/actions/locations";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function EditConsigneePage({
@@ -15,10 +14,7 @@ export default async function EditConsigneePage({
   const { locale, id } = await params;
   await requirePermission(locale, "consignees", "update");
 
-  const [{ data: consignee, error }, countries] = await Promise.all([
-    getConsignee(id),
-    getAllCountries(),
-  ]);
+  const { data: consignee, error } = await getConsignee(id);
 
   if (error || !consignee) {
     notFound();
@@ -34,7 +30,7 @@ export default async function EditConsigneePage({
           Volver al detalle
         </Link>
       </PageHeader>
-      <ConsigneeEditForm consignee={consignee} countries={countries} />
+      <ConsigneeEditForm consignee={consignee} />
     </div>
   );
 }

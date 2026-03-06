@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { CityTypeahead } from "@/components/ui/city-typeahead";
 import {
   Field,
   FormActions,
@@ -16,8 +17,7 @@ import {
   secondaryBtnClass,
   selectClass,
 } from "@/components/ui/form-section";
-import type { CityOption, Country } from "@/components/ui/location-selects";
-import { LocationSelects } from "@/components/ui/location-selects";
+import type { CitySearchResult } from "@/lib/actions/locations";
 import {
   getTimezoneForCoordinates,
   getTimezonesOfCountry,
@@ -31,12 +31,10 @@ interface TimezoneOption {
 
 interface WarehouseCreateFormProps {
   organizationId: string;
-  countries: Country[];
 }
 
 export function WarehouseCreateForm({
   organizationId,
-  countries,
 }: WarehouseCreateFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
@@ -45,20 +43,18 @@ export function WarehouseCreateForm({
   const [timezone, setTimezone] = useState("America/New_York");
   const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
 
-  function handleCityChange(city: CityOption | null, countryCode: string) {
-    if (!countryCode) {
+  function handleCitySelect(result: CitySearchResult | null) {
+    if (!result) {
       setTimezones([]);
       return;
     }
-    // Load timezones for country
-    getTimezonesOfCountry(countryCode).then((tz) => {
+    getTimezonesOfCountry(result.countryCode).then((tz) => {
       setTimezones(tz);
       const firstTz = tz[0];
       if (firstTz) setTimezone(firstTz.zoneName);
     });
-    // If city has coordinates, pick best timezone
-    if (city?.longitude) {
-      getTimezoneForCoordinates(countryCode, city.longitude).then((tz) => {
+    if (result.longitude) {
+      getTimezoneForCoordinates(result.countryCode, result.longitude).then((tz) => {
         if (tz) setTimezone(tz);
       });
     }
@@ -108,11 +104,16 @@ export function WarehouseCreateForm({
               />
             </Field>
           </div>
-          <LocationSelects
-            countries={countries}
-            required
-            onCityChange={handleCityChange}
-          />
+          <Field label="Ubicación" htmlFor="location_city" required>
+            <CityTypeahead
+              id="location_city"
+              countryFieldName="country"
+              countryCodeFieldName={null}
+              stateFieldName={null}
+              onSelect={handleCitySelect}
+              required
+            />
+          </Field>
           <Field label="Zona Horaria" htmlFor="timezone" required>
             <select
               id="timezone"

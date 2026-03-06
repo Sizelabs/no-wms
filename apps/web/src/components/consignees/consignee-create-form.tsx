@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { CityTypeahead } from "@/components/ui/city-typeahead";
 import { Combobox } from "@/components/ui/combobox";
 import {
   Field,
@@ -15,8 +16,6 @@ import {
   primaryBtnClass,
   secondaryBtnClass,
 } from "@/components/ui/form-section";
-import type { Country } from "@/components/ui/location-selects";
-import { LocationSelects } from "@/components/ui/location-selects";
 import { createConsignee } from "@/lib/actions/consignees";
 
 interface Agency {
@@ -27,14 +26,12 @@ interface Agency {
 
 interface ConsigneeCreateFormProps {
   agencies: Agency[];
-  countries: Country[];
   defaultAgencyId?: string;
   defaultCasillero?: string;
 }
 
 export function ConsigneeCreateForm({
   agencies,
-  countries,
   defaultAgencyId,
   defaultCasillero,
 }: ConsigneeCreateFormProps) {
@@ -138,11 +135,13 @@ export function ConsigneeCreateForm({
               className={inputClass}
             />
           </Field>
-          <LocationSelects
-            countries={countries}
-            stateFieldName="province"
-            stateLabel="Provincia"
-          />
+          <Field label="Ciudad" htmlFor="location_city">
+            <CityTypeahead
+              id="location_city"
+              stateFieldName="province"
+              countryCodeFieldName={null}
+            />
+          </Field>
           <Field label="Código postal" htmlFor="postal_code">
             <input
               id="postal_code"

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { CityTypeahead } from "@/components/ui/city-typeahead";
 import {
   Field,
   FormActions,
@@ -16,16 +17,13 @@ import {
   secondaryBtnClass,
   selectClass,
 } from "@/components/ui/form-section";
-import type { Country } from "@/components/ui/location-selects";
-import { LocationSelects } from "@/components/ui/location-selects";
 import { createCourier } from "@/lib/actions/couriers";
 
 interface CourierCreateFormProps {
   organizationId: string;
-  countries: Country[];
 }
 
-export function CourierCreateForm({ organizationId, countries }: CourierCreateFormProps) {
+export function CourierCreateForm({ organizationId }: CourierCreateFormProps) {
   const t = useTranslations("common");
   const router = useRouter();
   const { notify } = useNotification();
@@ -103,7 +101,14 @@ export function CourierCreateForm({ organizationId, countries }: CourierCreateFo
               className={inputClass}
             />
           </Field>
-          <LocationSelects countries={countries} />
+          <Field label="Ciudad" htmlFor="location_city">
+            <CityTypeahead
+              id="location_city"
+              countryFieldName="country"
+              countryCodeFieldName={null}
+              stateFieldName={null}
+            />
+          </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Teléfono" htmlFor="phone">
               <input

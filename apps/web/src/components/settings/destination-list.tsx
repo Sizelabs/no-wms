@@ -12,7 +12,9 @@ import { deleteDestination } from "@/lib/actions/destinations";
 interface DestinationRow {
   id: string;
   city: string;
+  state: string | null;
   country_code: string;
+  country_name: string | null;
   currency: string;
   is_active: boolean;
 }
@@ -21,6 +23,10 @@ interface DestinationListProps {
   data: DestinationRow[];
   canUpdate?: boolean;
   canDelete?: boolean;
+}
+
+function formatLocation(d: DestinationRow): string {
+  return [d.city, d.state, d.country_name ?? d.country_code].filter(Boolean).join(", ");
 }
 
 export function DestinationList({ data, canUpdate = false, canDelete = false }: DestinationListProps) {
@@ -34,10 +40,8 @@ export function DestinationList({ data, canUpdate = false, canDelete = false }: 
   const filtered = data.filter((d) => {
     if (search) {
       const q = search.toLowerCase();
-      if (
-        !d.city.toLowerCase().includes(q) &&
-        !d.country_code.toLowerCase().includes(q)
-      ) return false;
+      const location = formatLocation(d).toLowerCase();
+      if (!location.includes(q)) return false;
     }
     if (statusFilter === "active" && !d.is_active) return false;
     if (statusFilter === "inactive" && d.is_active) return false;
@@ -81,8 +85,7 @@ export function DestinationList({ data, canUpdate = false, canDelete = false }: 
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-4 py-3">Ciudad</th>
-              <th className="px-4 py-3">País</th>
+              <th className="px-4 py-3">Destino</th>
               <th className="px-4 py-3">Moneda</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3">Acciones</th>
@@ -91,12 +94,11 @@ export function DestinationList({ data, canUpdate = false, canDelete = false }: 
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={5}
+            colSpan={4}
             emptyMessage="No hay destinos registrados."
             renderRow={(d) => (
               <tr key={d.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">{d.city}</td>
-                <td className="px-4 py-3 text-gray-600">{d.country_code}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">{formatLocation(d)}</td>
                 <td className="px-4 py-3 text-gray-600">{d.currency}</td>
                 <td className="px-4 py-3">
                   <span

@@ -76,3 +76,55 @@ export async function getTimezonesOfCountry(countryCode: string) {
     gmtOffsetName: tz.gmtOffsetName,
   }));
 }
+
+export interface CitySearchResult {
+  city: string;
+  state: string;
+  countryCode: string;
+  country: string;
+  latitude: string | null;
+  longitude: string | null;
+  label: string;
+}
+
+export async function searchCities(query: string): Promise<CitySearchResult[]> {
+  if (!query || query.length < 2) return [];
+
+  const q = query.toLowerCase();
+  const allCities = City.getAllCities();
+  const startsWithResults: CitySearchResult[] = [];
+  const includesResults: CitySearchResult[] = [];
+  const limit = 15;
+
+  for (const c of allCities) {
+    const lower = c.name.toLowerCase();
+    const isStartsWith = lower.startsWith(q);
+    const isIncludes = !isStartsWith && lower.includes(q);
+
+    if (!isStartsWith && !isIncludes) continue;
+
+    const country = Country.getCountryByCode(c.countryCode);
+    const state = State.getStateByCodeAndCountry(c.stateCode, c.countryCode);
+    const parts = [c.name, state?.name, country?.name].filter(Boolean);
+
+    const result: CitySearchResult = {
+      city: c.name,
+      state: state?.name ?? "",
+      countryCode: c.countryCode,
+      country: country?.name ?? c.countryCode,
+      latitude: c.latitude ?? null,
+      longitude: c.longitude ?? null,
+      label: parts.join(", "),
+    };
+
+    if (isStartsWith) {
+      startsWithResults.push(result);
+    } else {
+      includesResults.push(result);
+    }
+
+    if (startsWithResults.length + includesResults.length >= limit) break;
+  }
+
+  return [...startsWithResults, ...includesResults].slice(0, limit);
+}

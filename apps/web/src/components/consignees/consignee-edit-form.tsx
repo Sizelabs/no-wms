@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { CityTypeahead } from "@/components/ui/city-typeahead";
 import {
   disabledInputClass,
   Field,
@@ -15,8 +16,6 @@ import {
   primaryBtnClass,
   secondaryBtnClass,
 } from "@/components/ui/form-section";
-import type { Country } from "@/components/ui/location-selects";
-import { LocationSelects } from "@/components/ui/location-selects";
 import { updateConsignee } from "@/lib/actions/consignees";
 
 interface Consignee {
@@ -37,10 +36,9 @@ interface Consignee {
 
 interface ConsigneeEditFormProps {
   consignee: Consignee;
-  countries: Country[];
 }
 
-export function ConsigneeEditForm({ consignee, countries }: ConsigneeEditFormProps) {
+export function ConsigneeEditForm({ consignee }: ConsigneeEditFormProps) {
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -142,14 +140,15 @@ export function ConsigneeEditForm({ consignee, countries }: ConsigneeEditFormPro
               className={inputClass}
             />
           </Field>
-          <LocationSelects
-            countries={countries}
-            defaultCountryName={undefined}
-            defaultStateName={consignee.province ?? undefined}
-            defaultCityName={consignee.city ?? undefined}
-            stateFieldName="province"
-            stateLabel="Provincia"
-          />
+          <Field label="Ciudad" htmlFor="location_city">
+            <CityTypeahead
+              id="location_city"
+              defaultCity={consignee.city ?? ""}
+              defaultState={consignee.province ?? ""}
+              stateFieldName="province"
+              countryCodeFieldName={null}
+            />
+          </Field>
           <Field label="Código postal" htmlFor="postal_code">
             <input
               id="postal_code"
