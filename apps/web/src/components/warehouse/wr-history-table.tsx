@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useMemo, useState, useTransition } from "react";
 
 import { usePermissions } from "@/components/auth/role-provider";
+import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
 import { WrActionBar } from "@/components/warehouse/wr-action-bar";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
@@ -116,6 +117,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const permissions = usePermissions();
+  const { notify } = useNotification();
   const [showFilters, setShowFilters] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -176,11 +178,16 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
   const handleBulkStatus = useCallback(
     (status: string) => {
       startTransition(async () => {
-        await bulkUpdateStatus(Array.from(selected), status);
-        setSelected(new Set());
+        try {
+          await bulkUpdateStatus(Array.from(selected), status);
+          notify(`${selected.size} recibo(s) actualizado(s)`, "success");
+          setSelected(new Set());
+        } catch {
+          notify("Error al actualizar estado", "error");
+        }
       });
     },
-    [selected],
+    [selected, notify],
   );
 
   // Collapse state

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { NotificationProvider } from "@/components/layout/notification";
+
 export default function AuthLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <NotificationProvider>{children}</NotificationProvider>;
 }

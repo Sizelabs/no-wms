@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { InfoCard, Section } from "@/components/ui/detail-page";
 import type { UploadedPhoto } from "@/components/ui/photo-upload";
 import { PhotoUpload } from "@/components/ui/photo-upload";
@@ -55,6 +56,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function WoDetail({ wo, locale }: WoDetailProps) {
   const router = useRouter();
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [showExecution, setShowExecution] = useState(false);
   const [resultNotes, setResultNotes] = useState("");
@@ -70,14 +72,14 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
         fd.set("cancellation_reason", reason);
         startTransition(async () => {
           const result = await updateWorkOrderStatus(wo.id, newStatus, fd);
-          if (result.error) setError(result.error);
-          else router.refresh();
+          if (result.error) { setError(result.error); notify(result.error, "error"); }
+          else { notify("Orden cancelada", "success"); router.refresh(); }
         });
       } else {
         startTransition(async () => {
           const result = await updateWorkOrderStatus(wo.id, newStatus);
-          if (result.error) setError(result.error);
-          else router.refresh();
+          if (result.error) { setError(result.error); notify(result.error, "error"); }
+          else { notify("Estado actualizado", "success"); router.refresh(); }
         });
       }
     },
@@ -99,8 +101,8 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
     fd.set("has_attachments", "true");
     startTransition(async () => {
       const result = await updateWorkOrderStatus(wo.id, "completed", fd);
-      if (result.error) setError(result.error);
-      else router.refresh();
+      if (result.error) { setError(result.error); notify(result.error, "error"); }
+      else { notify("Orden completada", "success"); router.refresh(); }
     });
   }, [wo.id, resultNotes, photos, router]);
 

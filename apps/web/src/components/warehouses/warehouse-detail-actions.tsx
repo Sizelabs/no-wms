@@ -37,6 +37,7 @@ export function WarehouseDetailActions({
           if (result?.error) {
             notify(result.error, "error");
           } else {
+            notify("Bodega eliminada", "success");
             router.push(`/${locale}/settings/warehouses`);
           }
         });

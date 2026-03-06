@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useState, useTransition } from "react";
 
 import { usePermissions } from "@/components/auth/role-provider";
+import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
@@ -86,6 +87,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const permissions = usePermissions();
+  const { notify } = useNotification();
   const canSelect = permissions?.inventory.update ?? false;
   const [isPending, startTransition] = useTransition();
   const [showFilters, setShowFilters] = useState(false);
@@ -131,11 +133,16 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
   const handleBulkStatus = useCallback(
     (status: string) => {
       startTransition(async () => {
-        await bulkUpdateStatus(Array.from(selectedWrIds), status);
-        setSelected(new Set());
+        try {
+          await bulkUpdateStatus(Array.from(selectedWrIds), status);
+          notify(`${selectedWrIds.size} recibo(s) actualizado(s)`, "success");
+          setSelected(new Set());
+        } catch {
+          notify("Error al actualizar estado", "error");
+        }
       });
     },
-    [selectedWrIds],
+    [selectedWrIds, notify],
   );
 
   const updateFilter = useCallback(

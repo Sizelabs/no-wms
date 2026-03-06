@@ -33,6 +33,7 @@ export function AgencyDetailActions({ agencyId }: { agencyId: string }) {
           if (result?.error) {
             notify(result.error, "error");
           } else {
+            notify("Agencia eliminada", "success");
             router.push(`/${locale}/agencies`);
           }
         });

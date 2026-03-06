@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import {
   approveShippingInstruction,
   finalizeShippingInstruction,
@@ -16,6 +17,7 @@ interface SiActionsProps {
 
 export function SiActions({ siId, status }: SiActionsProps) {
   const router = useRouter();
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -26,8 +28,8 @@ export function SiActions({ siId, status }: SiActionsProps) {
   const handleApprove = () => {
     startTransition(async () => {
       const result = await approveShippingInstruction(siId);
-      if (result.error) setError(result.error);
-      else router.refresh();
+      if (result.error) { setError(result.error); notify(result.error, "error"); }
+      else { notify("Instrucción aprobada", "success"); router.refresh(); }
     });
   };
 
@@ -36,16 +38,16 @@ export function SiActions({ siId, status }: SiActionsProps) {
     if (!reason?.trim()) return;
     startTransition(async () => {
       const result = await rejectShippingInstruction(siId, reason);
-      if (result.error) setError(result.error);
-      else router.refresh();
+      if (result.error) { setError(result.error); notify(result.error, "error"); }
+      else { notify("Instrucción rechazada", "success"); router.refresh(); }
     });
   };
 
   const handleFinalize = () => {
     startTransition(async () => {
       const result = await finalizeShippingInstruction(siId);
-      if (result.error) setError(result.error);
-      else router.refresh();
+      if (result.error) { setError(result.error); notify(result.error, "error"); }
+      else { notify("Instrucción finalizada — HAWB generado", "success"); router.refresh(); }
     });
   };
 

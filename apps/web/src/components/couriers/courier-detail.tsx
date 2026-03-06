@@ -102,6 +102,7 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
       if (result?.error) {
         notify(result.error, "error");
       } else {
+        notify("Courier eliminado", "success");
         router.push(`/${locale}/settings/couriers`);
       }
     });
@@ -329,12 +330,17 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
                           aria-checked={isEnabled}
                           onClick={() => {
                             startTransition(async () => {
-                              await upsertCourierDestination(
-                                courier.id,
-                                dest.id,
-                                courier.organization_id,
-                                !isEnabled,
-                              );
+                              try {
+                                await upsertCourierDestination(
+                                  courier.id,
+                                  dest.id,
+                                  courier.organization_id,
+                                  !isEnabled,
+                                );
+                                notify(!isEnabled ? "Cobertura activada" : "Cobertura desactivada", "success");
+                              } catch {
+                                notify("Error al actualizar cobertura", "error");
+                              }
                             });
                           }}
                           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${

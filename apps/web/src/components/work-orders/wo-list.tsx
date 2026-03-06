@@ -5,6 +5,7 @@ import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-type
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
@@ -44,6 +45,7 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 export function WoList({ data, locale }: WoListProps) {
   const [isPending, startTransition] = useTransition();
+  const { notify } = useNotification();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: "", type: "" });
   const [showFilters, setShowFilters] = useState(false);
@@ -73,18 +75,24 @@ export function WoList({ data, locale }: WoListProps) {
       const fd = new FormData();
       fd.set("result_notes", notes);
       startTransition(async () => {
-        await updateWorkOrderStatus(woId, newStatus, fd);
+        const result = await updateWorkOrderStatus(woId, newStatus, fd);
+        if (result.error) notify(result.error, "error");
+        else notify("Orden de trabajo completada", "success");
       });
     } else if (newStatus === "cancelled") {
       const reason = prompt("Razón de cancelación:");
       const fd = new FormData();
       fd.set("cancellation_reason", reason ?? "");
       startTransition(async () => {
-        await updateWorkOrderStatus(woId, newStatus, fd);
+        const result = await updateWorkOrderStatus(woId, newStatus, fd);
+        if (result.error) notify(result.error, "error");
+        else notify("Orden de trabajo cancelada", "success");
       });
     } else {
       startTransition(async () => {
-        await updateWorkOrderStatus(woId, newStatus);
+        const result = await updateWorkOrderStatus(woId, newStatus);
+        if (result.error) notify(result.error, "error");
+        else notify("Estado actualizado", "success");
       });
     }
   };

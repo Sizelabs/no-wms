@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { setPassword } from "@/lib/actions/auth";
 
 interface SetPasswordFormProps {
@@ -12,6 +13,7 @@ interface SetPasswordFormProps {
 
 export function SetPasswordForm({ locale, email }: SetPasswordFormProps) {
   const router = useRouter();
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +38,9 @@ export function SetPasswordForm({ locale, email }: SetPasswordFormProps) {
       const result = await setPassword(formData);
       if (result?.error) {
         setError(result.error);
+        notify(result.error, "error");
       } else {
+        notify("Contraseña establecida", "success");
         router.push(`/${locale}`);
       }
     });

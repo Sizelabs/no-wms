@@ -88,6 +88,7 @@ export function ForwarderDetail({
       if (result?.error) {
         notify(result.error, "error");
       } else {
+        notify("Freight forwarder eliminado", "success");
         router.push(`/${locale}/settings/forwarders`);
       }
     });

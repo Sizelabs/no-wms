@@ -33,6 +33,7 @@ export function ConsigneeDetailActions({ consigneeId }: { consigneeId: string })
           if (result?.error) {
             notify(result.error, "error");
           } else {
+            notify("Consignatario desactivado", "success");
             router.push(`/${locale}/consignees`);
           }
         });

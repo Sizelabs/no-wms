@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { useAgencyScope } from "@/components/auth/role-provider";
+import { useNotification } from "@/components/layout/notification";
 import { getAgencySettings, updateAgencySettings } from "@/lib/actions/agencies";
 
 interface AgencySettingRow {
@@ -14,6 +15,7 @@ interface AgencySettingRow {
 
 export function AgencySettingsPanel() {
   const agencyIds = useAgencyScope();
+  const { notify } = useNotification();
   const [agencies, setAgencies] = useState<AgencySettingRow[]>([]);
   const [isPending, startTransition] = useTransition();
 
@@ -32,14 +34,19 @@ export function AgencySettingsPanel() {
 
   function handleToggle(agencyId: string, currentValue: boolean) {
     startTransition(async () => {
-      await updateAgencySettings(agencyId, {
-        allow_multi_package: !currentValue,
-      });
-      setAgencies((prev) =>
-        prev.map((a) =>
-          a.id === agencyId ? { ...a, allow_multi_package: !currentValue } : a,
-        ),
-      );
+      try {
+        await updateAgencySettings(agencyId, {
+          allow_multi_package: !currentValue,
+        });
+        setAgencies((prev) =>
+          prev.map((a) =>
+            a.id === agencyId ? { ...a, allow_multi_package: !currentValue } : a,
+          ),
+        );
+        notify("Configuración actualizada", "success");
+      } catch {
+        notify("Error al actualizar configuración", "error");
+      }
     });
   }
 

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { ClaimUnknownWrModal } from "@/components/warehouse/claim-unknown-wr-modal";
 import { claimUnknownWr } from "@/lib/actions/unknown-wrs";
@@ -32,6 +33,7 @@ interface UnknownWrListProps {
 
 export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrListProps) {
   const router = useRouter();
+  const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [trackingInput, setTrackingInput] = useState("");
@@ -53,9 +55,11 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
           setClaimingId(null);
           setTrackingInput("");
           setClaimError(null);
+          notify("Paquete reclamado exitosamente", "success");
           router.refresh();
         } else {
           setClaimError(result.error ?? "Error al reclamar");
+          notify(result.error ?? "Error al reclamar", "error");
         }
       });
     },

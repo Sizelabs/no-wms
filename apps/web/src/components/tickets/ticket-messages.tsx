@@ -35,6 +35,7 @@ export function TicketMessages({ ticketId, messages, canReply }: TicketMessagesP
       if ("error" in result) {
         notify(result.error, "error");
       } else {
+        notify("Mensaje enviado", "success");
         formRef.current?.reset();
         router.refresh();
       }

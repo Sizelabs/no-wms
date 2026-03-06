@@ -3,6 +3,7 @@
 import { MAWB_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { filterSelectClass } from "@/components/ui/form-section";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { updateMawbStatus } from "@/lib/actions/manifests";
@@ -55,6 +56,7 @@ const STATUS_ACTION_LABELS: Record<string, string> = {
 
 export function MawbList({ data }: MawbListProps) {
   const [isPending, startTransition] = useTransition();
+  const { notify } = useNotification();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
@@ -78,7 +80,12 @@ export function MawbList({ data }: MawbListProps) {
     const next = STATUS_FLOW[currentStatus];
     if (!next) return;
     startTransition(async () => {
-      await updateMawbStatus(id, next);
+      try {
+        await updateMawbStatus(id, next);
+        notify(`MAWB actualizado a ${STATUS_ACTION_LABELS[next] ?? next}`, "success");
+      } catch {
+        notify("Error al actualizar MAWB", "error");
+      }
     });
   };
 
