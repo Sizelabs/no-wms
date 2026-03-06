@@ -31,6 +31,7 @@ import {
   checkDuplicateTracking,
   checkWrNumberUnique,
   createWarehouseReceipt,
+  generateWrNumberForWarehouse,
 } from "@/lib/actions/warehouse-receipts";
 
 // ---------------------------------------------------------------------------
@@ -87,7 +88,6 @@ interface WrReceiptFormProps {
   agencies: Agency[];
   warehouses: Warehouse[];
   warehouseLocations?: WarehouseLocation[];
-  defaultWrNumber: string;
   locale: string;
 }
 
@@ -134,7 +134,6 @@ export function WrReceiptForm({
   agencies,
   warehouses,
   warehouseLocations = [],
-  defaultWrNumber,
   locale,
 }: WrReceiptFormProps) {
   const router = useRouter();
@@ -145,7 +144,8 @@ export function WrReceiptForm({
   const [phase, setPhase] = useState<"scan" | "form" | "success">("scan");
 
   // WR-level state
-  const [wrNumber, setWrNumber] = useState(defaultWrNumber);
+  const [wrNumber, setWrNumber] = useState("");
+  const [isGeneratingWrNumber, setIsGeneratingWrNumber] = useState(false);
   const [wrNumberError, setWrNumberError] = useState<string | null>(null);
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [agencyId, setAgencyId] = useState("");
@@ -316,8 +316,26 @@ export function WrReceiptForm({
   // WR number uniqueness check (debounced)
   // ---------------------------------------------------------------------------
 
+  // Generate WR number when warehouse changes
   useEffect(() => {
-    if (!wrNumber.trim() || wrNumber === defaultWrNumber) {
+    if (!warehouseId) return;
+    let cancelled = false;
+    setIsGeneratingWrNumber(true);
+    generateWrNumberForWarehouse(warehouseId)
+      .then((num) => {
+        if (!cancelled) setWrNumber(num);
+      })
+      .catch(() => {
+        // Ignore — user can still type manually
+      })
+      .finally(() => {
+        if (!cancelled) setIsGeneratingWrNumber(false);
+      });
+    return () => { cancelled = true; };
+  }, [warehouseId]);
+
+  useEffect(() => {
+    if (!wrNumber.trim()) {
       setWrNumberError(null);
       return;
     }
@@ -328,7 +346,7 @@ export function WrReceiptForm({
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [wrNumber, defaultWrNumber]);
+  }, [wrNumber]);
 
   // ---------------------------------------------------------------------------
   // Scan gate handler
@@ -478,7 +496,7 @@ export function WrReceiptForm({
         if (shipperName.trim()) formData.set("shipper_name", shipperName.trim());
         if (masterTracking.trim()) formData.set("master_tracking", masterTracking.trim());
         if (description.trim()) formData.set("description", description.trim());
-        if (wrNumber.trim() && wrNumber !== defaultWrNumber) {
+        if (wrNumber.trim()) {
           formData.set("wr_number", wrNumber.trim());
         }
 
@@ -542,7 +560,7 @@ export function WrReceiptForm({
   }, [
     warehouseId, agencyId, consigneeId, notes, warehouseLocationId,
     shipperName, masterTracking, description, wrNumber,
-    defaultWrNumber, carrier, packages, attachments, wrNumberError, notify,
+    carrier, packages, attachments, wrNumberError, notify,
   ]);
 
   // ---------------------------------------------------------------------------
@@ -567,7 +585,15 @@ export function WrReceiptForm({
     setCreatedWr(null);
     setError(null);
     setPhase("scan");
-  }, []);
+    // Re-fetch WR number for current warehouse
+    if (warehouseId) {
+      setIsGeneratingWrNumber(true);
+      generateWrNumberForWarehouse(warehouseId)
+        .then((num) => setWrNumber(num))
+        .catch(() => {})
+        .finally(() => setIsGeneratingWrNumber(false));
+    }
+  }, [warehouseId]);
 
   // =========================================================================
   // RENDER: Success
@@ -703,8 +729,12 @@ export function WrReceiptForm({
                   type="text"
                   value={wrNumber}
                   onChange={(e) => setWrNumber(e.target.value.toUpperCase())}
-                  className={`${inputCls} font-mono ${wrNumberError ? "border-red-300 focus:border-red-400 focus:ring-red-200" : ""}`}
+                  disabled={isGeneratingWrNumber}
+                  className={`${inputCls} font-mono ${wrNumberError ? "border-red-300 focus:border-red-400 focus:ring-red-200" : ""} ${isGeneratingWrNumber ? "opacity-50" : ""}`}
                 />
+                {isGeneratingWrNumber && (
+                  <p className="mt-1 text-xs text-gray-400">Generando...</p>
+                )}
                 {wrNumberError && (
                   <p className="mt-1 text-xs text-red-500">{wrNumberError}</p>
                 )}

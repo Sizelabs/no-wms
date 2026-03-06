@@ -42,6 +42,7 @@ export function WarehouseCreateForm({
   const [isPending, startTransition] = useTransition();
   const [timezone, setTimezone] = useState("America/New_York");
   const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
+  const [code, setCode] = useState("");
 
   function handleCitySelect(result: CitySearchResult | null) {
     if (!result) {
@@ -93,13 +94,17 @@ export function WarehouseCreateForm({
                 className={inputClass}
               />
             </Field>
-            <Field label="Identificador" htmlFor="code" required>
+            <Field label="Identificador" htmlFor="code" required hint="Este código será el prefijo de los recibos de almacén (ej: MIA → MIA000001). Debe ser único.">
               <input
                 id="code"
                 name="code"
                 type="text"
                 required
                 placeholder="MIA"
+                maxLength={5}
+                pattern="[A-Za-z]{2,5}"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
                 className={inputClass}
               />
             </Field>

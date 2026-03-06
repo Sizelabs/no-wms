@@ -26,8 +26,16 @@ function createMockChain(resultFn: () => any) {
 let mockResult: any = { data: null, error: null };
 const mockChain = createMockChain(() => mockResult);
 
+// Per-table result overrides
+let tableResults: Record<string, any> = {};
+
 const mockSupabase: any = {
-  from: vi.fn(() => mockChain),
+  from: vi.fn((table: string) => {
+    if (tableResults[table]) {
+      return createMockChain(() => tableResults[table]);
+    }
+    return mockChain;
+  }),
   auth: {
     getUser: vi.fn().mockResolvedValue({
       data: { user: { id: "user-1", email: "test@test.com" } },
@@ -50,6 +58,7 @@ describe("checkDuplicateTracking", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResult = { data: null, error: null };
+    tableResults = {};
   });
 
   it("returns null when no duplicate", async () => {
@@ -63,13 +72,13 @@ describe("checkDuplicateTracking", () => {
       data: {
         id: "pkg-1",
         warehouse_receipt_id: "wr-1",
-        warehouse_receipts: { wr_number: "GLP0001", received_at: "2026-03-01" },
+        warehouse_receipts: { wr_number: "MIA000001", received_at: "2026-03-01" },
       },
       error: null,
     };
 
     const result = await checkDuplicateTracking("1Z999AA1012345");
-    expect(result).toEqual({ id: "wr-1", wr_number: "GLP0001", received_at: "2026-03-01" });
+    expect(result).toEqual({ id: "wr-1", wr_number: "MIA000001", received_at: "2026-03-01" });
   });
 });
 
@@ -77,18 +86,37 @@ describe("generateWrNumber", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResult = { data: null, error: null };
+    tableResults = {};
   });
 
-  it("returns GLP0001 when no existing WRs", async () => {
-    const result = await generateWrNumber();
-    expect(result).toBe("GLP0001");
+  it("returns MIA000001 when no existing WRs for warehouse", async () => {
+    tableResults["warehouses"] = { data: { code: "MIA" }, error: null };
+    tableResults["warehouse_receipts"] = { data: null, error: null };
+
+    const result = await generateWrNumber("warehouse-1");
+    expect(result).toBe("MIA000001");
   });
 
-  it("increments from last WR number", async () => {
-    mockResult = { data: { wr_number: "GLP0042" }, error: null };
+  it("increments from last WR number with 6-digit padding", async () => {
+    tableResults["warehouses"] = { data: { code: "MIA" }, error: null };
+    tableResults["warehouse_receipts"] = { data: { wr_number: "MIA000042" }, error: null };
 
-    const result = await generateWrNumber();
-    expect(result).toBe("GLP0043");
+    const result = await generateWrNumber("warehouse-1");
+    expect(result).toBe("MIA000043");
+  });
+
+  it("uses warehouse code as prefix", async () => {
+    tableResults["warehouses"] = { data: { code: "LAX" }, error: null };
+    tableResults["warehouse_receipts"] = { data: null, error: null };
+
+    const result = await generateWrNumber("warehouse-2");
+    expect(result).toBe("LAX000001");
+  });
+
+  it("throws when warehouse not found", async () => {
+    tableResults["warehouses"] = { data: null, error: null };
+
+    await expect(generateWrNumber("bad-id")).rejects.toThrow("Bodega no encontrada");
   });
 });
 
@@ -96,6 +124,7 @@ describe("updateWarehouseReceiptStatus", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResult = { data: null, error: null };
+    tableResults = {};
   });
 
   it("throws when not authenticated", async () => {

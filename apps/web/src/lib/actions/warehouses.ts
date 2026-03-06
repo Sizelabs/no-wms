@@ -48,10 +48,24 @@ export async function getWarehouse(id: string) {
 export async function createWarehouse(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
+  const code = ((formData.get("code") as string) || "").toUpperCase();
+  if (!/^[A-Z]{2,5}$/.test(code)) {
+    throw new Error("El código debe tener entre 2 y 5 letras (ej: MIA, LAX)");
+  }
+
+  // Check global uniqueness for better error message
+  const { count } = await supabase
+    .from("warehouses")
+    .select("id", { count: "exact", head: true })
+    .eq("code", code);
+  if ((count ?? 0) > 0) {
+    throw new Error(`Ya existe una bodega con el código "${code}"`);
+  }
+
   const { error } = await supabase.from("warehouses").insert({
     organization_id: formData.get("organization_id") as string,
     name: formData.get("name") as string,
-    code: formData.get("code") as string,
+    code,
     city: (formData.get("city") as string) || null,
     country: (formData.get("country") as string) || null,
     timezone: (formData.get("timezone") as string) || "America/New_York",
@@ -85,11 +99,26 @@ export async function deleteWarehouse(
 export async function updateWarehouse(id: string, formData: FormData): Promise<void> {
   const supabase = await createClient();
 
+  const code = ((formData.get("code") as string) || "").toUpperCase();
+  if (!/^[A-Z]{2,5}$/.test(code)) {
+    throw new Error("El código debe tener entre 2 y 5 letras (ej: MIA, LAX)");
+  }
+
+  // Check global uniqueness (excluding self) for better error message
+  const { count } = await supabase
+    .from("warehouses")
+    .select("id", { count: "exact", head: true })
+    .eq("code", code)
+    .neq("id", id);
+  if ((count ?? 0) > 0) {
+    throw new Error(`Ya existe una bodega con el código "${code}"`);
+  }
+
   const { error } = await supabase
     .from("warehouses")
     .update({
       name: formData.get("name") as string,
-      code: formData.get("code") as string,
+      code,
       city: (formData.get("city") as string) || null,
       country: (formData.get("country") as string) || null,
       timezone: (formData.get("timezone") as string) || "America/New_York",

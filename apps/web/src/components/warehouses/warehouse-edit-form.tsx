@@ -49,6 +49,7 @@ export function WarehouseEditForm({ warehouse }: WarehouseEditFormProps) {
   const [isPending, startTransition] = useTransition();
   const [timezone, setTimezone] = useState(warehouse.timezone);
   const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
+  const [code, setCode] = useState(warehouse.code);
 
   function handleCitySelect(result: CitySearchResult | null) {
     if (!result) {
@@ -98,13 +99,16 @@ export function WarehouseEditForm({ warehouse }: WarehouseEditFormProps) {
                 className={inputClass}
               />
             </Field>
-            <Field label="Identificador" htmlFor="code" required>
+            <Field label="Identificador" htmlFor="code" required hint="Cambiar este código solo afectará recibos nuevos. Los existentes conservarán su número actual.">
               <input
                 id="code"
                 name="code"
                 type="text"
                 required
-                defaultValue={warehouse.code}
+                maxLength={5}
+                pattern="[A-Za-z]{2,5}"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
                 className={inputClass}
               />
             </Field>

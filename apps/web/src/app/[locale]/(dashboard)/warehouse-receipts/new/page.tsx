@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { WrReceiptForm } from "@/components/warehouse/wr-receipt-form";
-import { generateWrNumber } from "@/lib/actions/warehouse-receipts";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
@@ -36,7 +35,7 @@ export default async function NewWarehouseReceiptPage({
     warehousesQuery = warehousesQuery.in("id", warehouseScope);
   }
 
-  const [agenciesResult, warehousesResult, defaultWrNumber] = await Promise.all([
+  const [agenciesResult, warehousesResult] = await Promise.all([
     supabase
       .from("agencies")
       .select("id, name, code, allow_multi_package")
@@ -45,7 +44,6 @@ export default async function NewWarehouseReceiptPage({
     warehouseScope !== null && warehouseScope.length === 0
       ? Promise.resolve({ data: [] })
       : warehousesQuery,
-    generateWrNumber(),
   ]);
 
   const agencies = agenciesResult.data ?? [];
@@ -57,7 +55,6 @@ export default async function NewWarehouseReceiptPage({
       <WrReceiptForm
         agencies={agencies}
         warehouses={warehouses}
-        defaultWrNumber={defaultWrNumber}
         locale={locale}
       />
     </div>
