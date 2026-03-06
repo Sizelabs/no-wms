@@ -713,7 +713,7 @@ INSERT INTO warehouse_receipts (
  false, 'b0000000-0000-0000-0000-000000000012', NULL,
  '2026-01-10T08:30:00Z', '2026-02-05T14:00:00Z'),
 
-('f5000000-0000-0000-0000-000000000002d', 'a0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000004', 'GLP0045', 'dispatched',
+('f5000000-0000-0000-0000-00000000002d', 'a0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000004', 'GLP0045', 'dispatched',
  'f2000000-0000-0000-0000-000000000007', 'f4000000-0000-0000-0000-000000000014',
  7.40, 19.88, 19.88, 180.00, 1, 1, false, false,
  'e0000000-0000-0000-0000-000000000019', NULL, NULL,
@@ -2412,7 +2412,7 @@ INSERT INTO notifications (
  'Paquete GLP0025 recibido en bodega',
  'Estimado/a Maria Garcia, le informamos que su paquete GLP0025 ha sido recibido en nuestra bodega MIA el dia 2026-02-05. Peso: 4.80 lb.',
  '{"glp_number": "GLP0025", "warehouse": "MIA"}',
- 'delivered', '2026-02-05T10:05:00Z', '2026-02-05T11:00:00Z', '2026-02-05T10:05:00Z'),
+ 'sent', '2026-02-05T10:05:00Z', '2026-02-05T11:00:00Z', '2026-02-05T10:05:00Z'),
 
 ('fd300000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001',
  'b0000000-0000-0000-0000-000000000003', NULL,
@@ -2420,7 +2420,7 @@ INSERT INTO notifications (
  'Nuevo ticket TK00001 creado',
  'Se ha creado el ticket TK00001 con categoria "Paquete danado" y prioridad high. Asunto: Paquete GLP0025 recibido con dano.',
  '{"ticket_number": "TK00001", "category": "Paquete danado"}',
- 'delivered', '2026-02-22T10:01:00Z', '2026-02-22T10:15:00Z', '2026-02-22T10:01:00Z'),
+ 'sent', '2026-02-22T10:01:00Z', '2026-02-22T10:15:00Z', '2026-02-22T10:01:00Z'),
 
 ('fd300000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001',
  'b0000000-0000-0000-0000-00000000000f', 'agency.rapidito@test.nowms.dev',
@@ -2428,7 +2428,7 @@ INSERT INTO notifications (
  'Factura INV00001 generada',
  'Estimado/a, se ha generado la factura INV00001 por un total de $38.55 correspondiente al periodo 2026-01-01 - 2026-01-31. Fecha de vencimiento: 2026-02-15.',
  '{"invoice_number": "INV00001", "total": 38.55}',
- 'delivered', '2026-02-01T08:05:00Z', NULL, '2026-02-01T08:05:00Z'),
+ 'sent', '2026-02-01T08:05:00Z', NULL, '2026-02-01T08:05:00Z'),
 
 ('fd300000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001',
  'b0000000-0000-0000-0000-000000000003', NULL,
@@ -2436,7 +2436,7 @@ INSERT INTO notifications (
  'Nuevo mensaje en ticket TK00003',
  'Ricardo Paredes ha enviado un nuevo mensaje en el ticket TK00003: "Entendido. El cliente ya presento un reclamo formal...".',
  '{"ticket_number": "TK00003", "sender": "agency.box4you"}',
- 'delivered', '2026-02-08T16:46:00Z', '2026-02-09T08:00:00Z', '2026-02-08T16:46:00Z')
+ 'sent', '2026-02-08T16:46:00Z', '2026-02-09T08:00:00Z', '2026-02-08T16:46:00Z')
 
 ON CONFLICT (id) DO NOTHING;
 
