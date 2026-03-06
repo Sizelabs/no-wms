@@ -2,20 +2,24 @@
 
 import { CARRIERS } from "@no-wms/shared/constants/carriers";
 import { PACKAGE_TYPES } from "@no-wms/shared/constants/package-types";
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 
+import { Combobox } from "@/components/ui/combobox";
 import { createWarehouseReceipt } from "@/lib/actions/warehouse-receipts";
 
 interface Agency {
   id: string;
   name: string;
   code: string;
+  organization_id: string;
 }
 
 interface Warehouse {
   id: string;
   name: string;
   code: string;
+  organization_id: string;
+  organization_name: string | null;
 }
 
 interface BatchRow {
@@ -47,12 +51,30 @@ const EMPTY_ROW: BatchRow = {
 interface WrBatchImportProps {
   agencies: Agency[];
   warehouses: Warehouse[];
+  isSuperAdmin?: boolean;
 }
 
-export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
+function warehouseLabel(w: Warehouse, showOrg: boolean): string {
+  const base = `${w.name} (${w.code})`;
+  return showOrg && w.organization_name ? `${base} — ${w.organization_name}` : base;
+}
+
+export function WrBatchImport({ agencies, warehouses, isSuperAdmin = false }: WrBatchImportProps) {
   const [isPending, startTransition] = useTransition();
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [agencyId, setAgencyId] = useState("");
+
+  const selectedWarehouse = useMemo(
+    () => warehouses.find((w) => w.id === warehouseId),
+    [warehouses, warehouseId],
+  );
+  const filteredAgencies = useMemo(
+    () =>
+      selectedWarehouse
+        ? agencies.filter((a) => a.organization_id === selectedWarehouse.organization_id)
+        : agencies,
+    [agencies, selectedWarehouse],
+  );
   const [rows, setRows] = useState<BatchRow[]>([{ ...EMPTY_ROW }]);
   const [results, setResults] = useState<{ index: number; success: boolean; error?: string }[]>([]);
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -154,17 +176,27 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
       <div className="flex gap-3">
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700">Bodega</label>
-          <select
-            value={warehouseId}
-            onChange={(e) => setWarehouseId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-          >
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.code})
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <Combobox
+              options={warehouses.map((w) => ({
+                value: w.id,
+                label: warehouseLabel(w, isSuperAdmin),
+              }))}
+              value={warehouseId}
+              onChange={(id) => {
+                setWarehouseId(id);
+                // Reset agency if it no longer belongs to the new warehouse's org
+                const newWh = warehouses.find((w) => w.id === id);
+                if (newWh && agencyId) {
+                  const agencyStillValid = agencies.some(
+                    (a) => a.id === agencyId && a.organization_id === newWh.organization_id,
+                  );
+                  if (!agencyStillValid) setAgencyId("");
+                }
+              }}
+              placeholder="Buscar bodega..."
+            />
+          </div>
         </div>
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700">Agencia</label>
@@ -174,7 +206,7 @@ export function WrBatchImport({ agencies, warehouses }: WrBatchImportProps) {
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
           >
             <option value="">Seleccionar...</option>
-            {agencies.map((a) => (
+            {filteredAgencies.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name} ({a.code})
               </option>

@@ -2,6 +2,12 @@
 
 import { detectCarrier } from "@no-wms/shared/constants/carrier-detection";
 import { CARRIERS } from "@no-wms/shared/constants/carriers";
+import type { ConditionFlag } from "@no-wms/shared/constants/condition-flags";
+import {
+  CONDITION_FLAG_COLORS,
+  CONDITION_FLAG_LABELS_ES,
+  CONDITION_FLAGS,
+} from "@no-wms/shared/constants/condition-flags";
 import { PACKAGE_TYPES } from "@no-wms/shared/constants/package-types";
 import {
   calculateBillableWeight,
@@ -19,6 +25,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
+import { Combobox } from "@/components/ui/combobox";
 import type { UploadedFile } from "@/components/ui/file-upload";
 import { FileUpload } from "@/components/ui/file-upload";
 import { FormCard, FormSection } from "@/components/ui/form-section";
@@ -43,12 +50,15 @@ interface Agency {
   name: string;
   code: string;
   allow_multi_package: boolean;
+  organization_id: string;
 }
 
 interface Warehouse {
   id: string;
   name: string;
   code: string;
+  organization_id: string;
+  organization_name: string | null;
 }
 
 interface WarehouseLocation {
@@ -88,6 +98,7 @@ interface WrReceiptFormProps {
   agencies: Agency[];
   warehouses: Warehouse[];
   warehouseLocations?: WarehouseLocation[];
+  isSuperAdmin?: boolean;
   locale: string;
 }
 
@@ -130,10 +141,16 @@ const textareaCls =
 // Component
 // ---------------------------------------------------------------------------
 
+function warehouseLabel(w: Warehouse, showOrg: boolean): string {
+  const base = `${w.name} (${w.code})`;
+  return showOrg && w.organization_name ? `${base} — ${w.organization_name}` : base;
+}
+
 export function WrReceiptForm({
   agencies,
   warehouses,
   warehouseLocations = [],
+  isSuperAdmin = false,
   locale,
 }: WrReceiptFormProps) {
   const router = useRouter();
@@ -160,6 +177,7 @@ export function WrReceiptForm({
   const [notes, setNotes] = useState("");
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
   const [warehouseLocationId, setWarehouseLocationId] = useState("");
+  const [conditionFlags, setConditionFlags] = useState<string[]>([]);
 
   // Package state
   const [packages, setPackages] = useState<PackageData[]>([emptyPackage()]);
@@ -183,10 +201,21 @@ export function WrReceiptForm({
   const formTopRef = useRef<HTMLDivElement>(null);
   const consigneeListRef = useRef<HTMLDivElement>(null);
 
-  // Computed
+  // Computed — filter agencies by selected warehouse's organization
+  const selectedWarehouse = useMemo(
+    () => warehouses.find((w) => w.id === warehouseId),
+    [warehouses, warehouseId],
+  );
+  const filteredAgencies = useMemo(
+    () =>
+      selectedWarehouse
+        ? agencies.filter((a) => a.organization_id === selectedWarehouse.organization_id)
+        : agencies,
+    [agencies, selectedWarehouse],
+  );
   const selectedAgency = useMemo(
-    () => agencies.find((a) => a.id === agencyId),
-    [agencies, agencyId],
+    () => filteredAgencies.find((a) => a.id === agencyId),
+    [filteredAgencies, agencyId],
   );
   const allowMultiPackage = selectedAgency?.allow_multi_package ?? true;
   const isUnknownAgency = agencyId === "unknown";
@@ -265,6 +294,11 @@ export function WrReceiptForm({
   // Consignee search (debounced)
   // ---------------------------------------------------------------------------
 
+  const filteredAgencyIds = useMemo(
+    () => new Set(filteredAgencies.map((a) => a.id)),
+    [filteredAgencies],
+  );
+
   useEffect(() => {
     if (consigneeSearch.length < 2) {
       setConsignees([]);
@@ -277,13 +311,17 @@ export function WrReceiptForm({
     const timeout = setTimeout(async () => {
       const result = await searchConsignees(searchAgency, consigneeSearch);
       if (result.data) {
-        setConsignees(result.data);
-        setConsigneeHighlight(result.data.length > 0 ? 0 : -1);
+        // Filter results to only consignees from agencies in the selected warehouse's org
+        const filtered = searchAgency
+          ? result.data
+          : result.data.filter((c) => filteredAgencyIds.has(c.agency_id));
+        setConsignees(filtered);
+        setConsigneeHighlight(filtered.length > 0 ? 0 : -1);
       }
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [agencyId, consigneeSearch]);
+  }, [agencyId, consigneeSearch, filteredAgencyIds]);
 
   // Scroll highlighted consignee into view
   useEffect(() => {
@@ -304,12 +342,12 @@ export function WrReceiptForm({
       setConsigneeSearch("");
       setConsignees([]);
       setConsigneeHighlight(-1);
-      // Auto-infer agency if none selected
-      if (!agencyId && c.agency_id) {
+      // Auto-infer agency if none selected (only if agency belongs to current warehouse's org)
+      if (!agencyId && c.agency_id && filteredAgencyIds.has(c.agency_id)) {
         setAgencyId(c.agency_id);
       }
     },
-    [agencyId],
+    [agencyId, filteredAgencyIds],
   );
 
   // ---------------------------------------------------------------------------
@@ -333,6 +371,20 @@ export function WrReceiptForm({
       });
     return () => { cancelled = true; };
   }, [warehouseId]);
+
+  // Reset agency & consignee when warehouse changes (agency may belong to different org)
+  useEffect(() => {
+    if (agencyId && agencyId !== "unknown") {
+      const stillValid = filteredAgencies.some((a) => a.id === agencyId);
+      if (!stillValid) {
+        setAgencyId("");
+        setConsigneeId("");
+        setSelectedConsignee(null);
+        setConsigneeSearch("");
+        setConsignees([]);
+      }
+    }
+  }, [filteredAgencies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!wrNumber.trim()) {
@@ -499,6 +551,9 @@ export function WrReceiptForm({
         if (wrNumber.trim()) {
           formData.set("wr_number", wrNumber.trim());
         }
+        if (conditionFlags.length) {
+          formData.set("condition_flags", JSON.stringify(conditionFlags));
+        }
 
         formData.set(
           "packages",
@@ -559,7 +614,7 @@ export function WrReceiptForm({
     });
   }, [
     warehouseId, agencyId, consigneeId, notes, warehouseLocationId,
-    shipperName, masterTracking, description, wrNumber,
+    shipperName, masterTracking, description, wrNumber, conditionFlags,
     carrier, packages, attachments, wrNumberError, notify,
   ]);
 
@@ -580,6 +635,7 @@ export function WrReceiptForm({
     setDescription("");
     setNotes("");
     setAttachments([]);
+    setConditionFlags([]);
     setWarehouseLocationId("");
     setDuplicateInfo(null);
     setCreatedWr(null);
@@ -719,6 +775,20 @@ export function WrReceiptForm({
       <FormCard>
         {/* WR Number + Warehouse */}
         <FormSection title="Recibo de Almacén" icon={Building2}>
+          {warehouses.length > 1 && (
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">Bodega</label>
+              <Combobox
+                options={warehouses.map((w) => ({
+                  value: w.id,
+                  label: warehouseLabel(w, isSuperAdmin),
+                }))}
+                value={warehouseId}
+                onChange={setWarehouseId}
+                placeholder="Buscar bodega..."
+              />
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm text-gray-600">
@@ -765,22 +835,6 @@ export function WrReceiptForm({
               />
             </div>
           </div>
-          {warehouses.length > 1 && (
-            <div>
-              <label className="mb-1.5 block text-sm text-gray-600">Bodega</label>
-              <select
-                value={warehouseId}
-                onChange={(e) => setWarehouseId(e.target.value)}
-                className={inputCls}
-              >
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} ({w.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </FormSection>
 
         {/* Shipment Info */}
@@ -999,26 +1053,51 @@ export function WrReceiptForm({
             <label className="mb-1.5 block text-sm text-gray-600">
               Agencia destino <span className="text-red-400">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {agencies.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => {
-                    setAgencyId(a.id);
-                    setConsigneeId("");
-                    setSelectedConsignee(null);
-                    setConsigneeSearch("");
-                  }}
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                    agencyId === a.id
-                      ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {a.code}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {filteredAgencies.map((a) => {
+                const selected = agencyId === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => {
+                      setAgencyId(a.id);
+                      setConsigneeId("");
+                      setSelectedConsignee(null);
+                      setConsigneeSearch("");
+                    }}
+                    className={`relative flex items-center gap-2.5 rounded-lg border-2 px-3 py-2.5 text-left transition-all ${
+                      selected
+                        ? "border-gray-900 bg-gray-900 ring-1 ring-gray-900/20"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-xs font-bold ${
+                        selected
+                          ? "bg-white/20 text-white"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {a.code}
+                    </span>
+                    <span
+                      className={`truncate text-sm ${
+                        selected ? "font-medium text-white" : "text-gray-600"
+                      }`}
+                    >
+                      {a.name}
+                    </span>
+                    {selected && (
+                      <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-white text-gray-900">
+                        <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+                          <path d="M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z" />
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
               <button
                 type="button"
                 onClick={() => {
@@ -1027,18 +1106,32 @@ export function WrReceiptForm({
                   setSelectedConsignee(null);
                   setConsigneeSearch("");
                 }}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                  agencyId === "unknown"
-                    ? "border-amber-600 bg-amber-600 text-white"
-                    : "border-amber-200 text-amber-700 hover:bg-amber-50"
+                className={`relative flex items-center gap-2.5 rounded-lg border-2 border-dashed px-3 py-2.5 text-left transition-all ${
+                  isUnknownAgency
+                    ? "border-amber-500 bg-amber-50 ring-1 ring-amber-500/20"
+                    : "border-gray-200 hover:border-amber-300 hover:bg-amber-50/50"
                 }`}
               >
-                ?
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm ${
+                    isUnknownAgency
+                      ? "bg-amber-500 font-bold text-white"
+                      : "bg-amber-100 font-medium text-amber-700"
+                  }`}
+                >
+                  ?
+                </span>
+                <span
+                  className={`text-sm ${
+                    isUnknownAgency
+                      ? "font-medium text-amber-800"
+                      : "text-gray-500"
+                  }`}
+                >
+                  Desconocida
+                </span>
               </button>
             </div>
-            {selectedAgency && (
-              <p className="mt-1.5 text-xs text-gray-500">{selectedAgency.name}</p>
-            )}
             {isUnknownAgency && (
               <p className="mt-1.5 text-xs text-amber-600">
                 Se registrará como WR desconocido. Las agencias podrán reclamarlo después.
@@ -1071,6 +1164,38 @@ export function WrReceiptForm({
               placeholder="Observaciones adicionales..."
               className={textareaCls}
             />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Condicion de ingreso
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {CONDITION_FLAGS.map((flag) => {
+                const isActive = conditionFlags.includes(flag);
+                return (
+                  <button
+                    key={flag}
+                    type="button"
+                    onClick={() => {
+                      setConditionFlags((prev) => {
+                        if (flag === "sin_novedad") {
+                          return isActive ? [] : ["sin_novedad"];
+                        }
+                        const without = prev.filter((f) => f !== flag && f !== "sin_novedad");
+                        return isActive ? without : [...without, flag];
+                      });
+                    }}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isActive
+                        ? CONDITION_FLAG_COLORS[flag as ConditionFlag]
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                    }`}
+                  >
+                    {CONDITION_FLAG_LABELS_ES[flag as ConditionFlag]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-600">
