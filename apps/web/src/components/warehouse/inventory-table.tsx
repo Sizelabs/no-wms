@@ -289,11 +289,11 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
 
       {/* Table */}
       <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
-        <table className="w-full border-separate border-spacing-0 text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
-            <tr className="text-xs font-medium uppercase tracking-wider text-gray-500">
+            <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
               {canSelect && (
-                <th className="border-b border-gray-200 px-3 py-3">
+                <th className="px-3 py-3">
                   <input
                     type="checkbox"
                     checked={selected.size === data.length && data.length > 0}
@@ -302,14 +302,14 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                   />
                 </th>
               )}
-              <th className="border-b border-gray-200 px-3 py-3">Guía</th>
-              <th className="border-b border-gray-200 px-3 py-3">WR#</th>
-              <th className="border-b border-gray-200 px-3 py-3">Transportista</th>
-              <th className="border-b border-gray-200 px-3 py-3">Agencia</th>
-              <th className="border-b border-gray-200 px-3 py-3">Peso</th>
-              <th className="border-b border-gray-200 px-3 py-3">Estado</th>
-              <th className="border-b border-gray-200 px-3 py-3">Días</th>
-              <th className="border-b border-gray-200 px-3 py-3">Recibido</th>
+              <th className="px-3 py-3">Guía</th>
+              <th className="px-3 py-3">WR#</th>
+              <th className="px-3 py-3">Transportista</th>
+              <th className="px-3 py-3">Agencia</th>
+              <th className="px-3 py-3">Peso</th>
+              <th className="px-3 py-3">Estado</th>
+              <th className="px-3 py-3">Días</th>
+              <th className="px-3 py-3">Recibido</th>
             </tr>
           </thead>
           <tbody>

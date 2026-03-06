@@ -336,10 +336,10 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
 
       {/* Table */}
       <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
-        <table className="w-full border-separate border-spacing-0 text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
-            <tr className="text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="border-b border-gray-200 px-3 py-3">
+            <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3">
                 <input
                   type="checkbox"
                   checked={selected.size === data.length && data.length > 0}
@@ -347,17 +347,17 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                   className="rounded border-gray-300"
                 />
               </th>
-              <th className="border-b border-gray-200 px-3 py-3">WR#</th>
-              <th className="border-b border-gray-200 px-3 py-3">Bodegaje</th>
-              <th className="border-b border-gray-200 px-3 py-3">Tracking</th>
-              <th className="border-b border-gray-200 px-3 py-3">Piezas</th>
-              <th className="border-b border-gray-200 px-3 py-3">Peso (lb)</th>
-              <th className="border-b border-gray-200 px-3 py-3">Peso (Kg)</th>
-              <th className="border-b border-gray-200 px-3 py-3">Tipo</th>
-              <th className="border-b border-gray-200 px-3 py-3">Remitente</th>
-              <th className="border-b border-gray-200 px-3 py-3">Transportista</th>
-              <th className="border-b border-gray-200 px-3 py-3">Valor Decl.</th>
-              <th className="border-b border-gray-200 px-3 py-3">Estado</th>
+              <th className="px-3 py-3">WR#</th>
+              <th className="px-3 py-3">Bodegaje</th>
+              <th className="px-3 py-3">Tracking</th>
+              <th className="px-3 py-3">Piezas</th>
+              <th className="px-3 py-3">Peso (lb)</th>
+              <th className="px-3 py-3">Peso (Kg)</th>
+              <th className="px-3 py-3">Tipo</th>
+              <th className="px-3 py-3">Remitente</th>
+              <th className="px-3 py-3">Transportista</th>
+              <th className="px-3 py-3">Valor Decl.</th>
+              <th className="px-3 py-3">Estado</th>
             </tr>
           </thead>
           <tbody>
