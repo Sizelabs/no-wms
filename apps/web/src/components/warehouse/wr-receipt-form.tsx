@@ -188,8 +188,6 @@ export function WrReceiptForm({
   // UI state
   const [error, setError] = useState<string | null>(null);
   const [createdWr, setCreatedWr] = useState<{ id: string; wr_number: string } | null>(null);
-  const [showQuickCreate, setShowQuickCreate] = useState(false);
-  const [newConsigneeName, setNewConsigneeName] = useState("");
   const [creatingConsignee, setCreatingConsignee] = useState(false);
   const [duplicateInfo, setDuplicateInfo] = useState<{
     wr_number: string;
@@ -468,11 +466,11 @@ export function WrReceiptForm({
   // ---------------------------------------------------------------------------
 
   const handleQuickCreate = useCallback(async () => {
-    if (!newConsigneeName.trim() || !agencyId || agencyId === "unknown") return;
+    if (!consigneeSearch.trim() || !agencyId || agencyId === "unknown") return;
     setCreatingConsignee(true);
     const fd = new FormData();
     fd.set("agency_id", agencyId);
-    fd.set("full_name", newConsigneeName.trim());
+    fd.set("full_name", consigneeSearch.trim());
     const result = await quickCreateConsignee(fd);
     if (result.data) {
       const newConsignee: Consignee = {
@@ -488,13 +486,11 @@ export function WrReceiptForm({
       setSelectedConsignee(newConsignee);
       setConsigneeSearch("");
       setConsignees([]);
-      setShowQuickCreate(false);
-      setNewConsigneeName("");
     } else {
       notify(result.error ?? "Error al crear destinatario", "error");
     }
     setCreatingConsignee(false);
-  }, [agencyId, newConsigneeName, selectedAgency?.code]);
+  }, [agencyId, consigneeSearch, notify, selectedAgency?.code]);
 
   // ---------------------------------------------------------------------------
   // Submit
@@ -545,7 +541,11 @@ export function WrReceiptForm({
         if (agencyId !== "unknown") {
           formData.set("agency_id", agencyId);
         }
-        if (consigneeId) formData.set("consignee_id", consigneeId);
+        if (consigneeId) {
+          formData.set("consignee_id", consigneeId);
+        } else if (consigneeSearch.trim()) {
+          formData.set("consignee_name", consigneeSearch.trim());
+        }
         if (notes) formData.set("notes", notes);
         if (warehouseLocationId) formData.set("warehouse_location_id", warehouseLocationId);
         if (shipperName.trim()) formData.set("shipper_name", shipperName.trim());
@@ -584,18 +584,16 @@ export function WrReceiptForm({
           ),
         );
 
-        // Collect all photos from all packages
-        const allPhotos = packages.flatMap((p) => p.photos);
-        formData.set(
-          "photos",
-          JSON.stringify(
-            allPhotos.map((p) => ({
-              storage_path: p.storagePath,
-              file_name: p.fileName,
-              is_damage_photo: p.isDamagePhoto,
-            })),
-          ),
+        // Collect all photos from all packages (with package index for linking)
+        const allPhotos = packages.flatMap((p, pkgIdx) =>
+          p.photos.map((photo) => ({
+            storage_path: photo.storagePath,
+            file_name: photo.fileName,
+            is_damage_photo: photo.isDamagePhoto,
+            package_index: pkgIdx,
+          })),
         );
+        formData.set("photos", JSON.stringify(allPhotos));
 
         // Attachments
         if (attachments.length) {
@@ -619,7 +617,7 @@ export function WrReceiptForm({
       }
     });
   }, [
-    warehouseId, agencyId, consigneeId, notes, warehouseLocationId,
+    warehouseId, agencyId, consigneeId, consigneeSearch, notes, warehouseLocationId,
     shipperName, masterTracking, description, wrNumber,
     carrier, packages, attachments, wrNumberError, notify,
   ]);
@@ -913,52 +911,60 @@ export function WrReceiptForm({
                 </button>
               </div>
             ) : (
-              <>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={consigneeSearch}
-                    onChange={(e) => {
-                      setConsigneeSearch(e.target.value);
-                      setConsigneeHighlight(0);
-                    }}
-                    onKeyDown={(e) => {
-                      if (!consignees.length) return;
-                      switch (e.key) {
-                        case "ArrowDown":
-                          e.preventDefault();
-                          setConsigneeHighlight((i) =>
-                            i < consignees.length - 1 ? i + 1 : 0,
-                          );
-                          break;
-                        case "ArrowUp":
-                          e.preventDefault();
-                          setConsigneeHighlight((i) =>
-                            i > 0 ? i - 1 : consignees.length - 1,
-                          );
-                          break;
-                        case "Enter":
-                          e.preventDefault();
-                          if (consigneeHighlight >= 0 && consignees[consigneeHighlight]) {
-                            selectConsignee(consignees[consigneeHighlight]!);
-                          }
-                          break;
-                        case "Escape":
-                          e.preventDefault();
-                          setConsignees([]);
-                          setConsigneeHighlight(-1);
-                          break;
-                      }
-                    }}
-                    placeholder="Buscar por nombre o casillero..."
-                    autoComplete="nope"
-                    role="combobox"
-                    aria-autocomplete="list"
-                    aria-expanded={consignees.length > 0}
-                    className={inputCls}
-                  />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={consigneeSearch}
+                  onChange={(e) => {
+                    setConsigneeSearch(e.target.value);
+                    setConsigneeHighlight(0);
+                  }}
+                  onKeyDown={(e) => {
+                    const canCreate = consigneeSearch.trim().length >= 2 && agencyId && agencyId !== "unknown";
+                    const totalItems = consignees.length + (canCreate ? 1 : 0);
+                    if (!totalItems) return;
+                    switch (e.key) {
+                      case "ArrowDown":
+                        e.preventDefault();
+                        setConsigneeHighlight((i) =>
+                          i < totalItems - 1 ? i + 1 : 0,
+                        );
+                        break;
+                      case "ArrowUp":
+                        e.preventDefault();
+                        setConsigneeHighlight((i) =>
+                          i > 0 ? i - 1 : totalItems - 1,
+                        );
+                        break;
+                      case "Enter":
+                        e.preventDefault();
+                        if (consigneeHighlight >= 0 && consigneeHighlight < consignees.length && consignees[consigneeHighlight]) {
+                          selectConsignee(consignees[consigneeHighlight]!);
+                        } else if (canCreate && consigneeHighlight === consignees.length) {
+                          handleQuickCreate();
+                        }
+                        break;
+                      case "Escape":
+                        e.preventDefault();
+                        setConsignees([]);
+                        setConsigneeHighlight(-1);
+                        break;
+                    }
+                  }}
+                  placeholder="Buscar por nombre o casillero..."
+                  autoComplete="nope"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={consignees.length > 0 || (consigneeSearch.length >= 2 && !!agencyId && agencyId !== "unknown")}
+                  className={inputCls}
+                />
 
-                  {consignees.length > 0 && (
+                {(() => {
+                  const canCreate = consigneeSearch.trim().length >= 2 && agencyId && agencyId !== "unknown";
+                  const showDropdown = consignees.length > 0 || canCreate;
+                  if (!showDropdown) return null;
+                  const createIndex = consignees.length;
+                  return (
                     <div
                       ref={consigneeListRef}
                       className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
@@ -991,65 +997,38 @@ export function WrReceiptForm({
                           </span>
                         </button>
                       ))}
+                      {canCreate && (
+                        <>
+                          {consignees.length > 0 && (
+                            <div className="border-t border-gray-100" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleQuickCreate}
+                            onMouseEnter={() => setConsigneeHighlight(createIndex)}
+                            disabled={creatingConsignee}
+                            className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                              consigneeHighlight === createIndex
+                                ? "bg-gray-100 text-gray-900"
+                                : "text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>
+                              {creatingConsignee
+                                ? "Creando..."
+                                : <>Crear <span className="font-medium">&ldquo;{consigneeSearch.trim()}&rdquo;</span></>
+                              }
+                            </span>
+                          </button>
+                        </>
+                      )}
                     </div>
-                  )}
-                </div>
-
-                  {consigneeSearch.length >= 2 &&
-                    consignees.length === 0 &&
-                    !showQuickCreate && (
-                      <div className="mt-1.5 text-xs text-gray-400">
-                        No se encontró destinatario.
-                        {agencyId && agencyId !== "unknown" && (
-                          <>
-                            {" "}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowQuickCreate(true);
-                                setNewConsigneeName(consigneeSearch);
-                              }}
-                              className="text-gray-900 underline"
-                            >
-                              Crear nuevo
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                  {showQuickCreate && agencyId && agencyId !== "unknown" && (
-                    <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-                      <p className="text-xs font-medium text-blue-700">
-                        Crear destinatario rápido
-                      </p>
-                      <input
-                        type="text"
-                        value={newConsigneeName}
-                        onChange={(e) => setNewConsigneeName(e.target.value)}
-                        placeholder="Nombre completo"
-                        className={inputCls}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={handleQuickCreate}
-                          disabled={creatingConsignee || !newConsigneeName.trim()}
-                          className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-                        >
-                          {creatingConsignee ? "Creando..." : "Crear"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowQuickCreate(false)}
-                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
+                  );
+                })()}
+              </div>
               )}
             </div>
 
