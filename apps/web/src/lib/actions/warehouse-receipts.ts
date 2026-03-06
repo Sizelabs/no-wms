@@ -43,35 +43,71 @@ export async function generateWrNumber(warehouseId: string): Promise<string> {
 
   const code = warehouse.code;
 
-  // Get last WR number for this warehouse
-  const { data } = await supabase
+  // Get ALL WR numbers for this warehouse to find the true max sequence
+  const { data: wrs } = await supabase
     .from("warehouse_receipts")
     .select("wr_number")
     .eq("warehouse_id", warehouseId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .like("wr_number", `${code}%`);
 
-  if (!data?.wr_number) {
+  if (!wrs || wrs.length === 0) {
     return `${code}000001`;
   }
 
-  // Extract numeric suffix and increment
-  const match = data.wr_number.match(/(\d+)$/);
-  const nextNum = match ? parseInt(match[1]!, 10) + 1 : 1;
-  return `${code}${String(nextNum).padStart(6, "0")}`;
+  // Find the highest numeric suffix across all WRs
+  let maxNum = 0;
+  for (const wr of wrs) {
+    const match = wr.wr_number.match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1]!, 10);
+      if (num > maxNum) maxNum = num;
+    }
+  }
+
+  return `${code}${String(maxNum + 1).padStart(6, "0")}`;
 }
 
 export async function generateWrNumberForWarehouse(warehouseId: string): Promise<string> {
   return generateWrNumber(warehouseId);
 }
 
-export async function checkWrNumberUnique(wrNumber: string): Promise<boolean> {
+export async function checkWrNumberUnique(wrNumber: string, warehouseId?: string): Promise<boolean> {
   const supabase = await createClient();
-  const { count } = await supabase
+
+  // Scope uniqueness check to the warehouse's organization
+  let orgId: string | null = null;
+  if (warehouseId) {
+    const { data: wh } = await supabase
+      .from("warehouses")
+      .select("organization_id")
+      .eq("id", warehouseId)
+      .single();
+    orgId = wh?.organization_id ?? null;
+  }
+
+  if (!orgId) {
+    // Fallback: check from user profile
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", user.id)
+        .single();
+      orgId = profile?.organization_id ?? null;
+    }
+  }
+
+  let query = supabase
     .from("warehouse_receipts")
     .select("id", { count: "exact", head: true })
     .eq("wr_number", wrNumber);
+
+  if (orgId) {
+    query = query.eq("organization_id", orgId);
+  }
+
+  const { count } = await query;
   return (count ?? 0) === 0;
 }
 
@@ -170,8 +206,8 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
   let wrNumber: string;
   if (input.wr_number?.trim()) {
     wrNumber = input.wr_number.trim();
-    // Validate uniqueness
-    const isUnique = await checkWrNumberUnique(wrNumber);
+    // Validate uniqueness within the organization
+    const isUnique = await checkWrNumberUnique(wrNumber, input.warehouse_id);
     if (!isUnique) {
       throw new Error(`El número de recibo "${wrNumber}" ya existe. Elija otro.`);
     }
@@ -179,7 +215,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     wrNumber = await generateWrNumber(input.warehouse_id);
   }
 
-  // Get org ID from user profile
+  // Get org ID from user profile, falling back to warehouse's org (superadmin case)
   const { data: profile } = await supabase
     .from("profiles")
     .select("organization_id")
@@ -190,11 +226,25 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     throw new Error("Perfil no encontrado");
   }
 
+  let organizationId = profile.organization_id as string | null;
+  if (!organizationId) {
+    const { data: warehouse } = await supabase
+      .from("warehouses")
+      .select("organization_id")
+      .eq("id", input.warehouse_id)
+      .single();
+    organizationId = warehouse?.organization_id ?? null;
+  }
+
+  if (!organizationId) {
+    throw new Error("No se pudo determinar la organización");
+  }
+
   // Insert WR (without package-level fields — trigger computes aggregates)
   const { data: wr, error } = await supabase
     .from("warehouse_receipts")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: organizationId,
       warehouse_id: input.warehouse_id,
       wr_number: wrNumber,
       status: "received",
@@ -220,7 +270,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
   // Insert packages (trigger will update WR aggregates)
   const { error: pkgError } = await supabase.from("packages").insert(
     packageInserts.map((pkg) => ({
-      organization_id: profile.organization_id,
+      organization_id: organizationId,
       warehouse_receipt_id: wr.id,
       tracking_number: pkg.tracking_number,
       carrier: pkg.carrier,
@@ -240,6 +290,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       sender_name: pkg.sender_name ?? null,
       pieces_count: pkg.pieces_count,
       package_type: pkg.package_type ?? null,
+      condition_flags: pkg.condition_flags ?? ["sin_novedad"],
     })),
   );
 
@@ -249,7 +300,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
 
   // Insert initial status history
   await supabase.from("wr_status_history").insert({
-    organization_id: profile.organization_id,
+    organization_id: organizationId,
     warehouse_receipt_id: wr.id,
     new_status: "received",
     changed_by: user.id,
@@ -258,7 +309,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
   // Create unknown_wrs record if no agency was selected
   if (!input.agency_id) {
     await supabase.from("unknown_wrs").insert({
-      organization_id: profile.organization_id,
+      organization_id: organizationId,
       warehouse_receipt_id: wr.id,
       status: "unclaimed",
     });
@@ -276,7 +327,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       if (photoRecords.length) {
         await supabase.from("wr_photos").insert(
           photoRecords.map((p) => ({
-            organization_id: profile.organization_id,
+            organization_id: organizationId,
             warehouse_receipt_id: wr.id,
             storage_path: p.storage_path,
             file_name: p.file_name,
@@ -301,7 +352,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       if (attachmentRecords.length) {
         await supabase.from("wr_attachments").insert(
           attachmentRecords.map((a) => ({
-            organization_id: profile.organization_id,
+            organization_id: organizationId,
             warehouse_receipt_id: wr.id,
             storage_path: a.storage_path,
             file_name: a.file_name,
@@ -684,7 +735,13 @@ export async function getAgencyHomeDestination(agencyId: string) {
     .eq("agency_id", agencyId)
     .eq("is_home", true)
     .maybeSingle();
-  return data;
+
+  if (!data) return null;
+
+  // Supabase may return destinations as array or object depending on FK
+  const raw = data.destinations;
+  const dest = Array.isArray(raw) ? raw[0] : raw;
+  return dest ? { city: dest.city as string, country_code: dest.country_code as string } : null;
 }
 
 export async function getWarehouseReceiptForPrint(id: string) {

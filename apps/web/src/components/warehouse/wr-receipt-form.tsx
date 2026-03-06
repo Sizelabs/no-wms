@@ -14,8 +14,10 @@ import {
   calculateVolumetricWeight,
 } from "@no-wms/shared/validators/warehouse-receipt";
 import {
+  AlertTriangle,
   ArrowLeft,
   Building2,
+  CircleCheck,
   FileText,
   Package,
   ScanBarcode,
@@ -91,6 +93,7 @@ interface PackageData {
   damage_description: string;
   pieces_count: string;
   package_type: string;
+  condition_flags: string[];
   photos: UploadedPhoto[];
 }
 
@@ -121,6 +124,7 @@ function emptyPackage(tracking = ""): PackageData {
     damage_description: "",
     pieces_count: "1",
     package_type: "Box",
+    condition_flags: ["sin_novedad"],
     photos: [],
   };
 }
@@ -177,7 +181,6 @@ export function WrReceiptForm({
   const [notes, setNotes] = useState("");
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
   const [warehouseLocationId, setWarehouseLocationId] = useState("");
-  const [conditionFlags, setConditionFlags] = useState<string[]>([]);
 
   // Package state
   const [packages, setPackages] = useState<PackageData[]>([emptyPackage()]);
@@ -263,7 +266,7 @@ export function WrReceiptForm({
   // ---------------------------------------------------------------------------
 
   const updatePackage = useCallback(
-    (index: number, field: keyof PackageData, value: string | boolean | UploadedPhoto[]) => {
+    (index: number, field: keyof PackageData, value: string | boolean | string[] | UploadedPhoto[]) => {
       setPackages((prev) =>
         prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
       );
@@ -393,12 +396,12 @@ export function WrReceiptForm({
     }
 
     const timeout = setTimeout(async () => {
-      const isUnique = await checkWrNumberUnique(wrNumber.trim());
+      const isUnique = await checkWrNumberUnique(wrNumber.trim(), warehouseId || undefined);
       setWrNumberError(isUnique ? null : "Este número ya existe");
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [wrNumber]);
+  }, [wrNumber, warehouseId]);
 
   // ---------------------------------------------------------------------------
   // Scan gate handler
@@ -551,8 +554,10 @@ export function WrReceiptForm({
         if (wrNumber.trim()) {
           formData.set("wr_number", wrNumber.trim());
         }
-        if (conditionFlags.length) {
-          formData.set("condition_flags", JSON.stringify(conditionFlags));
+        // Aggregate condition flags from all packages for receipt level
+        const allFlags = [...new Set(packages.flatMap((p) => p.condition_flags))];
+        if (allFlags.length) {
+          formData.set("condition_flags", JSON.stringify(allFlags));
         }
 
         formData.set(
@@ -574,6 +579,7 @@ export function WrReceiptForm({
               pieces_count: parseInt(p.pieces_count, 10) || 1,
               package_type: p.package_type || null,
               notes: p.pkg_notes || null,
+              condition_flags: p.condition_flags,
             })),
           ),
         );
@@ -614,7 +620,7 @@ export function WrReceiptForm({
     });
   }, [
     warehouseId, agencyId, consigneeId, notes, warehouseLocationId,
-    shipperName, masterTracking, description, wrNumber, conditionFlags,
+    shipperName, masterTracking, description, wrNumber,
     carrier, packages, attachments, wrNumberError, notify,
   ]);
 
@@ -635,7 +641,6 @@ export function WrReceiptForm({
     setDescription("");
     setNotes("");
     setAttachments([]);
-    setConditionFlags([]);
     setWarehouseLocationId("");
     setDuplicateInfo(null);
     setCreatedWr(null);
@@ -1062,9 +1067,12 @@ export function WrReceiptForm({
                     type="button"
                     onClick={() => {
                       setAgencyId(a.id);
-                      setConsigneeId("");
-                      setSelectedConsignee(null);
-                      setConsigneeSearch("");
+                      // Only clear consignee if it belongs to a different agency
+                      if (selectedConsignee && selectedConsignee.agency_id !== a.id) {
+                        setConsigneeId("");
+                        setSelectedConsignee(null);
+                        setConsigneeSearch("");
+                      }
                     }}
                     className={`relative flex items-center gap-2.5 rounded-lg border-2 px-3 py-2.5 text-left transition-all ${
                       selected
@@ -1088,13 +1096,6 @@ export function WrReceiptForm({
                     >
                       {a.name}
                     </span>
-                    {selected && (
-                      <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-white text-gray-900">
-                        <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
-                          <path d="M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z" />
-                        </svg>
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -1102,9 +1103,12 @@ export function WrReceiptForm({
                 type="button"
                 onClick={() => {
                   setAgencyId("unknown");
-                  setConsigneeId("");
-                  setSelectedConsignee(null);
-                  setConsigneeSearch("");
+                  // Clear consignee only if it was matched from a specific agency
+                  if (selectedConsignee && selectedConsignee.agency_id) {
+                    setConsigneeId("");
+                    setSelectedConsignee(null);
+                    setConsigneeSearch("");
+                  }
                 }}
                 className={`relative flex items-center gap-2.5 rounded-lg border-2 border-dashed px-3 py-2.5 text-left transition-all ${
                   isUnknownAgency
@@ -1164,38 +1168,6 @@ export function WrReceiptForm({
               placeholder="Observaciones adicionales..."
               className={textareaCls}
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Condicion de ingreso
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {CONDITION_FLAGS.map((flag) => {
-                const isActive = conditionFlags.includes(flag);
-                return (
-                  <button
-                    key={flag}
-                    type="button"
-                    onClick={() => {
-                      setConditionFlags((prev) => {
-                        if (flag === "sin_novedad") {
-                          return isActive ? [] : ["sin_novedad"];
-                        }
-                        const without = prev.filter((f) => f !== flag && f !== "sin_novedad");
-                        return isActive ? without : [...without, flag];
-                      });
-                    }}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                      isActive
-                        ? CONDITION_FLAG_COLORS[flag as ConditionFlag]
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                    }`}
-                  >
-                    {CONDITION_FLAG_LABELS_ES[flag as ConditionFlag]}
-                  </button>
-                );
-              })}
-            </div>
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-600">
@@ -1290,6 +1262,187 @@ export function WrReceiptForm({
 }
 
 // ---------------------------------------------------------------------------
+// ConditionSection sub-component
+// ---------------------------------------------------------------------------
+
+const PROBLEM_FLAGS = CONDITION_FLAGS.filter((f) => f !== "sin_novedad");
+
+function ConditionSection({
+  pkg,
+  onUpdate,
+}: {
+  pkg: PackageData;
+  onUpdate: (field: keyof PackageData, value: string | boolean | string[] | UploadedPhoto[]) => void;
+}) {
+  const flags = pkg.condition_flags;
+  const isClean = flags.includes("sin_novedad");
+  const hasProblems = flags.some((f) => f !== "sin_novedad");
+
+  const toggleFlag = (flag: string) => {
+    const without = flags.filter((f) => f !== flag && f !== "sin_novedad");
+    const next = flags.includes(flag) ? without : [...without, flag];
+    if (next.length === 0) {
+      onUpdate("condition_flags", ["sin_novedad"]);
+      onUpdate("is_damaged", false);
+    } else {
+      onUpdate("condition_flags", next);
+      onUpdate("is_damaged", true);
+    }
+  };
+
+  const resetToClean = () => {
+    onUpdate("condition_flags", ["sin_novedad"]);
+    onUpdate("is_damaged", false);
+  };
+
+  const openReport = () => {
+    // Remove sin_novedad but don't select any flag yet — user picks
+    onUpdate("condition_flags", []);
+    onUpdate("is_damaged", true);
+  };
+
+  // --- Clean state: two pill buttons side by side ---
+  if (isClean) {
+    return (
+      <>
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-600">Condición de ingreso</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-green-600 bg-green-600 px-3 py-2 text-sm font-medium text-white"
+            >
+              <CircleCheck className="h-4 w-4" />
+              Sin novedad
+            </button>
+            <button
+              type="button"
+              onClick={openReport}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Reportar novedad
+            </button>
+          </div>
+        </div>
+
+        {/* DGR */}
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={pkg.is_dgr}
+            onChange={(e) => onUpdate("is_dgr", e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+          />
+          Mercancía peligrosa (DGR)
+        </label>
+        {pkg.is_dgr && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-orange-700">
+              Clase DGR
+            </label>
+            <input
+              type="text"
+              value={pkg.dgr_class}
+              onChange={(e) => onUpdate("dgr_class", e.target.value)}
+              placeholder="Ej: Clase 3 - Líquidos inflamables"
+              className={inputCls}
+            />
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // --- Problem state: expanded panel ---
+  return (
+    <>
+      <div>
+        <label className="mb-1.5 block text-sm text-gray-600">Condición de ingreso</label>
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50">
+          <div className="flex items-center justify-between px-3 pt-2.5 pb-2">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-amber-800">
+            <AlertTriangle className="h-4 w-4" />
+            Novedad reportada
+          </span>
+          <button
+            type="button"
+            onClick={resetToClean}
+            className="text-xs text-green-600 hover:text-green-700"
+          >
+            Marcar sin novedad
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-2 px-3 pb-3 sm:grid-cols-5">
+          {PROBLEM_FLAGS.map((flag) => {
+            const cf = flag as ConditionFlag;
+            const active = flags.includes(flag);
+            const severe = cf === "caja_mojada" || cf === "contenido_expuesto";
+            return (
+              <button
+                key={flag}
+                type="button"
+                onClick={() => toggleFlag(flag)}
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  active
+                    ? severe
+                      ? "border-red-600 bg-red-600 text-white"
+                      : "border-amber-600 bg-amber-600 text-white"
+                    : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {CONDITION_FLAG_LABELS_ES[cf]}
+              </button>
+            );
+          })}
+        </div>
+        {hasProblems && (
+          <div className="border-t border-amber-200 px-3 py-2.5">
+            <label className="mb-1 block text-xs font-medium text-amber-800">
+              Descripción del daño <span className="font-normal text-amber-600">(opcional)</span>
+            </label>
+            <textarea
+              value={pkg.damage_description}
+              onChange={(e) => onUpdate("damage_description", e.target.value)}
+              rows={2}
+              placeholder="Describa el daño observado..."
+              className="w-full rounded-md border border-amber-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-amber-400 focus:ring-1 focus:ring-amber-200 focus:outline-none"
+            />
+          </div>
+          )}
+        </div>
+      </div>
+
+      {/* DGR */}
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={pkg.is_dgr}
+          onChange={(e) => onUpdate("is_dgr", e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+        />
+        Mercancía peligrosa (DGR)
+      </label>
+      {pkg.is_dgr && (
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-orange-700">
+            Clase DGR
+          </label>
+          <input
+            type="text"
+            value={pkg.dgr_class}
+            onChange={(e) => onUpdate("dgr_class", e.target.value)}
+            placeholder="Ej: Clase 3 - Líquidos inflamables"
+            className={inputCls}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PackageCard sub-component
 // ---------------------------------------------------------------------------
 
@@ -1305,7 +1458,7 @@ function PackageCard({
   index: number;
   total: number;
   warehouseId: string;
-  onUpdate: (field: keyof PackageData, value: string | boolean | UploadedPhoto[]) => void;
+  onUpdate: (field: keyof PackageData, value: string | boolean | string[] | UploadedPhoto[]) => void;
   onRemove?: () => void;
 }) {
   const volumetricWeight = useMemo(() => {
@@ -1521,59 +1674,8 @@ function PackageCard({
           />
         </div>
 
-        {/* DGR + Damage flags */}
-        <div className="flex flex-wrap items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={pkg.is_damaged}
-              onChange={(e) => onUpdate("is_damaged", e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
-            />
-            Paquete dañado
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={pkg.is_dgr}
-              onChange={(e) => onUpdate("is_dgr", e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
-            />
-            Mercancía peligrosa (DGR)
-          </label>
-        </div>
-
-        {/* Damage description */}
-        {pkg.is_damaged && (
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-red-700">
-              Descripción del daño <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              value={pkg.damage_description}
-              onChange={(e) => onUpdate("damage_description", e.target.value)}
-              rows={2}
-              placeholder="Describa el daño observado..."
-              className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:ring-1 focus:ring-red-200 focus:outline-none transition-colors"
-            />
-          </div>
-        )}
-
-        {/* DGR class */}
-        {pkg.is_dgr && (
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-orange-700">
-              Clase DGR
-            </label>
-            <input
-              type="text"
-              value={pkg.dgr_class}
-              onChange={(e) => onUpdate("dgr_class", e.target.value)}
-              placeholder="Ej: Clase 3 - Líquidos inflamables"
-              className={inputCls}
-            />
-          </div>
-        )}
+        {/* Condition + DGR */}
+        <ConditionSection pkg={pkg} onUpdate={onUpdate} />
       </div>
     </div>
   );

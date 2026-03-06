@@ -19,10 +19,8 @@ export const createPackageSchema = z.object({
   pieces_count: z.coerce.number().int().positive().default(1),
   package_type: z.enum(PACKAGE_TYPES).nullish(),
   notes: z.string().nullish(),
-}).refine(
-  (data) => !data.is_damaged || (data.damage_description && data.damage_description.length > 0),
-  { message: "Descripción de daño requerida", path: ["damage_description"] },
-);
+  condition_flags: z.array(z.string()).optional().default(["sin_novedad"]),
+});
 
 export type CreatePackageInput = z.infer<typeof createPackageSchema>;
 
@@ -37,6 +35,7 @@ export const createWarehouseReceiptSchema = z.object({
   master_tracking: z.string().optional(),
   description: z.string().optional(),
   wr_number: z.string().optional(),
+  condition_flags: z.array(z.string()).optional().default([]),
   packages: z.array(createPackageSchema).min(1, "Al menos un paquete requerido"),
 });
 
