@@ -36,6 +36,7 @@ interface WarehouseReceipt {
   has_dgr_package: boolean;
   agencies: { name: string; code: string; type: string } | null;
   consignees: { full_name: string; casillero: string | null } | null;
+  consignee_name: string | null;
   packages: WrPackage[];
   wr_status_history: StatusHistoryEntry[];
 }
@@ -71,7 +72,7 @@ function getLastChange(history: StatusHistoryEntry[]): string | null {
 function groupByConsignee(receipts: WarehouseReceipt[]) {
   const groups = new Map<string, WarehouseReceipt[]>();
   for (const wr of receipts) {
-    const key = wr.consignees?.full_name ?? "";
+    const key = wr.consignees?.full_name ?? wr.consignee_name ?? "";
     const list = groups.get(key);
     if (list) {
       list.push(wr);
@@ -306,7 +307,7 @@ export function HistoryWrTable({ data, count, locale, agencies = [], warehouses 
                             {wr.agencies?.code ?? "—"}
                           </td>
                           <td className="px-3 py-2.5 text-xs text-gray-600 truncate max-w-[140px]">
-                            {wr.consignees?.full_name ?? "—"}
+                            {wr.consignees?.full_name ?? wr.consignee_name ?? "—"}
                           </td>
                           <td className="px-3 py-2.5 text-center text-xs">
                             {wr.total_pieces}

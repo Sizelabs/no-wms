@@ -59,23 +59,27 @@ export default async function DashboardLayout({
   const defaultCollapsed = cookieStore.get("sidebar-collapsed")?.value === "true";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar
-        navConfig={navConfig}
-        locale={locale}
-        defaultCollapsed={defaultCollapsed}
-      />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar
-          userName={userName}
-          userRole={userRole}
-          userEmail={userEmail}
-          orgName={orgName}
+    <div className="flex h-screen overflow-hidden bg-gray-50 print:block print:h-auto print:overflow-visible">
+      <div className="print:hidden">
+        <Sidebar
+          navConfig={navConfig}
           locale={locale}
+          defaultCollapsed={defaultCollapsed}
         />
+      </div>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="print:hidden">
+          <Topbar
+            userName={userName}
+            userRole={userRole}
+            userEmail={userEmail}
+            orgName={orgName}
+            locale={locale}
+          />
+        </div>
         <NotificationProvider>
           <RoleProvider roles={roles} warehouseIds={warehouseIds} courierIds={courierIds} agencyIds={agencyIds} permissions={permissions}>
-            <main className="flex-1 overflow-y-auto p-6">{children}</main>
+            <main className="flex-1 overflow-y-auto p-6 print:p-0 print:overflow-visible">{children}</main>
           </RoleProvider>
         </NotificationProvider>
       </div>

@@ -154,6 +154,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     warehouse_id: formData.get("warehouse_id") as string,
     agency_id: (formData.get("agency_id") as string) || null,
     consignee_id: (formData.get("consignee_id") as string) || null,
+    consignee_name: (formData.get("consignee_name") as string) || undefined,
     warehouse_location_id: (formData.get("warehouse_location_id") as string) || undefined,
     notes: (formData.get("notes") as string) || undefined,
     client_id: (formData.get("client_id") as string) || undefined,
@@ -251,6 +252,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       agency_id: input.agency_id ?? null,
       is_unknown: !input.agency_id,
       consignee_id: input.consignee_id ?? null,
+      consignee_name: input.consignee_name ?? null,
       warehouse_location_id: input.warehouse_location_id ?? null,
       notes: input.notes ?? null,
       shipper_name: input.shipper_name ?? null,
@@ -268,7 +270,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
   }
 
   // Insert packages (trigger will update WR aggregates)
-  const { error: pkgError } = await supabase.from("packages").insert(
+  const { data: insertedPkgs, error: pkgError } = await supabase.from("packages").insert(
     packageInserts.map((pkg) => ({
       organization_id: organizationId,
       warehouse_receipt_id: wr.id,
@@ -292,11 +294,13 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       package_type: pkg.package_type ?? null,
       condition_flags: pkg.condition_flags ?? ["sin_novedad"],
     })),
-  );
+  ).select("id");
 
   if (pkgError) {
     throw new Error(pkgError.message);
   }
+
+  const packageIds = (insertedPkgs ?? []).map((p) => p.id);
 
   // Insert initial status history
   await supabase.from("wr_status_history").insert({
@@ -315,7 +319,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     });
   }
 
-  // Save photo records
+  // Save photo records (linked to their respective packages)
   const photosJson = formData.get("photos") as string | null;
   if (photosJson) {
     try {
@@ -323,12 +327,14 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
         storage_path: string;
         file_name: string;
         is_damage_photo: boolean;
+        package_index?: number;
       }>;
       if (photoRecords.length) {
         await supabase.from("wr_photos").insert(
           photoRecords.map((p) => ({
             organization_id: organizationId,
             warehouse_receipt_id: wr.id,
+            package_id: p.package_index != null ? packageIds[p.package_index] ?? null : null,
             storage_path: p.storage_path,
             file_name: p.file_name,
             is_damage_photo: p.is_damage_photo,
@@ -439,7 +445,7 @@ export async function getPackages(filters?: {
   let query = supabase
     .from("packages")
     .select(
-      "*, warehouse_receipts!inner(id, wr_number, status, received_at, agency_id, warehouse_id, consignee_id, agencies(name, code), consignees(full_name, casillero))",
+      "*, warehouse_receipts!inner(id, wr_number, status, received_at, agency_id, warehouse_id, consignee_id, consignee_name, agencies(name, code), consignees(full_name, casillero))",
       { count: "exact" },
     )
     .order("created_at", { ascending: false });
@@ -715,13 +721,43 @@ export async function getWarehouseReceipt(id: string) {
   const { data, error } = await supabase
     .from("warehouse_receipts")
     .select(
-      "*, agencies(name, code, type, couriers(name, code)), consignees(full_name, casillero), warehouses(name, code, city, country, full_address, phone, email), profiles:received_by(full_name), warehouse_locations:warehouse_location_id(name, code, warehouse_zones:zone_id(name, code)), packages(*), wr_photos(*), wr_status_history(*, profiles:changed_by(full_name)), wr_notes(*, profiles:created_by(full_name))",
+      "*, agencies(name, code, type, couriers(name, code)), consignees(full_name, casillero), warehouses(name, code, city, country, full_address, phone, email), profiles:received_by(full_name), warehouse_locations:warehouse_location_id(name, code, warehouse_zones:zone_id(name, code)), packages(*), wr_photos(*), wr_attachments(*), wr_status_history(*, profiles:changed_by(full_name)), wr_notes(*, profiles:created_by(full_name))",
     )
     .eq("id", id)
     .single();
 
   if (error) {
     return { data: null, error: error.message };
+  }
+
+  // Generate signed URLs for photos (bucket is private)
+  if (data.wr_photos?.length) {
+    const photoPaths = data.wr_photos.map((p: { storage_path: string }) => p.storage_path);
+    const { data: signedPhotos } = await supabase.storage
+      .from("wr-photos")
+      .createSignedUrls(photoPaths, 60 * 60); // 1 hour
+
+    if (signedPhotos) {
+      for (let i = 0; i < data.wr_photos.length; i++) {
+        (data.wr_photos[i] as Record<string, unknown>).signed_url =
+          signedPhotos[i]?.signedUrl ?? null;
+      }
+    }
+  }
+
+  // Generate signed URLs for attachments (bucket is private)
+  if (data.wr_attachments?.length) {
+    const attachPaths = data.wr_attachments.map((a: { storage_path: string }) => a.storage_path);
+    const { data: signedAttach } = await supabase.storage
+      .from("wr-attachments")
+      .createSignedUrls(attachPaths, 60 * 60);
+
+    if (signedAttach) {
+      for (let i = 0; i < data.wr_attachments.length; i++) {
+        (data.wr_attachments[i] as Record<string, unknown>).signed_url =
+          signedAttach[i]?.signedUrl ?? null;
+      }
+    }
   }
 
   return { data, error: null };

@@ -31,6 +31,7 @@ import { Combobox } from "@/components/ui/combobox";
 import type { UploadedFile } from "@/components/ui/file-upload";
 import { FileUpload } from "@/components/ui/file-upload";
 import { FormCard, FormSection } from "@/components/ui/form-section";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import type { UploadedPhoto } from "@/components/ui/photo-upload";
 import { PhotoUpload } from "@/components/ui/photo-upload";
 import { useNotification } from "@/components/layout/notification";
@@ -189,6 +190,8 @@ export function WrReceiptForm({
   const [error, setError] = useState<string | null>(null);
   const [createdWr, setCreatedWr] = useState<{ id: string; wr_number: string } | null>(null);
   const [creatingConsignee, setCreatingConsignee] = useState(false);
+  const [quickCreateModal, setQuickCreateModal] = useState(false);
+  const [quickCreateAgencyId, setQuickCreateAgencyId] = useState("");
   const [duplicateInfo, setDuplicateInfo] = useState<{
     wr_number: string;
     received_at: string;
@@ -465,32 +468,49 @@ export function WrReceiptForm({
   // Quick-create consignee
   // ---------------------------------------------------------------------------
 
-  const handleQuickCreate = useCallback(async () => {
-    if (!consigneeSearch.trim() || !agencyId || agencyId === "unknown") return;
+  const handleQuickCreate = useCallback(() => {
+    if (!consigneeSearch.trim()) return;
+    // If agency is selected, create directly; otherwise open modal to pick one
+    if (agencyId && agencyId !== "unknown") {
+      doQuickCreate(agencyId);
+    } else {
+      setQuickCreateAgencyId("");
+      setQuickCreateModal(true);
+    }
+  }, [agencyId, consigneeSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const doQuickCreate = useCallback(async (targetAgencyId: string) => {
+    if (!consigneeSearch.trim() || !targetAgencyId) return;
     setCreatingConsignee(true);
     const fd = new FormData();
-    fd.set("agency_id", agencyId);
+    fd.set("agency_id", targetAgencyId);
     fd.set("full_name", consigneeSearch.trim());
     const result = await quickCreateConsignee(fd);
     if (result.data) {
+      const agency = filteredAgencies.find((a) => a.id === targetAgencyId);
       const newConsignee: Consignee = {
         id: result.data.id,
         full_name: result.data.full_name,
         casillero: result.data.casillero,
         cedula_ruc: null,
         city: null,
-        agency_id: agencyId,
-        agencies: { code: selectedAgency?.code ?? "" },
+        agency_id: targetAgencyId,
+        agencies: { code: agency?.code ?? "" },
       };
       setConsigneeId(newConsignee.id);
       setSelectedConsignee(newConsignee);
       setConsigneeSearch("");
       setConsignees([]);
+      // Also set the agency on the WR form if it wasn't set
+      if (!agencyId || agencyId === "unknown") {
+        setAgencyId(targetAgencyId);
+      }
+      setQuickCreateModal(false);
     } else {
       notify(result.error ?? "Error al crear destinatario", "error");
     }
     setCreatingConsignee(false);
-  }, [agencyId, consigneeSearch, notify, selectedAgency?.code]);
+  }, [agencyId, consigneeSearch, filteredAgencies, notify]);
 
   // ---------------------------------------------------------------------------
   // Submit
@@ -920,7 +940,7 @@ export function WrReceiptForm({
                     setConsigneeHighlight(0);
                   }}
                   onKeyDown={(e) => {
-                    const canCreate = consigneeSearch.trim().length >= 2 && agencyId && agencyId !== "unknown";
+                    const canCreate = consigneeSearch.trim().length >= 2;
                     const totalItems = consignees.length + (canCreate ? 1 : 0);
                     if (!totalItems) return;
                     switch (e.key) {
@@ -955,12 +975,12 @@ export function WrReceiptForm({
                   autoComplete="nope"
                   role="combobox"
                   aria-autocomplete="list"
-                  aria-expanded={consignees.length > 0 || (consigneeSearch.length >= 2 && !!agencyId && agencyId !== "unknown")}
+                  aria-expanded={consignees.length > 0 || consigneeSearch.length >= 2}
                   className={inputCls}
                 />
 
                 {(() => {
-                  const canCreate = consigneeSearch.trim().length >= 2 && agencyId && agencyId !== "unknown";
+                  const canCreate = consigneeSearch.trim().length >= 2;
                   const showDropdown = consignees.length > 0 || canCreate;
                   if (!showDropdown) return null;
                   const createIndex = consignees.length;
@@ -1236,6 +1256,82 @@ export function WrReceiptForm({
           {isPending ? "Guardando..." : "Crear Recibo"}
         </button>
       </div>
+
+      {/* Quick-create consignee modal — when no agency is selected */}
+      <Modal open={quickCreateModal} onClose={() => setQuickCreateModal(false)} size="sm">
+        <ModalHeader onClose={() => setQuickCreateModal(false)}>
+          Crear destinatario
+        </ModalHeader>
+        <ModalBody>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Nombre</label>
+              <input
+                type="text"
+                value={consigneeSearch}
+                disabled
+                className={inputCls + " bg-gray-50"}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Agencia <span className="text-red-400">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {filteredAgencies.map((a) => {
+                  const selected = quickCreateAgencyId === a.id;
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => setQuickCreateAgencyId(a.id)}
+                      className={`flex items-center gap-2.5 rounded-lg border-2 px-3 py-2.5 text-left transition-all ${
+                        selected
+                          ? "border-gray-900 bg-gray-900 ring-1 ring-gray-900/20"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold ${
+                          selected
+                            ? "bg-white/20 text-white"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {a.code}
+                      </span>
+                      <span
+                        className={`truncate text-sm ${
+                          selected ? "font-medium text-white" : "text-gray-600"
+                        }`}
+                      >
+                        {a.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <button
+            type="button"
+            onClick={() => setQuickCreateModal(false)}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => doQuickCreate(quickCreateAgencyId)}
+            disabled={!quickCreateAgencyId || creatingConsignee}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {creatingConsignee ? "Creando..." : "Crear"}
+          </button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

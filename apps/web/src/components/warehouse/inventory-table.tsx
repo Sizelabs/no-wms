@@ -30,6 +30,7 @@ interface PackageRow {
     received_at: string;
     agencies: { name: string; code: string } | null;
     consignees: { full_name: string; casillero: string | null } | null;
+    consignee_name: string | null;
   };
 }
 
@@ -66,7 +67,7 @@ function storageDayColor(days: number): string {
 function groupByConsignee(packages: PackageRow[]) {
   const groups = new Map<string, PackageRow[]>();
   for (const pkg of packages) {
-    const key = pkg.warehouse_receipts.consignees?.full_name ?? "";
+    const key = pkg.warehouse_receipts.consignees?.full_name ?? pkg.warehouse_receipts.consignee_name ?? "";
     const list = groups.get(key);
     if (list) {
       list.push(pkg);

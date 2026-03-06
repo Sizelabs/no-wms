@@ -15,7 +15,7 @@ export async function getUnknownWrs(filters?: {
   const query = supabase
     .from("warehouse_receipts")
     .select(
-      "id, wr_number, received_at, consignees(full_name), packages(tracking_number, carrier, sender_name), unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
+      "id, wr_number, received_at, consignee_name, consignees(full_name), packages(tracking_number, carrier, sender_name), unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
     )
     .is("agency_id", null)
     .order("received_at", { ascending: false });

@@ -39,6 +39,7 @@ interface WarehouseReceipt {
   free_storage_override_days: number | null;
   agencies: { name: string; code: string; type: string } | null;
   consignees: { full_name: string; casillero: string | null } | null;
+  consignee_name: string | null;
 }
 
 interface WrHistoryTableProps {
@@ -97,7 +98,7 @@ function computeBodegaje(
 function groupByConsignee(receipts: WarehouseReceipt[]) {
   const groups = new Map<string, WarehouseReceipt[]>();
   for (const wr of receipts) {
-    const key = wr.consignees?.full_name ?? "";
+    const key = wr.consignees?.full_name ?? wr.consignee_name ?? "";
     const list = groups.get(key);
     if (list) {
       list.push(wr);

@@ -21,6 +21,7 @@ interface UnknownWr {
   tracking_number_masked?: string;
   packages: Array<{ tracking_number: string | null; carrier: string; sender_name: string }>;
   consignees: { full_name: string }[] | { full_name: string } | null;
+  consignee_name: string | null;
   received_at: string;
   unknown_wrs: ClaimRecord[] | ClaimRecord | null;
 }
@@ -69,7 +70,7 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
   const filtered = data.filter((item) => {
     if (search) {
       const q = search.toLowerCase();
-      const consigneeName = (Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? "";
+      const consigneeName = (Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? item.consignee_name ?? "";
       const matches =
         item.wr_number.toLowerCase().includes(q) ||
         item.packages?.[0]?.sender_name?.toLowerCase().includes(q) ||
@@ -135,7 +136,7 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
                 {item.packages?.[0]?.sender_name ?? "—"}
               </td>
               <td className="px-4 py-2.5 text-gray-600">
-                {(Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? "—"}
+                {(Array.isArray(item.consignees) ? item.consignees[0]?.full_name : item.consignees?.full_name) ?? item.consignee_name ?? "—"}
               </td>
               <td className="px-4 py-2.5 text-gray-600">
                 {item.packages?.[0]?.carrier ?? "—"}

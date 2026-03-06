@@ -40,3 +40,8 @@ input[type="radio"] {
 .animate-toast-out {
   animation: toast-out 0.2s ease-in forwards;
 }
+
+@media print {
+  @page { size: letter portrait; margin: 0.5in; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

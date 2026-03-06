@@ -28,6 +28,7 @@ export const createWarehouseReceiptSchema = z.object({
   warehouse_id: z.string().uuid(),
   agency_id: z.string().uuid().nullable().optional(),
   consignee_id: z.string().uuid().nullable().optional(),
+  consignee_name: z.string().optional(),
   warehouse_location_id: z.string().uuid().optional(),
   notes: z.string().optional(),
   client_id: z.string().optional(),
