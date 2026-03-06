@@ -85,6 +85,27 @@ export async function getUsers() {
   return { data, error: null };
 }
 
+/**
+ * Fetch ALL users with their organization, courier, and agency info.
+ * Used by super_admin to see all platform users grouped by entity.
+ */
+export async function getAllUsersGrouped() {
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("profiles")
+    .select(
+      "*, user_roles(*, couriers(id, name), agencies(id, name)), organizations(id, name)",
+    )
+    .order("full_name");
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
 export async function getUser(id: string) {
   const supabase = await createClient();
 
