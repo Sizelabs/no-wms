@@ -273,6 +273,69 @@ export async function getModalities() {
   return { data, error: null };
 }
 
+export async function getModalitiesWithTariffs(courierId?: string) {
+  const supabase = await createClient();
+
+  const { data: modalities, error: modError } = await supabase
+    .from("modalities")
+    .select("id, name, code, description, is_active, display_order, base_rate, base_rate_unit, base_minimum_charge")
+    .order("display_order")
+    .order("name");
+
+  if (modError) return { data: null, error: modError.message };
+
+  if (!courierId) {
+    return {
+      data: (modalities ?? []).map((m) => ({
+        ...m,
+        rate: Number(m.base_rate),
+        rate_unit: m.base_rate_unit,
+        minimum_charge: m.base_minimum_charge != null ? Number(m.base_minimum_charge) : null,
+        is_custom: false,
+      })),
+      error: null,
+    };
+  }
+
+  const { data: tariffs, error: tariffsError } = await supabase
+    .from("courier_modality_tariffs")
+    .select("modality_id, rate, rate_unit, minimum_charge")
+    .eq("courier_id", courierId);
+
+  if (tariffsError) return { data: null, error: tariffsError.message };
+
+  const tariffMap = new Map(
+    (tariffs ?? []).map((t) => [t.modality_id, t]),
+  );
+
+  return {
+    data: (modalities ?? []).map((m) => {
+      const override = tariffMap.get(m.id);
+      if (override) {
+        const isCustom =
+          Number(override.rate) !== Number(m.base_rate) ||
+          override.rate_unit !== m.base_rate_unit ||
+          Number(override.minimum_charge ?? 0) !== Number(m.base_minimum_charge ?? 0);
+        return {
+          ...m,
+          rate: Number(override.rate),
+          rate_unit: override.rate_unit,
+          minimum_charge: override.minimum_charge != null ? Number(override.minimum_charge) : null,
+          is_custom: isCustom,
+        };
+      }
+      return {
+        ...m,
+        rate: Number(m.base_rate),
+        rate_unit: m.base_rate_unit,
+        minimum_charge: m.base_minimum_charge != null ? Number(m.base_minimum_charge) : null,
+        is_custom: false,
+      };
+    }),
+    error: null,
+  };
+}
+
 export async function getModality(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -289,6 +352,10 @@ export async function createModality(formData: FormData): Promise<{ id: string }
   const { supabase, profile } = await getAuthProfile();
   if (!profile) return { error: "No autenticado" };
 
+  const baseRate = formData.get("base_rate") as string | null;
+  const baseRateUnit = formData.get("base_rate_unit") as string | null;
+  const baseMinCharge = formData.get("base_minimum_charge") as string | null;
+
   const { data, error } = await supabase
     .from("modalities")
     .insert({
@@ -296,6 +363,9 @@ export async function createModality(formData: FormData): Promise<{ id: string }
       name: formData.get("name") as string,
       code: formData.get("code") as string,
       description: (formData.get("description") as string) || null,
+      ...(baseRate ? { base_rate: parseFloat(baseRate) } : {}),
+      ...(baseRateUnit ? { base_rate_unit: baseRateUnit } : {}),
+      ...(baseMinCharge ? { base_minimum_charge: parseFloat(baseMinCharge) } : {}),
     })
     .select("id")
     .single();
@@ -320,6 +390,14 @@ export async function updateModality(id: string, formData: FormData): Promise<{ 
   const isActive = formData.get("is_active");
   if (isActive !== null) updates.is_active = isActive === "true";
 
+  // Base tariff fields
+  const baseRate = formData.get("base_rate") as string | null;
+  if (baseRate !== null && baseRate !== "") updates.base_rate = parseFloat(baseRate);
+  const baseRateUnit = formData.get("base_rate_unit") as string | null;
+  if (baseRateUnit) updates.base_rate_unit = baseRateUnit;
+  const baseMinCharge = formData.get("base_minimum_charge") as string | null;
+  if (baseMinCharge !== null) updates.base_minimum_charge = baseMinCharge ? parseFloat(baseMinCharge) : null;
+
   const { error } = await supabase
     .from("modalities")
     .update(updates)
@@ -338,6 +416,63 @@ export async function deleteModality(id: string): Promise<{ error?: string }> {
     .from("modalities")
     .update({ is_active: false })
     .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/settings/modalities");
+  return {};
+}
+
+export async function updateCourierModalityTariff(
+  courierId: string,
+  modalityId: string,
+  data: { rate: number; rate_unit: string; minimum_charge: number | null },
+): Promise<{ error?: string }> {
+  const { supabase, profile } = await getAuthProfile();
+  if (!profile) return { error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("courier_modality_tariffs")
+    .upsert(
+      {
+        organization_id: profile.organization_id,
+        courier_id: courierId,
+        modality_id: modalityId,
+        rate: data.rate,
+        rate_unit: data.rate_unit,
+        minimum_charge: data.minimum_charge,
+      },
+      { onConflict: "courier_id,modality_id" },
+    );
+
+  if (error) return { error: error.message };
+  revalidatePath("/settings/modalities");
+  return {};
+}
+
+export async function resetCourierModalityTariff(
+  courierId: string,
+  modalityId: string,
+): Promise<{ error?: string }> {
+  const { supabase, profile } = await getAuthProfile();
+  if (!profile) return { error: "No autenticado" };
+
+  const { data: mod, error: modError } = await supabase
+    .from("modalities")
+    .select("base_rate, base_rate_unit, base_minimum_charge")
+    .eq("id", modalityId)
+    .single();
+
+  if (modError || !mod) return { error: modError?.message ?? "No encontrado" };
+
+  const { error } = await supabase
+    .from("courier_modality_tariffs")
+    .update({
+      rate: mod.base_rate,
+      rate_unit: mod.base_rate_unit,
+      minimum_charge: mod.base_minimum_charge,
+    })
+    .eq("courier_id", courierId)
+    .eq("modality_id", modalityId);
 
   if (error) return { error: error.message };
   revalidatePath("/settings/modalities");

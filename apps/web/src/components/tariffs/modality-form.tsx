@@ -1,10 +1,11 @@
 "use client";
 
+import { RATE_UNIT_LABELS } from "@no-wms/shared/constants/tariff";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { inputClass } from "@/components/ui/form-section";
+import { inputClass, selectClass } from "@/components/ui/form-section";
 import { createModality, updateModality } from "@/lib/actions/tariffs";
 
 interface ModalityFormProps {
@@ -14,6 +15,9 @@ interface ModalityFormProps {
     code: string;
     description: string | null;
     is_active: boolean;
+    base_rate: number;
+    base_rate_unit: string;
+    base_minimum_charge: number | null;
   };
 }
 
@@ -85,6 +89,47 @@ export function ModalityForm({ modality }: ModalityFormProps) {
           placeholder="Descripción opcional"
           className={inputClass}
         />
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">Tarifa Base</h3>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="mb-1 block text-sm text-gray-600">Tarifa ($)</label>
+            <input
+              name="base_rate"
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={modality?.base_rate ?? 0}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-gray-600">Unidad</label>
+            <select
+              name="base_rate_unit"
+              defaultValue={modality?.base_rate_unit ?? "flat"}
+              className={selectClass}
+            >
+              {Object.entries(RATE_UNIT_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-gray-600">Mínimo ($)</label>
+            <input
+              name="base_minimum_charge"
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={modality?.base_minimum_charge ?? ""}
+              placeholder="Opcional"
+              className={inputClass}
+            />
+          </div>
+        </div>
       </div>
 
       {isEditing && (
