@@ -53,7 +53,7 @@ export async function createWarehouse(formData: FormData): Promise<void> {
     throw new Error("El código debe tener entre 2 y 5 letras (ej: MIA, LAX)");
   }
 
-  // Check global uniqueness for better error message
+  // Check uniqueness within org (RLS scopes the query) for better error message
   const { count } = await supabase
     .from("warehouses")
     .select("id", { count: "exact", head: true })
@@ -104,7 +104,7 @@ export async function updateWarehouse(id: string, formData: FormData): Promise<v
     throw new Error("El código debe tener entre 2 y 5 letras (ej: MIA, LAX)");
   }
 
-  // Check global uniqueness (excluding self) for better error message
+  // Check uniqueness within org (RLS scopes the query), excluding self
   const { count } = await supabase
     .from("warehouses")
     .select("id", { count: "exact", head: true })
