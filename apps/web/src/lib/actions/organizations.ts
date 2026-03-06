@@ -107,7 +107,7 @@ export async function getOrganizationCouriers(orgId: string) {
 
   const { data, error } = await supabase
     .from("couriers")
-    .select("*, courier_warehouses(id, warehouses(name), courier_warehouse_destinations(id, destinations(city, country_code)))")
+    .select("*, courier_destinations(id, destinations(city, country_code))")
     .eq("organization_id", orgId)
     .order("name");
 

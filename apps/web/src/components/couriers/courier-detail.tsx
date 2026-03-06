@@ -11,14 +11,13 @@ import { useNotification } from "@/components/layout/notification";
 import { DetailActions } from "@/components/ui/detail-actions";
 import type { DetailAction } from "@/components/ui/detail-actions";
 import { UserList } from "@/components/users/user-list";
-import { deleteCourier } from "@/lib/actions/couriers";
+import { deleteCourier, upsertCourierDestination } from "@/lib/actions/couriers";
 
-interface CourierWarehouseDestination {
+interface CourierDestination {
   id: string;
   destination_id: string;
   is_active: boolean;
-  transit_days: number | null;
-  destinations: { city: string; country_code: string } | null;
+  destinations: { city: string; state: string | null; country_code: string } | null;
 }
 
 interface TariffSchedule {
@@ -36,12 +35,12 @@ interface TariffSchedule {
   destinations: { city: string; country_code: string } | null;
 }
 
-interface CourierWarehouse {
+interface OrgDestination {
   id: string;
-  warehouse_id: string;
+  city: string;
+  state: string | null;
+  country_code: string;
   is_active: boolean;
-  warehouses: { name: string } | null;
-  courier_warehouse_destinations: CourierWarehouseDestination[];
 }
 
 interface Agency {
@@ -66,7 +65,7 @@ interface Courier {
   email: string | null;
   is_active: boolean;
   created_at: string;
-  courier_warehouses: CourierWarehouse[];
+  courier_destinations: CourierDestination[];
   agencies: Agency[];
 }
 
@@ -81,13 +80,14 @@ interface CourierDetailProps {
   courier: Courier;
   users: CourierUser[];
   tariffs: TariffSchedule[];
+  destinations: OrgDestination[];
 }
 
 type Tab = "info" | "agencies" | "coverage" | "tariffs" | "users";
 
 const USER_TAB_ROLES: Role[] = ["super_admin", "forwarder_admin", "destination_admin"];
 
-export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
+export function CourierDetail({ courier, users, tariffs, destinations }: CourierDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("info");
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
@@ -121,17 +121,14 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
     },
   ];
 
-  const totalDestinations = courier.courier_warehouses.reduce(
-    (sum, cw) => sum + (cw.courier_warehouse_destinations?.length ?? 0),
-    0,
-  );
+  const activeDestinations = courier.courier_destinations?.filter((cd) => cd.is_active).length ?? 0;
 
   const showUsersTab = userRoles.some((r) => USER_TAB_ROLES.includes(r));
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "info", label: "Información" },
     { key: "agencies", label: "Agencias", count: courier.agencies?.length ?? 0 },
-    { key: "coverage", label: "Cobertura", count: totalDestinations },
+    { key: "coverage", label: "Cobertura", count: activeDestinations },
     { key: "tariffs", label: "Tarifas", count: tariffs.length },
     ...(showUsersTab ? [{ key: "users" as const, label: "Usuarios", count: users.length }] : []),
   ];
@@ -296,62 +293,67 @@ export function CourierDetail({ courier, users, tariffs }: CourierDetailProps) {
       )}
 
       {activeTab === "coverage" && (
-        <div className="space-y-4">
-          {(!courier.courier_warehouses || courier.courier_warehouses.length === 0) ? (
-            <div className="rounded-lg border bg-white px-4 py-8 text-center text-gray-400">
-              Sin bodegas asignadas.
-            </div>
-          ) : (
-            courier.courier_warehouses.map((cw) => (
-              <div key={cw.id} className="rounded-lg border bg-white">
-                <div className="border-b px-4 py-3">
-                  <h3 className="text-sm font-medium text-gray-900">
-                    Bodega: {cw.warehouses?.name ?? "—"}
-                  </h3>
-                </div>
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
-                      <th className="px-4 py-3">Destino</th>
-                      <th className="px-4 py-3">Tránsito</th>
-                      <th className="px-4 py-3">Estado</th>
+        <div className="rounded-lg border bg-white">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3">Destino</th>
+                <th className="px-4 py-3">País</th>
+                <th className="px-4 py-3 text-center">Activo</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {destinations.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+                    Sin destinos configurados en la organización.
+                  </td>
+                </tr>
+              ) : (
+                destinations.map((dest) => {
+                  const cd = courier.courier_destinations?.find(
+                    (c) => c.destination_id === dest.id,
+                  );
+                  const isEnabled = cd?.is_active ?? false;
+
+                  return (
+                    <tr key={dest.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {dest.city}{dest.state ? `, ${dest.state}` : ""}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{dest.country_code}</td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isEnabled}
+                          onClick={() => {
+                            startTransition(async () => {
+                              await upsertCourierDestination(
+                                courier.id,
+                                dest.id,
+                                courier.organization_id,
+                                !isEnabled,
+                              );
+                            });
+                          }}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                            isEnabled ? "bg-green-600" : "bg-gray-300"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                              isEnabled ? "translate-x-4.5" : "translate-x-0.5"
+                            }`}
+                          />
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {(!cw.courier_warehouse_destinations || cw.courier_warehouse_destinations.length === 0) ? (
-                      <tr>
-                        <td colSpan={3} className="px-4 py-4 text-center text-gray-400">
-                          Sin destinos configurados.
-                        </td>
-                      </tr>
-                    ) : (
-                      cw.courier_warehouse_destinations.map((cwd) => (
-                        <tr key={cwd.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-900">
-                            {cwd.destinations?.city ?? "—"} ({cwd.destinations?.country_code ?? "—"})
-                          </td>
-                          <td className="px-4 py-3 text-gray-500">
-                            {cwd.transit_days != null ? `${cwd.transit_days} días` : "—"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                                cwd.is_active
-                                  ? "bg-green-50 text-green-700"
-                                  : "bg-red-50 text-red-700"
-                              }`}
-                            >
-                              {cwd.is_active ? "Activo" : "Inactivo"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            ))
-          )}
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 

@@ -28,15 +28,9 @@ interface Warehouse {
   is_active: boolean;
 }
 
-interface CourierWarehouseDestination {
+interface CourierDestination {
   id: string;
   destinations: { city: string; country_code: string } | null;
-}
-
-interface CourierWarehouse {
-  id: string;
-  warehouses: { name: string } | null;
-  courier_warehouse_destinations: CourierWarehouseDestination[];
 }
 
 interface Courier {
@@ -45,7 +39,7 @@ interface Courier {
   code: string;
   type: string;
   is_active: boolean;
-  courier_warehouses: CourierWarehouse[];
+  courier_destinations: CourierDestination[];
 }
 
 interface Agency {
@@ -290,9 +284,8 @@ export function ForwarderDetail({
                 </tr>
               ) : (
                 couriers.map((c) => {
-                  const destinations = c.courier_warehouses
-                    .flatMap((cw) => cw.courier_warehouse_destinations)
-                    .map((cwd) => cwd.destinations?.city)
+                  const destinations = c.courier_destinations
+                    .map((cd) => cd.destinations?.city)
                     .filter(Boolean);
                   const uniqueDestinations = [...new Set(destinations)];
                   return (

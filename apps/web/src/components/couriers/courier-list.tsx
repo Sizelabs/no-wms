@@ -7,14 +7,11 @@ import { useState } from "react";
 import { filterSelectClass } from "@/components/ui/form-section";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
-interface CourierWarehouseDestination {
+interface CourierDestination {
   id: string;
-  destinations: { city: string; country_code: string } | null;
-}
-
-interface CourierWarehouse {
-  id: string;
-  courier_warehouse_destinations: CourierWarehouseDestination[];
+  destination_id: string;
+  is_active: boolean;
+  destinations: { city: string; state: string | null; country_code: string } | null;
 }
 
 interface Courier {
@@ -23,7 +20,7 @@ interface Courier {
   code: string;
   type: string;
   is_active: boolean;
-  courier_warehouses: CourierWarehouse[];
+  courier_destinations: CourierDestination[];
 }
 
 interface CourierListProps {
@@ -39,9 +36,8 @@ export function CourierList({ couriers }: CourierListProps) {
   const filtered = couriers.filter((c) => {
     if (search) {
       const q = search.toLowerCase();
-      const destinations = c.courier_warehouses
-        .flatMap((cw) => cw.courier_warehouse_destinations)
-        .map((cwd) => cwd.destinations?.city ?? "")
+      const destinations = c.courier_destinations
+        .map((cd) => cd.destinations?.city ?? "")
         .join(" ");
       const matches =
         c.name.toLowerCase().includes(q) ||
@@ -93,9 +89,9 @@ export function CourierList({ couriers }: CourierListProps) {
           colSpan={5}
           emptyMessage="No hay couriers registrados."
           renderRow={(courier) => {
-            const destinations = courier.courier_warehouses
-              .flatMap((cw) => cw.courier_warehouse_destinations)
-              .map((cwd) => cwd.destinations?.city)
+            const destinations = courier.courier_destinations
+              .filter((cd) => cd.is_active)
+              .map((cd) => cd.destinations?.city)
               .filter(Boolean);
             const uniqueDestinations = [...new Set(destinations)];
 

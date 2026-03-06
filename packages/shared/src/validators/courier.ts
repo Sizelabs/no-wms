@@ -29,22 +29,10 @@ export const updateCourierSchema = z.object({
 
 export type UpdateCourierInput = z.infer<typeof updateCourierSchema>;
 
-export const createCourierWarehouseSchema = z.object({
+export const upsertCourierDestinationSchema = z.object({
   courier_id: z.string().uuid(),
-  warehouse_id: z.string().uuid(),
-});
-
-export type CreateCourierWarehouseInput = z.infer<typeof createCourierWarehouseSchema>;
-
-export const createCourierWarehouseDestinationSchema = z.object({
-  courier_warehouse_id: z.string().uuid(),
   destination_id: z.string().uuid(),
-  base_rate: z.number().min(0).optional(),
-  rate_per_kg: z.number().min(0).optional(),
-  transit_days: z.number().int().min(0).optional(),
-  cutoff_day_of_week: z.number().int().min(0).max(6).optional(),
-  currency_code: z.string().length(3).default("USD"),
-  notes: z.string().optional(),
+  is_active: z.boolean(),
 });
 
-export type CreateCourierWarehouseDestinationInput = z.infer<typeof createCourierWarehouseDestinationSchema>;
+export type UpsertCourierDestinationInput = z.infer<typeof upsertCourierDestinationSchema>;

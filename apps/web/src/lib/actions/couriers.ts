@@ -12,13 +12,9 @@ export async function getCouriers() {
 
   let query = supabase
     .from("couriers")
-    .select(`*, courier_warehouses(
-      id, warehouse_id, is_active,
-      warehouses(name),
-      courier_warehouse_destinations(
-        id, destination_id, is_active, transit_days, cutoff_day_of_week, currency_code, notes,
-        destinations(city, country_code)
-      )
+    .select(`*, courier_destinations(
+      id, destination_id, is_active,
+      destinations(city, state, country_code)
     )`)
     .order("name");
 
@@ -46,13 +42,9 @@ export async function getCourier(id: string) {
 
   const { data, error } = await supabase
     .from("couriers")
-    .select(`*, courier_warehouses(
-      id, warehouse_id, is_active,
-      warehouses(name),
-      courier_warehouse_destinations(
-        id, destination_id, is_active, transit_days, cutoff_day_of_week, currency_code, notes,
-        destinations(city, country_code)
-      )
+    .select(`*, courier_destinations(
+      id, destination_id, is_active,
+      destinations(city, state, country_code)
     ), agencies(id, name, code, type, is_active)`)
     .eq("id", id)
     .single();
@@ -179,100 +171,27 @@ export async function deleteCourier(id: string): Promise<{ error: string } | nul
   return null;
 }
 
-// ── Courier Warehouses ──
+// ── Courier Destinations ──
 
-export async function addCourierWarehouse(
+export async function upsertCourierDestination(
   courierId: string,
-  warehouseId: string,
-  organizationId: string,
-): Promise<void> {
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("courier_warehouses").insert({
-    organization_id: organizationId,
-    courier_id: courierId,
-    warehouse_id: warehouseId,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/settings/couriers");
-}
-
-export async function removeCourierWarehouse(id: string): Promise<void> {
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("courier_warehouses").delete().eq("id", id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/settings/couriers");
-}
-
-// ── Courier Warehouse Destinations ──
-
-export async function addCourierWarehouseDestination(
-  courierWarehouseId: string,
   destinationId: string,
   organizationId: string,
-  opts?: {
-    transit_days?: number;
-    cutoff_day_of_week?: number;
-    currency_code?: string;
-    notes?: string;
-  },
-): Promise<void> {
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("courier_warehouse_destinations").insert({
-    organization_id: organizationId,
-    courier_warehouse_id: courierWarehouseId,
-    destination_id: destinationId,
-    transit_days: opts?.transit_days ?? null,
-    cutoff_day_of_week: opts?.cutoff_day_of_week ?? null,
-    currency_code: opts?.currency_code ?? "USD",
-    notes: opts?.notes ?? null,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/settings/couriers");
-}
-
-export async function updateCourierWarehouseDestination(
-  id: string,
-  updates: {
-    transit_days?: number | null;
-    cutoff_day_of_week?: number | null;
-    currency_code?: string;
-    notes?: string | null;
-    is_active?: boolean;
-  },
+  isActive: boolean,
 ): Promise<void> {
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("courier_warehouse_destinations")
-    .update(updates)
-    .eq("id", id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/settings/couriers");
-}
-
-export async function removeCourierWarehouseDestination(id: string): Promise<void> {
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("courier_warehouse_destinations").delete().eq("id", id);
+    .from("courier_destinations")
+    .upsert(
+      {
+        organization_id: organizationId,
+        courier_id: courierId,
+        destination_id: destinationId,
+        is_active: isActive,
+      },
+      { onConflict: "courier_id,destination_id" },
+    );
 
   if (error) {
     throw new Error(error.message);
