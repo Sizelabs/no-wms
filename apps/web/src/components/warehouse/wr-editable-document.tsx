@@ -129,13 +129,13 @@ function PanelInput({
     });
   };
 
-  const inputClass = `w-full rounded-md border px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none transition-colors ${
+  const inputClass = `w-full rounded-md border px-2.5 py-1 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none transition-colors ${
     flash ? "border-emerald-300 bg-emerald-50/50" : "border-slate-200 bg-white"
   } ${mono ? "font-mono" : ""}`;
 
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
+      <label className="mb-1 block text-[11px] font-medium text-slate-400">{label}</label>
       <div className="relative">
         {type === "textarea" ? (
           <textarea
@@ -333,185 +333,221 @@ export function WrEditableDocument({
   return (
     <div className="flex items-start justify-center gap-6 print:block">
       {/* ══════════════════════════════════════════════════
-          LEFT PANEL — Form inputs (lg+ only)
+          LEFT PANEL — Editing toolbar (lg+ only)
           ══════════════════════════════════════════════════ */}
       <div className="sticky top-6 hidden max-h-[calc(100vh-3rem)] w-72 shrink-0 overflow-y-auto lg:block print:hidden">
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          {/* Header */}
-          <div className="border-b border-slate-100 px-5 py-4">
+        {/* ── Header: identity + status ── */}
+        <div className="rounded-t-xl border border-slate-200 bg-white px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="truncate font-mono text-base font-bold text-slate-900">{wrNumber}</p>
+              <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                {statusLabel}
+              </span>
+            </div>
             <Link
               href={`/${locale}/warehouse-receipts/${wr.id}`}
-              className="flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-900"
+              className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+              title="Volver al detalle"
             >
-              <span>&larr;</span>
-              <span>Volver al detalle</span>
+              &larr; Detalle
             </Link>
-            <div className="mt-3 flex items-center justify-between">
-              <div>
-                <p className="font-mono text-lg font-bold text-slate-900">{wrNumber}</p>
-                <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                  {statusLabel}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
-              >
-                Imprimir
-              </button>
-            </div>
           </div>
+        </div>
 
-          {/* Form */}
-          <div className="space-y-4 px-5 py-4">
-            <PanelInput
-              label="Numero de WR"
-              value={wrNumber}
-              onChange={setWrNumber}
-              onSave={saveWrNumber}
-              placeholder="WR-0001"
-              mono
-            />
+        {/* ── Actions bar ── */}
+        <div className="flex border-x border-slate-200 bg-slate-50">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex flex-1 items-center justify-center gap-1.5 border-r border-slate-200 px-2 py-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18.75 12h.008v.008h-.008V12Zm-12 0h.008v.008H6.75V12Z" />
+            </svg>
+            Imprimir
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const printWindow = window.open(`/${locale}/warehouse-receipts/${wr.id}/print`, "_blank");
+              if (printWindow) {
+                printWindow.addEventListener("afterprint", () => printWindow.close());
+              }
+            }}
+            className="flex flex-1 items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Descargar
+          </button>
+        </div>
 
-            {/* Date */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Fecha de recibo</label>
-              <input
-                type="datetime-local"
-                value={receivedAt}
-                onChange={(e) => {
-                  const newVal = e.target.value;
-                  const old = receivedAt;
-                  setReceivedAt(newVal);
-                  saveReceivedAt(newVal).then((res) => {
-                    if (res.error) {
-                      setReceivedAt(old);
-                      notify(res.error, "error");
-                    }
-                  });
-                }}
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+        {/* ── Collapsible sections ── */}
+        <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white">
+          {/* Section: Receipt info */}
+          <details open className="group border-b border-slate-100 last:border-b-0">
+            <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600">
+              <svg className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+              Recibo
+            </summary>
+            <div className="space-y-3 px-4 pb-3">
+              <PanelInput
+                label="Numero de WR"
+                value={wrNumber}
+                onChange={setWrNumber}
+                onSave={saveWrNumber}
+                placeholder="WR-0001"
+                mono
+              />
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-slate-400">Fecha</label>
+                <input
+                  type="datetime-local"
+                  value={receivedAt}
+                  onChange={(e) => {
+                    const newVal = e.target.value;
+                    const old = receivedAt;
+                    setReceivedAt(newVal);
+                    saveReceivedAt(newVal).then((res) => {
+                      if (res.error) {
+                        setReceivedAt(old);
+                        notify(res.error, "error");
+                      }
+                    });
+                  }}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-slate-400">Recibido por</label>
+                <select
+                  value={receivedBy}
+                  onChange={(e) => {
+                    const newVal = e.target.value;
+                    const old = receivedBy;
+                    setReceivedBy(newVal);
+                    saveReceivedBy(newVal).then((res) => {
+                      if (res.error) {
+                        setReceivedBy(old);
+                        notify(res.error, "error");
+                      }
+                    });
+                  }}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+                >
+                  <option value="">— Seleccionar —</option>
+                  {memberOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-slate-400">Ubicacion</label>
+                <select
+                  value={locId}
+                  onChange={(e) => {
+                    const newVal = e.target.value;
+                    const old = locId;
+                    setLocId(newVal);
+                    updateWarehouseReceiptField(wr.id, "warehouse_location_id", newVal).then((res) => {
+                      if (res.error) {
+                        setLocId(old);
+                        notify(res.error, "error");
+                      }
+                    });
+                  }}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+                >
+                  <option value="">— Sin asignar —</option>
+                  {locationOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </details>
+
+          {/* Section: Shipping & parties */}
+          <details open className="group border-b border-slate-100 last:border-b-0">
+            <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600">
+              <svg className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+              Envio
+            </summary>
+            <div className="space-y-3 px-4 pb-3">
+              <PanelInput
+                label="Shipper / Remitente"
+                value={shipper}
+                onChange={setShipper}
+                onSave={saveShipper}
+                placeholder="Nombre del remitente"
+              />
+              <PanelInput
+                label="Master Tracking"
+                value={master}
+                onChange={setMaster}
+                onSave={saveMaster}
+                placeholder="Guia master"
+                mono
+              />
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-slate-400">Consignatario</label>
+                <ConsigneeInlineEdit
+                  wrId={wr.id}
+                  agencyId={wr.agency_id}
+                  consigneeName={consName}
+                  casillero={consCas}
+                  onSelect={handleConsigneeChange}
+                />
+              </div>
+            </div>
+          </details>
+
+          {/* Section: Content & condition */}
+          <details open className="group border-b border-slate-100 last:border-b-0">
+            <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600">
+              <svg className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+              Contenido
+            </summary>
+            <div className="space-y-3 px-4 pb-3">
+              <PanelInput
+                label="Descripcion de bienes"
+                value={desc}
+                onChange={setDesc}
+                onSave={saveDesc}
+                type="textarea"
+                placeholder="Descripcion de bienes..."
+              />
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-slate-400">Condicion</label>
+                <ConditionFlagsInlineEdit
+                  wrId={wr.id}
+                  flags={flags}
+                  onFlagsChange={handleFlagsChanged}
+                />
+              </div>
+              <PanelInput
+                label="Notas"
+                value={wrNotes}
+                onChange={setWrNotes}
+                onSave={saveNotes}
+                type="textarea"
+                placeholder="Agregar notas..."
               />
             </div>
+          </details>
 
-            {/* Received by */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Recibido por</label>
-              <select
-                value={receivedBy}
-                onChange={(e) => {
-                  const newVal = e.target.value;
-                  const old = receivedBy;
-                  setReceivedBy(newVal);
-                  saveReceivedBy(newVal).then((res) => {
-                    if (res.error) {
-                      setReceivedBy(old);
-                      notify(res.error, "error");
-                    }
-                  });
-                }}
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
-              >
-                <option value="">— Seleccionar —</option>
-                {memberOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="h-px bg-slate-100" />
-
-            {/* Location */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Ubicacion</label>
-              <select
-                value={locId}
-                onChange={(e) => {
-                  const newVal = e.target.value;
-                  const old = locId;
-                  setLocId(newVal);
-                  updateWarehouseReceiptField(wr.id, "warehouse_location_id", newVal).then((res) => {
-                    if (res.error) {
-                      setLocId(old);
-                      notify(res.error, "error");
-                    }
-                  });
-                }}
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
-              >
-                <option value="">— Sin asignar —</option>
-                {locationOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <PanelInput
-              label="Shipper / Remitente"
-              value={shipper}
-              onChange={setShipper}
-              onSave={saveShipper}
-              placeholder="Nombre del remitente"
-            />
-
-            <PanelInput
-              label="Master Tracking"
-              value={master}
-              onChange={setMaster}
-              onSave={saveMaster}
-              placeholder="Guia master"
-              mono
-            />
-
-            {/* Consignee */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Consignatario</label>
-              <ConsigneeInlineEdit
-                wrId={wr.id}
-                agencyId={wr.agency_id}
-                consigneeName={consName}
-                casillero={consCas}
-                onSelect={handleConsigneeChange}
-              />
-            </div>
-
-            <div className="h-px bg-slate-100" />
-
-            <PanelInput
-              label="Descripcion de bienes"
-              value={desc}
-              onChange={setDesc}
-              onSave={saveDesc}
-              type="textarea"
-              placeholder="Descripcion de bienes..."
-            />
-
-            {/* Condition flags */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Condicion</label>
-              <ConditionFlagsInlineEdit
-                wrId={wr.id}
-                flags={flags}
-                onFlagsChange={handleFlagsChanged}
-              />
-            </div>
-
-            <div className="h-px bg-slate-100" />
-
-            <PanelInput
-              label="Notas"
-              value={wrNotes}
-              onChange={setWrNotes}
-              onSave={saveNotes}
-              type="textarea"
-              placeholder="Agregar notas..."
-            />
-
-            <div className="h-px bg-slate-100" />
-
-            <p className="text-[11px] leading-relaxed text-slate-400">
-              Edita aqui o directamente en el documento. Los cambios se guardan automaticamente.
+          {/* Footer hint */}
+          <div className="px-4 py-2.5">
+            <p className="text-center text-[10px] text-slate-300">
+              Edita aqui o en el documento &middot; Autoguardado
             </p>
           </div>
         </div>
