@@ -30,7 +30,7 @@ export default async function WrEditPage({
   ]);
 
   return (
-    <div className="-m-6 flex min-h-[calc(100vh-3.5rem)] flex-col bg-slate-100/80 px-6 pb-6 pt-6 print:m-0 print:bg-white print:p-0">
+    <div className="-m-6 h-[calc(100vh-3.5rem)] overflow-hidden bg-gray-50 print:m-0 print:h-auto print:overflow-visible print:bg-white">
       <WrEditableDocument
         wr={wr}
         settings={settings}

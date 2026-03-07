@@ -9,8 +9,15 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { EditableField } from "@/components/ui/editable-field";
+import {
+  inputClass as platformInputClass,
+  selectClass as platformSelectClass,
+  textareaClass as platformTextareaClass,
+} from "@/components/ui/form-section";
+import { Modal, ModalBody, ModalHeader } from "@/components/ui/modal";
 import { ConditionFlagsInlineEdit } from "@/components/warehouse/condition-flags-inline-edit";
 import { ConsigneeInlineEdit } from "@/components/warehouse/consignee-inline-edit";
+import { searchConsignees } from "@/lib/actions/consignees";
 import {
   updatePackageField,
   updateWarehouseReceiptField,
@@ -116,10 +123,11 @@ function PanelInput({
     setFocused(false);
     const trimmed = value.trim();
     if (trimmed === savedRef.current.trim()) return;
+    const originalValue = savedRef.current;
     startTransition(async () => {
       const result = await onSave(trimmed);
       if (result.error) {
-        onChange(savedRef.current);
+        onChange(originalValue);
         notify(result.error, "error");
       } else {
         savedRef.current = trimmed;
@@ -129,13 +137,13 @@ function PanelInput({
     });
   };
 
-  const inputClass = `w-full rounded-md border px-2.5 py-1 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none transition-colors ${
-    flash ? "border-emerald-300 bg-emerald-50/50" : "border-slate-200 bg-white"
-  } ${mono ? "font-mono" : ""}`;
+  const baseClass = type === "textarea" ? platformTextareaClass : platformInputClass;
+  const flashClass = flash ? "border-green-300 bg-green-50/50" : "";
+  const monoClass = mono ? "font-mono" : "";
 
   return (
     <div>
-      <label className="mb-1 block text-[11px] font-medium text-slate-400">{label}</label>
+      <label className="mb-1.5 block text-sm text-gray-600">{label}</label>
       <div className="relative">
         {type === "textarea" ? (
           <textarea
@@ -151,7 +159,7 @@ function PanelInput({
             }}
             placeholder={placeholder}
             rows={2}
-            className={inputClass}
+            className={`${baseClass} ${flashClass} ${monoClass}`}
           />
         ) : (
           <input
@@ -169,11 +177,11 @@ function PanelInput({
               }
             }}
             placeholder={placeholder}
-            className={inputClass}
+            className={`${baseClass} ${flashClass} ${monoClass}`}
           />
         )}
         {isPending && (
-          <span className="absolute right-2 top-1/2 inline-block h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
+          <span className="absolute right-3 top-1/2 inline-block h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
         )}
       </div>
     </div>
@@ -187,6 +195,253 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <p className="mb-1.5 text-[13px] font-semibold uppercase tracking-[0.08em] text-slate-400">
       {children}
     </p>
+  );
+}
+
+/* ── Package edit modal ── */
+
+function PackageEditModal({
+  pkg,
+  index,
+  open,
+  onClose,
+  onSave,
+  packageTypeOptions,
+}: {
+  pkg: PrintPackage;
+  index: number;
+  open: boolean;
+  onClose: () => void;
+  onSave: (pkgId: string, field: string) => (value: string) => Promise<{ error?: string }>;
+  packageTypeOptions: { value: string; label: string }[];
+}) {
+  const { notify } = useNotification();
+  const [tracking, setTracking] = useState(pkg.tracking_number);
+  const [carrier, setCarrier] = useState(pkg.carrier ?? "");
+  const [pkgType, setPkgType] = useState(pkg.package_type ?? "");
+  const [weight, setWeight] = useState(pkg.actual_weight_lb != null ? String(pkg.actual_weight_lb) : "");
+  const [length, setLength] = useState(pkg.length_in != null ? String(pkg.length_in) : "");
+  const [width, setWidth] = useState(pkg.width_in != null ? String(pkg.width_in) : "");
+  const [height, setHeight] = useState(pkg.height_in != null ? String(pkg.height_in) : "");
+  const [pieces, setPieces] = useState(String(pkg.pieces_count));
+  const [declaredValue, setDeclaredValue] = useState(pkg.declared_value_usd != null ? String(pkg.declared_value_usd) : "");
+  const [saving, setSaving] = useState(false);
+
+  const fields: { label: string; field: string; value: string; setter: (v: string) => void; type?: string; mono?: boolean; half?: boolean }[] = [
+    { label: "Tracking", field: "tracking_number", value: tracking, setter: setTracking, mono: true },
+    { label: "Carrier", field: "carrier", value: carrier, setter: setCarrier },
+    { label: "Tipo", field: "package_type", value: pkgType, setter: setPkgType, type: "select" },
+    { label: "Peso (lb)", field: "actual_weight_lb", value: weight, setter: setWeight, type: "number", half: true },
+    { label: "Piezas", field: "pieces_count", value: pieces, setter: setPieces, type: "number", half: true },
+    { label: "Largo (in)", field: "length_in", value: length, setter: setLength, type: "number", half: true },
+    { label: "Ancho (in)", field: "width_in", value: width, setter: setWidth, type: "number", half: true },
+    { label: "Alto (in)", field: "height_in", value: height, setter: setHeight, type: "number", half: true },
+    { label: "Valor declarado ($)", field: "declared_value_usd", value: declaredValue, setter: setDeclaredValue, type: "number", half: true },
+  ];
+
+  const handleSaveField = async (field: string, value: string) => {
+    setSaving(true);
+    const result = await onSave(pkg.id, field)(value);
+    setSaving(false);
+    if (result.error) {
+      notify(result.error, "error");
+    }
+    return result;
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} size="sm">
+      <ModalHeader onClose={onClose}>
+        Paquete #{index + 1}
+      </ModalHeader>
+      <ModalBody>
+        <div className="grid grid-cols-2 gap-4">
+          {fields.map((f) => (
+            <div key={f.field} className={f.half ? "" : "col-span-2"}>
+              <label className="mb-1.5 block text-sm text-gray-600">{f.label}</label>
+              {f.type === "select" ? (
+                <select
+                  value={f.value}
+                  onChange={(e) => {
+                    f.setter(e.target.value);
+                    handleSaveField(f.field, e.target.value);
+                  }}
+                  className={platformSelectClass}
+                >
+                  <option value="">—</option>
+                  {packageTypeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={f.type === "number" ? "number" : "text"}
+                  step={f.type === "number" ? "any" : undefined}
+                  value={f.value}
+                  onChange={(e) => f.setter(e.target.value)}
+                  onBlur={() => handleSaveField(f.field, f.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  className={`${platformInputClass} ${f.mono ? "font-mono" : ""}`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        {saving && (
+          <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-400">
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
+            Guardando...
+          </div>
+        )}
+      </ModalBody>
+    </Modal>
+  );
+}
+
+/* ── Consignee typeahead for panel ── */
+
+function ConsigneeTypeahead({
+  wrId,
+  agencyId,
+  consigneeName,
+  casillero,
+  onSelect,
+}: {
+  wrId: string;
+  agencyId: string | null;
+  consigneeName: string | null;
+  casillero: string | null;
+  onSelect?: (name: string | null, casillero: string | null) => void;
+}) {
+  const [query, setQuery] = useState(consigneeName ?? "");
+  const [results, setResults] = useState<{ id: string; full_name: string; casillero: string | null }[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const { notify } = useNotification();
+
+  useEffect(() => {
+    setQuery(consigneeName ?? "");
+  }, [consigneeName]);
+
+  useEffect(() => {
+    if (query.length < 2 || query === consigneeName) {
+      setResults([]);
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const { data } = await searchConsignees(agencyId, query);
+      const items = data ?? [];
+      setResults(items);
+      if (items.length > 0) setIsOpen(true);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, agencyId, consigneeName]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const selectConsignee = useCallback(
+    (c: { id: string; full_name: string; casillero: string | null }) => {
+      setQuery(c.full_name);
+      setIsOpen(false);
+      setResults([]);
+      onSelect?.(c.full_name, c.casillero);
+      startTransition(async () => {
+        const result = await updateWarehouseReceiptField(wrId, "consignee_id", c.id);
+        if (result.error) {
+          setQuery(consigneeName ?? "");
+          onSelect?.(consigneeName, casillero);
+          notify(result.error, "error");
+        }
+      });
+    },
+    [wrId, consigneeName, casillero, notify, onSelect],
+  );
+
+  const handleBlur = useCallback(() => {
+    setTimeout(() => {
+      if (containerRef.current?.contains(document.activeElement)) return;
+      setIsOpen(false);
+      const trimmed = query.trim();
+      if (trimmed && trimmed !== (consigneeName ?? "")) {
+        onSelect?.(trimmed, null);
+        startTransition(async () => {
+          const result = await updateWarehouseReceiptField(wrId, "consignee_name", trimmed);
+          if (result.error) {
+            setQuery(consigneeName ?? "");
+            onSelect?.(consigneeName, casillero);
+            notify(result.error, "error");
+          }
+        });
+      } else if (!trimmed) {
+        setQuery(consigneeName ?? "");
+      }
+    }, 150);
+  }, [query, wrId, consigneeName, casillero, notify, onSelect]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (e.target.value.length >= 2) setIsOpen(true);
+        }}
+        onFocus={() => {
+          if (results.length > 0) setIsOpen(true);
+        }}
+        onBlur={handleBlur}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setQuery(consigneeName ?? "");
+            setIsOpen(false);
+            (e.target as HTMLInputElement).blur();
+          } else if (e.key === "Enter") {
+            setIsOpen(false);
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        placeholder="Buscar consignatario..."
+        className={platformInputClass}
+      />
+      {isPending && (
+        <span className="absolute right-3 top-1/2 inline-block h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
+      )}
+      {isOpen && results.length > 0 && (
+        <ul className="absolute left-0 z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-lg">
+          {results.map((c) => (
+            <li
+              key={c.id}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectConsignee(c);
+              }}
+              className="cursor-pointer px-3 py-2 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+            >
+              <span className="font-medium">{c.full_name}</span>
+              {c.casillero && (
+                <span className="ml-2 font-mono text-xs text-gray-400">{c.casillero}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -218,6 +473,7 @@ export function WrEditableDocument({
   );
   const [consCas, setConsCas] = useState<string | null>(wr.consignees?.casillero ?? null);
   const [flags, setFlags] = useState<string[]>(wr.condition_flags);
+  const [editPkgIndex, setEditPkgIndex] = useState<number | null>(null);
 
   /* ── Barcode ── */
   useEffect(() => {
@@ -240,6 +496,15 @@ export function WrEditableDocument({
   const packages = wr.packages ?? [];
   const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
   const statusLabel = WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status;
+  const statusColors: Record<string, string> = {
+    received: "bg-blue-50 text-blue-700",
+    in_warehouse: "bg-green-50 text-green-700",
+    in_work_order: "bg-yellow-50 text-yellow-700",
+    in_dispatch: "bg-purple-50 text-purple-700",
+    dispatched: "bg-gray-100 text-gray-600",
+    damaged: "bg-red-50 text-red-700",
+    abandoned: "bg-gray-200 text-gray-500",
+  };
   const receivedDate = new Date(receivedAt).toLocaleDateString("es", {
     year: "numeric",
     month: "short",
@@ -325,76 +590,66 @@ export function WrEditableDocument({
     label: m.name,
   }));
 
+  const handlePrint = useCallback(() => {
+    const originalTitle = document.title;
+    const date = new Date(receivedAt).toISOString().slice(0, 10);
+    document.title = `[NOWMS] ${wrNumber} - ${date}`;
+    window.print();
+    document.title = originalTitle;
+  }, [wrNumber, receivedAt]);
+
   const packageTypeOptions = PACKAGE_TYPES.map((pt) => ({
     value: pt,
     label: pt,
   }));
 
   return (
-    <div className="flex items-start justify-center gap-6 print:block">
+    <div className="flex h-full print:block print:h-auto">
       {/* ══════════════════════════════════════════════════
           LEFT PANEL — Editing toolbar (lg+ only)
           ══════════════════════════════════════════════════ */}
-      <div className="sticky top-6 hidden max-h-[calc(100vh-3rem)] w-72 shrink-0 overflow-y-auto lg:block print:hidden">
-        {/* ── Header: identity + status ── */}
-        <div className="rounded-t-xl border border-slate-200 bg-white px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="truncate font-mono text-base font-bold text-slate-900">{wrNumber}</p>
-              <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+      <div className="hidden w-80 shrink-0 overflow-y-auto p-6 pr-3 lg:block print:hidden">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          {/* ── Header ── */}
+          <div className="border-b border-gray-100 px-5 py-3">
+            <div className="flex items-center justify-between">
+              <p className="truncate font-mono text-base font-bold tracking-tight text-gray-900">{wrNumber}</p>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusColors[wr.status] ?? "bg-gray-100 text-gray-600"}`}>
                 {statusLabel}
               </span>
             </div>
-            <Link
-              href={`/${locale}/warehouse-receipts/${wr.id}`}
-              className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
-              title="Volver al detalle"
-            >
-              &larr; Detalle
-            </Link>
+            {/* Actions */}
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gray-900 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18.75 12h.008v.008h-.008V12Zm-12 0h.008v.008H6.75V12Z" />
+                </svg>
+                Imprimir
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Descargar
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* ── Actions bar ── */}
-        <div className="flex border-x border-slate-200 bg-slate-50">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex flex-1 items-center justify-center gap-1.5 border-r border-slate-200 px-2 py-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18.75 12h.008v.008h-.008V12Zm-12 0h.008v.008H6.75V12Z" />
-            </svg>
-            Imprimir
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const printWindow = window.open(`/${locale}/warehouse-receipts/${wr.id}/print`, "_blank");
-              if (printWindow) {
-                printWindow.addEventListener("afterprint", () => printWindow.close());
-              }
-            }}
-            className="flex flex-1 items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
-            Descargar
-          </button>
-        </div>
-
-        {/* ── Collapsible sections ── */}
-        <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white">
-          {/* Section: Receipt info */}
-          <details open className="group border-b border-slate-100 last:border-b-0">
-            <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600">
-              <svg className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>
-              Recibo
+          {/* ── Recibo ── */}
+          <details open className="group border-b border-gray-100">
+            <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4">
+              <h3 className="text-sm font-semibold text-gray-900">Recibo</h3>
+              <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
             </summary>
-            <div className="space-y-3 px-4 pb-3">
+            <div className="space-y-4 px-5 pb-4">
               <PanelInput
                 label="Numero de WR"
                 value={wrNumber}
@@ -404,7 +659,7 @@ export function WrEditableDocument({
                 mono
               />
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Fecha</label>
+                <label className="mb-1.5 block text-sm text-gray-600">Fecha de recibo</label>
                 <input
                   type="datetime-local"
                   value={receivedAt}
@@ -419,11 +674,11 @@ export function WrEditableDocument({
                       }
                     });
                   }}
-                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+                  className={platformInputClass}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Recibido por</label>
+                <label className="mb-1.5 block text-sm text-gray-600">Recibido por</label>
                 <select
                   value={receivedBy}
                   onChange={(e) => {
@@ -437,7 +692,7 @@ export function WrEditableDocument({
                       }
                     });
                   }}
-                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+                  className={platformSelectClass}
                 >
                   <option value="">— Seleccionar —</option>
                   {memberOptions.map((opt) => (
@@ -446,7 +701,7 @@ export function WrEditableDocument({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Ubicacion</label>
+                <label className="mb-1.5 block text-sm text-gray-600">Ubicacion</label>
                 <select
                   value={locId}
                   onChange={(e) => {
@@ -460,7 +715,7 @@ export function WrEditableDocument({
                       }
                     });
                   }}
-                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[13px] text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+                  className={platformSelectClass}
                 >
                   <option value="">— Sin asignar —</option>
                   {locationOptions.map((opt) => (
@@ -471,15 +726,13 @@ export function WrEditableDocument({
             </div>
           </details>
 
-          {/* Section: Shipping & parties */}
-          <details open className="group border-b border-slate-100 last:border-b-0">
-            <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600">
-              <svg className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>
-              Envio
+          {/* ── Envio ── */}
+          <details open className="group border-b border-gray-100">
+            <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4">
+              <h3 className="text-sm font-semibold text-gray-900">Envio</h3>
+              <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
             </summary>
-            <div className="space-y-3 px-4 pb-3">
+            <div className="space-y-4 px-5 pb-4">
               <PanelInput
                 label="Shipper / Remitente"
                 value={shipper}
@@ -496,8 +749,8 @@ export function WrEditableDocument({
                 mono
               />
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Consignatario</label>
-                <ConsigneeInlineEdit
+                <label className="mb-1.5 block text-sm text-gray-600">Consignatario</label>
+                <ConsigneeTypeahead
                   wrId={wr.id}
                   agencyId={wr.agency_id}
                   consigneeName={consName}
@@ -508,15 +761,13 @@ export function WrEditableDocument({
             </div>
           </details>
 
-          {/* Section: Content & condition */}
-          <details open className="group border-b border-slate-100 last:border-b-0">
-            <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600">
-              <svg className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>
-              Contenido
+          {/* ── Contenido ── */}
+          <details open className="group border-b border-gray-100 last:border-b-0">
+            <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4">
+              <h3 className="text-sm font-semibold text-gray-900">Contenido</h3>
+              <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
             </summary>
-            <div className="space-y-3 px-4 pb-3">
+            <div className="space-y-4 px-5 pb-4">
               <PanelInput
                 label="Descripcion de bienes"
                 value={desc}
@@ -526,7 +777,7 @@ export function WrEditableDocument({
                 placeholder="Descripcion de bienes..."
               />
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Condicion</label>
+                <label className="mb-1.5 block text-sm text-gray-600">Condicion</label>
                 <ConditionFlagsInlineEdit
                   wrId={wr.id}
                   flags={flags}
@@ -544,10 +795,49 @@ export function WrEditableDocument({
             </div>
           </details>
 
-          {/* Footer hint */}
-          <div className="px-4 py-2.5">
-            <p className="text-center text-[10px] text-slate-300">
-              Edita aqui o en el documento &middot; Autoguardado
+          {/* ── Paquetes ── */}
+          {packages.length > 0 && (
+            <details open className="group border-b border-gray-100 last:border-b-0">
+              <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Paquetes
+                  <span className="ml-1.5 text-xs font-normal text-gray-400">({packages.length})</span>
+                </h3>
+                <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+              </summary>
+              <div className="space-y-1.5 px-5 pb-4">
+                {packages.map((pkg, i) => (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => setEditPkgIndex(i)}
+                    className="flex w-full items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 text-left transition-colors hover:border-gray-200 hover:bg-gray-50"
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs font-medium text-gray-500">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-sm font-medium text-gray-900">
+                        {pkg.tracking_number}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {pkg.actual_weight_lb != null ? `${pkg.actual_weight_lb} lb` : "Sin peso"}
+                        {pkg.package_type && ` · ${pkg.package_type}`}
+                      </p>
+                    </div>
+                    <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
+
+          {/* ── Footer hint ── */}
+          <div className="px-5 py-3">
+            <p className="text-center text-xs text-gray-400">
+              Los cambios se guardan automaticamente
             </p>
           </div>
         </div>
@@ -556,7 +846,8 @@ export function WrEditableDocument({
       {/* ══════════════════════════════════════════════════
           DOCUMENT — Live preview with inline editing
           ══════════════════════════════════════════════════ */}
-      <div className="max-w-[7.5in] shrink-0 overflow-hidden rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
+      <div className="flex-1 overflow-y-auto p-6 lg:pl-3 print:overflow-visible print:p-0">
+      <div className="mx-auto max-w-[7.5in] overflow-hidden rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
       <div className="px-8 py-6 print:px-[0.5in] print:py-[0.4in]">
         {/* ── 1. Header ── */}
         <div className="border-b border-slate-200 pb-4">
@@ -886,23 +1177,36 @@ export function WrEditableDocument({
         </div>
       </div>
       </div>
+      </div>
 
       {/* ── Compact controls for narrow screens ── */}
       <div className="fixed bottom-5 right-5 z-10 flex gap-2 lg:hidden print:hidden">
         <Link
           href={`/${locale}/warehouse-receipts/${wr.id}`}
-          className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg ring-1 ring-slate-200 transition-colors hover:bg-slate-50"
+          className="rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-lg ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
         >
           &larr; Volver
         </Link>
         <button
           type="button"
-          onClick={() => window.print()}
-          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-slate-800"
+          onClick={handlePrint}
+          className="rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-gray-800"
         >
           Imprimir
         </button>
       </div>
+
+      {/* ── Package edit modal ── */}
+      {editPkgIndex != null && packages[editPkgIndex] && (
+        <PackageEditModal
+          pkg={packages[editPkgIndex]}
+          index={editPkgIndex}
+          open
+          onClose={() => setEditPkgIndex(null)}
+          onSave={savePkgField}
+          packageTypeOptions={packageTypeOptions}
+        />
+      )}
     </div>
   );
 }
