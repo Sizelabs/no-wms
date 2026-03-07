@@ -35,7 +35,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import type { UploadedPhoto } from "@/components/ui/photo-upload";
 import { PhotoUpload } from "@/components/ui/photo-upload";
 import { useNotification } from "@/components/layout/notification";
-import { quickCreateConsignee, searchConsignees } from "@/lib/actions/consignees";
+import { checkCasilleroUnique, generateCasillero, quickCreateConsignee, searchConsignees } from "@/lib/actions/consignees";
 import { createClient } from "@/lib/supabase/client";
 import {
   checkDuplicateTracking,
@@ -192,6 +192,9 @@ export function WrReceiptForm({
   const [creatingConsignee, setCreatingConsignee] = useState(false);
   const [quickCreateModal, setQuickCreateModal] = useState(false);
   const [quickCreateAgencyId, setQuickCreateAgencyId] = useState("");
+  const [quickCreateCasillero, setQuickCreateCasillero] = useState("");
+  const [casilleroLoading, setCasilleroLoading] = useState(false);
+  const [casilleroError, setCasilleroError] = useState("");
   const [duplicateInfo, setDuplicateInfo] = useState<{
     wr_number: string;
     received_at: string;
@@ -465,6 +468,46 @@ export function WrReceiptForm({
   }, [phase]);
 
   // ---------------------------------------------------------------------------
+  // Quick-create consignee — casillero auto-generation on agency select
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!quickCreateModal || !quickCreateAgencyId) return;
+    let cancelled = false;
+    setCasilleroLoading(true);
+    setCasilleroError("");
+    generateCasillero(quickCreateAgencyId).then((casillero) => {
+      if (!cancelled) {
+        setQuickCreateCasillero(casillero);
+        setCasilleroLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setCasilleroLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [quickCreateModal, quickCreateAgencyId]);
+
+  // Debounced casillero uniqueness check
+  useEffect(() => {
+    if (!quickCreateAgencyId || !quickCreateCasillero) {
+      setCasilleroError("");
+      return;
+    }
+    if (!/^[A-Z0-9]{2,5}\d{6}$/.test(quickCreateCasillero)) {
+      setCasilleroError("Formato inválido (ej: AND000001)");
+      return;
+    }
+    setCasilleroError("");
+    const timer = setTimeout(async () => {
+      const { unique } = await checkCasilleroUnique(quickCreateAgencyId, quickCreateCasillero);
+      if (!unique) {
+        setCasilleroError("Casillero ya existe para esta agencia");
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [quickCreateAgencyId, quickCreateCasillero]);
+
+  // ---------------------------------------------------------------------------
   // Quick-create consignee
   // ---------------------------------------------------------------------------
 
@@ -475,16 +518,19 @@ export function WrReceiptForm({
       doQuickCreate(agencyId);
     } else {
       setQuickCreateAgencyId("");
+      setQuickCreateCasillero("");
+      setCasilleroError("");
       setQuickCreateModal(true);
     }
   }, [agencyId, consigneeSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const doQuickCreate = useCallback(async (targetAgencyId: string) => {
+  const doQuickCreate = useCallback(async (targetAgencyId: string, casillero?: string) => {
     if (!consigneeSearch.trim() || !targetAgencyId) return;
     setCreatingConsignee(true);
     const fd = new FormData();
     fd.set("agency_id", targetAgencyId);
     fd.set("full_name", consigneeSearch.trim());
+    if (casillero) fd.set("casillero", casillero);
     const result = await quickCreateConsignee(fd);
     if (result.data) {
       const agency = filteredAgencies.find((a) => a.id === targetAgencyId);
@@ -940,7 +986,7 @@ export function WrReceiptForm({
                     setConsigneeHighlight(0);
                   }}
                   onKeyDown={(e) => {
-                    const canCreate = consigneeSearch.trim().length >= 2;
+                    const canCreate = consigneeSearch.trim().length >= 2 && !isUnknownAgency;
                     const totalItems = consignees.length + (canCreate ? 1 : 0);
                     if (!totalItems) return;
                     switch (e.key) {
@@ -980,7 +1026,7 @@ export function WrReceiptForm({
                 />
 
                 {(() => {
-                  const canCreate = consigneeSearch.trim().length >= 2;
+                  const canCreate = consigneeSearch.trim().length >= 2 && !isUnknownAgency;
                   const showDropdown = consignees.length > 0 || canCreate;
                   if (!showDropdown) return null;
                   const createIndex = consignees.length;
@@ -1312,6 +1358,35 @@ export function WrReceiptForm({
                 })}
               </div>
             </div>
+            {quickCreateAgencyId && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Casillero</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={quickCreateCasillero}
+                    onChange={(e) => setQuickCreateCasillero(e.target.value.toUpperCase())}
+                    disabled={casilleroLoading}
+                    placeholder={casilleroLoading ? "Generando..." : "Ej: AND000001"}
+                    className={`${inputCls} font-mono${casilleroError ? " border-red-300 focus:border-red-400 focus:ring-red-400" : ""}`}
+                  />
+                  {casilleroLoading && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                      <svg className="h-4 w-4 animate-spin text-gray-400" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                {casilleroError && (
+                  <p className="mt-1 text-xs text-red-500">{casilleroError}</p>
+                )}
+                {!casilleroError && quickCreateCasillero && !casilleroLoading && (
+                  <p className="mt-1 text-xs text-gray-400">Puedes modificarlo si es necesario</p>
+                )}
+              </div>
+            )}
           </div>
         </ModalBody>
         <ModalFooter>
@@ -1324,8 +1399,8 @@ export function WrReceiptForm({
           </button>
           <button
             type="button"
-            onClick={() => doQuickCreate(quickCreateAgencyId)}
-            disabled={!quickCreateAgencyId || creatingConsignee}
+            onClick={() => doQuickCreate(quickCreateAgencyId, quickCreateCasillero || undefined)}
+            disabled={!quickCreateAgencyId || creatingConsignee || !!casilleroError || casilleroLoading}
             className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
           >
             {creatingConsignee ? "Creando..." : "Crear"}
