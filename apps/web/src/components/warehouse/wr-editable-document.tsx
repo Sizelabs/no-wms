@@ -474,6 +474,7 @@ export function WrEditableDocument({
   const [consCas, setConsCas] = useState<string | null>(wr.consignees?.casillero ?? null);
   const [flags, setFlags] = useState<string[]>(wr.condition_flags);
   const [editPkgIndex, setEditPkgIndex] = useState<number | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<"recibo" | "envio" | "contenido" | "paquetes">("recibo");
 
   /* ── Barcode ── */
   useEffect(() => {
@@ -608,7 +609,7 @@ export function WrEditableDocument({
       {/* ══════════════════════════════════════════════════
           LEFT PANEL — Editing toolbar (lg+ only)
           ══════════════════════════════════════════════════ */}
-      <div className="hidden w-80 shrink-0 overflow-y-auto p-6 pr-3 lg:block print:hidden">
+      <div className="hidden w-96 shrink-0 overflow-y-auto p-6 pr-3 lg:block print:hidden">
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           {/* ── Header ── */}
           <div className="border-b border-gray-100 px-5 py-3">
@@ -643,199 +644,209 @@ export function WrEditableDocument({
             </div>
           </div>
 
-          {/* ── Recibo ── */}
-          <details open className="group border-b border-gray-100">
-            <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4">
-              <h3 className="text-sm font-semibold text-gray-900">Recibo</h3>
-              <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-            </summary>
-            <div className="space-y-4 px-5 pb-4">
-              <PanelInput
-                label="Numero de WR"
-                value={wrNumber}
-                onChange={setWrNumber}
-                onSave={saveWrNumber}
-                placeholder="WR-0001"
-                mono
-              />
-              <div>
-                <label className="mb-1.5 block text-sm text-gray-600">Fecha de recibo</label>
-                <input
-                  type="datetime-local"
-                  value={receivedAt}
-                  onChange={(e) => {
-                    const newVal = e.target.value;
-                    const old = receivedAt;
-                    setReceivedAt(newVal);
-                    saveReceivedAt(newVal).then((res) => {
-                      if (res.error) {
-                        setReceivedAt(old);
-                        notify(res.error, "error");
-                      }
-                    });
-                  }}
-                  className={platformInputClass}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm text-gray-600">Recibido por</label>
-                <select
-                  value={receivedBy}
-                  onChange={(e) => {
-                    const newVal = e.target.value;
-                    const old = receivedBy;
-                    setReceivedBy(newVal);
-                    saveReceivedBy(newVal).then((res) => {
-                      if (res.error) {
-                        setReceivedBy(old);
-                        notify(res.error, "error");
-                      }
-                    });
-                  }}
-                  className={platformSelectClass}
-                >
-                  <option value="">— Seleccionar —</option>
-                  {memberOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm text-gray-600">Ubicacion</label>
-                <select
-                  value={locId}
-                  onChange={(e) => {
-                    const newVal = e.target.value;
-                    const old = locId;
-                    setLocId(newVal);
-                    updateWarehouseReceiptField(wr.id, "warehouse_location_id", newVal).then((res) => {
-                      if (res.error) {
-                        setLocId(old);
-                        notify(res.error, "error");
-                      }
-                    });
-                  }}
-                  className={platformSelectClass}
-                >
-                  <option value="">— Sin asignar —</option>
-                  {locationOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </details>
-
-          {/* ── Envio ── */}
-          <details open className="group border-b border-gray-100">
-            <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4">
-              <h3 className="text-sm font-semibold text-gray-900">Envio</h3>
-              <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-            </summary>
-            <div className="space-y-4 px-5 pb-4">
-              <PanelInput
-                label="Shipper / Remitente"
-                value={shipper}
-                onChange={setShipper}
-                onSave={saveShipper}
-                placeholder="Nombre del remitente"
-              />
-              <PanelInput
-                label="Master Tracking"
-                value={master}
-                onChange={setMaster}
-                onSave={saveMaster}
-                placeholder="Guia master"
-                mono
-              />
-              <div>
-                <label className="mb-1.5 block text-sm text-gray-600">Consignatario</label>
-                <ConsigneeTypeahead
-                  wrId={wr.id}
-                  agencyId={wr.agency_id}
-                  consigneeName={consName}
-                  casillero={consCas}
-                  onSelect={handleConsigneeChange}
-                />
-              </div>
-            </div>
-          </details>
-
-          {/* ── Contenido ── */}
-          <details open className="group border-b border-gray-100 last:border-b-0">
-            <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4">
-              <h3 className="text-sm font-semibold text-gray-900">Contenido</h3>
-              <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-            </summary>
-            <div className="space-y-4 px-5 pb-4">
-              <PanelInput
-                label="Descripcion de bienes"
-                value={desc}
-                onChange={setDesc}
-                onSave={saveDesc}
-                type="textarea"
-                placeholder="Descripcion de bienes..."
-              />
-              <div>
-                <label className="mb-1.5 block text-sm text-gray-600">Condicion</label>
-                <ConditionFlagsInlineEdit
-                  wrId={wr.id}
-                  flags={flags}
-                  onFlagsChange={handleFlagsChanged}
-                />
-              </div>
-              <PanelInput
-                label="Notas"
-                value={wrNotes}
-                onChange={setWrNotes}
-                onSave={saveNotes}
-                type="textarea"
-                placeholder="Agregar notas..."
-              />
-            </div>
-          </details>
-
-          {/* ── Paquetes ── */}
-          {packages.length > 0 && (
-            <details open className="group border-b border-gray-100 last:border-b-0">
-              <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4">
-                <h3 className="text-sm font-semibold text-gray-900">
-                  Paquetes
-                  <span className="ml-1.5 text-xs font-normal text-gray-400">({packages.length})</span>
-                </h3>
-                <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-              </summary>
-              <div className="space-y-1.5 px-5 pb-4">
-                {packages.map((pkg, i) => (
+          {/* ── Tabs ── */}
+          {(() => {
+            const tabs = [
+              { key: "recibo" as const, label: "Recibo" },
+              { key: "envio" as const, label: "Envio" },
+              { key: "contenido" as const, label: "Contenido" },
+              { key: "paquetes" as const, label: `Paquetes (${packages.length})` },
+            ];
+            return (
+              <div className="flex border-b border-gray-100">
+                {tabs.map((tab) => (
                   <button
-                    key={pkg.id}
+                    key={tab.key}
                     type="button"
-                    onClick={() => setEditPkgIndex(i)}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 text-left transition-colors hover:border-gray-200 hover:bg-gray-50"
+                    onClick={() => setSidebarTab(tab.key)}
+                    className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                      sidebarTab === tab.key
+                        ? "border-b-2 border-gray-900 text-gray-900"
+                        : "text-gray-400 hover:text-gray-600"
+                    }`}
                   >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs font-medium text-gray-500">
-                      {i + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-mono text-sm font-medium text-gray-900">
-                        {pkg.tracking_number}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {pkg.actual_weight_lb != null ? `${pkg.actual_weight_lb} lb` : "Sin peso"}
-                        {pkg.package_type && ` · ${pkg.package_type}`}
-                      </p>
-                    </div>
-                    <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-                    </svg>
+                    {tab.label}
                   </button>
                 ))}
               </div>
-            </details>
-          )}
+            );
+          })()}
+
+          {/* ── Tab content ── */}
+          <div className="px-5 py-4">
+            {sidebarTab === "recibo" && (
+              <div className="space-y-4">
+                <PanelInput
+                  label="Numero de WR"
+                  value={wrNumber}
+                  onChange={setWrNumber}
+                  onSave={saveWrNumber}
+                  placeholder="WR-0001"
+                  mono
+                />
+                <div>
+                  <label className="mb-1.5 block text-sm text-gray-600">Fecha de recibo</label>
+                  <input
+                    type="datetime-local"
+                    value={receivedAt}
+                    onChange={(e) => {
+                      const newVal = e.target.value;
+                      const old = receivedAt;
+                      setReceivedAt(newVal);
+                      saveReceivedAt(newVal).then((res) => {
+                        if (res.error) {
+                          setReceivedAt(old);
+                          notify(res.error, "error");
+                        }
+                      });
+                    }}
+                    className={platformInputClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-gray-600">Recibido por</label>
+                  <select
+                    value={receivedBy}
+                    onChange={(e) => {
+                      const newVal = e.target.value;
+                      const old = receivedBy;
+                      setReceivedBy(newVal);
+                      saveReceivedBy(newVal).then((res) => {
+                        if (res.error) {
+                          setReceivedBy(old);
+                          notify(res.error, "error");
+                        }
+                      });
+                    }}
+                    className={platformSelectClass}
+                  >
+                    <option value="">— Seleccionar —</option>
+                    {memberOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-gray-600">Ubicacion</label>
+                  <select
+                    value={locId}
+                    onChange={(e) => {
+                      const newVal = e.target.value;
+                      const old = locId;
+                      setLocId(newVal);
+                      updateWarehouseReceiptField(wr.id, "warehouse_location_id", newVal).then((res) => {
+                        if (res.error) {
+                          setLocId(old);
+                          notify(res.error, "error");
+                        }
+                      });
+                    }}
+                    className={platformSelectClass}
+                  >
+                    <option value="">— Sin asignar —</option>
+                    {locationOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {sidebarTab === "envio" && (
+              <div className="space-y-4">
+                <PanelInput
+                  label="Shipper / Remitente"
+                  value={shipper}
+                  onChange={setShipper}
+                  onSave={saveShipper}
+                  placeholder="Nombre del remitente"
+                />
+                <PanelInput
+                  label="Master Tracking"
+                  value={master}
+                  onChange={setMaster}
+                  onSave={saveMaster}
+                  placeholder="Guia master"
+                  mono
+                />
+                <div>
+                  <label className="mb-1.5 block text-sm text-gray-600">Consignatario</label>
+                  <ConsigneeTypeahead
+                    wrId={wr.id}
+                    agencyId={wr.agency_id}
+                    consigneeName={consName}
+                    casillero={consCas}
+                    onSelect={handleConsigneeChange}
+                  />
+                </div>
+              </div>
+            )}
+
+            {sidebarTab === "contenido" && (
+              <div className="space-y-4">
+                <PanelInput
+                  label="Descripcion de bienes"
+                  value={desc}
+                  onChange={setDesc}
+                  onSave={saveDesc}
+                  type="textarea"
+                  placeholder="Descripcion de bienes..."
+                />
+                <div>
+                  <label className="mb-1.5 block text-sm text-gray-600">Condicion</label>
+                  <ConditionFlagsInlineEdit
+                    wrId={wr.id}
+                    flags={flags}
+                    onFlagsChange={handleFlagsChanged}
+                  />
+                </div>
+                <PanelInput
+                  label="Notas"
+                  value={wrNotes}
+                  onChange={setWrNotes}
+                  onSave={saveNotes}
+                  type="textarea"
+                  placeholder="Agregar notas..."
+                />
+              </div>
+            )}
+
+            {sidebarTab === "paquetes" && (
+              <div className="space-y-1.5">
+                {packages.length > 0 ? (
+                  packages.map((pkg, i) => (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      onClick={() => setEditPkgIndex(i)}
+                      className="flex w-full items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 text-left transition-colors hover:border-gray-200 hover:bg-gray-50"
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs font-medium text-gray-500">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-mono text-sm font-medium text-gray-900">
+                          {pkg.tracking_number}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {pkg.actual_weight_lb != null ? `${pkg.actual_weight_lb} lb` : "Sin peso"}
+                          {pkg.package_type && ` · ${pkg.package_type}`}
+                        </p>
+                      </div>
+                      <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                      </svg>
+                    </button>
+                  ))
+                ) : (
+                  <p className="py-4 text-center text-sm text-gray-400">Sin paquetes</p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* ── Footer hint ── */}
-          <div className="px-5 py-3">
+          <div className="border-t border-gray-100 px-5 py-2.5">
             <p className="text-center text-xs text-gray-400">
               Los cambios se guardan automaticamente
             </p>
