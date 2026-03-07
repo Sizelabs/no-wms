@@ -21,6 +21,12 @@ export function WrDetailActions({ wrId, locale, backHref }: WrDetailActionsProps
       >
         Volver
       </Link>
+      <Link
+        href={`/${locale}/inventory/${wrId}/edit`}
+        className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        Editar documento
+      </Link>
       <button
         type="button"
         onClick={() => window.open(`/${locale}/inventory/${wrId}/print`, "_blank")}

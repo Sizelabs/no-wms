@@ -825,6 +825,176 @@ export async function getWarehouseReceiptForPrint(id: string) {
   return { data: wr, settings, org: orgResult.data };
 }
 
+// ---------------------------------------------------------------------------
+// Field-level update for editable document
+// ---------------------------------------------------------------------------
+
+const WR_EDITABLE_FIELDS = [
+  "warehouse_location_id",
+  "consignee_id",
+  "consignee_name",
+  "shipper_name",
+  "master_tracking",
+  "description",
+  "notes",
+  "condition_flags",
+] as const;
+
+type WrEditableField = (typeof WR_EDITABLE_FIELDS)[number];
+
+export async function updateWarehouseReceiptField(
+  id: string,
+  field: WrEditableField,
+  value: string,
+): Promise<{ error?: string }> {
+  if (!WR_EDITABLE_FIELDS.includes(field)) {
+    return { error: "Campo no permitido" };
+  }
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  let updateData: Record<string, unknown> = {};
+
+  if (field === "condition_flags") {
+    try {
+      updateData.condition_flags = JSON.parse(value);
+    } catch {
+      return { error: "Formato de flags invalido" };
+    }
+  } else if (field === "consignee_id") {
+    updateData.consignee_id = value || null;
+    updateData.consignee_name = null;
+  } else if (field === "consignee_name") {
+    updateData.consignee_name = value || null;
+    updateData.consignee_id = null;
+  } else if (field === "warehouse_location_id") {
+    updateData.warehouse_location_id = value || null;
+  } else {
+    updateData[field] = value || null;
+  }
+
+  const { error } = await supabase
+    .from("warehouse_receipts")
+    .update(updateData)
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Package field-level update
+// ---------------------------------------------------------------------------
+
+const PKG_EDITABLE_FIELDS = [
+  "actual_weight_lb",
+  "length_in",
+  "width_in",
+  "height_in",
+  "pieces_count",
+  "package_type",
+  "declared_value_usd",
+] as const;
+
+type PkgEditableField = (typeof PKG_EDITABLE_FIELDS)[number];
+
+export async function updatePackageField(
+  packageId: string,
+  field: PkgEditableField,
+  value: string,
+): Promise<{ error?: string }> {
+  if (!PKG_EDITABLE_FIELDS.includes(field)) {
+    return { error: "Campo no permitido" };
+  }
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // Get current package data for weight recalculation
+  const { data: pkg } = await supabase
+    .from("packages")
+    .select("actual_weight_lb, length_in, width_in, height_in")
+    .eq("id", packageId)
+    .single();
+
+  if (!pkg) return { error: "Paquete no encontrado" };
+
+  const numericFields = ["actual_weight_lb", "length_in", "width_in", "height_in", "pieces_count", "declared_value_usd"];
+  const updateData: Record<string, unknown> = {};
+
+  if (numericFields.includes(field)) {
+    updateData[field] = value ? Number(value) : null;
+  } else {
+    updateData[field] = value || null;
+  }
+
+  // Recalculate weights if a dimension/weight field changed
+  const weightDimFields = ["actual_weight_lb", "length_in", "width_in", "height_in"];
+  if (weightDimFields.includes(field)) {
+    const merged = { ...pkg, ...updateData };
+    const l = merged.length_in as number | null;
+    const w = merged.width_in as number | null;
+    const h = merged.height_in as number | null;
+    const actualWeight = merged.actual_weight_lb as number | null;
+    const dimensionalFactor = 166;
+
+    let volumetricWeightLb: number | null = null;
+    if (l && w && h) {
+      volumetricWeightLb = calculateVolumetricWeight(l, w, h, dimensionalFactor);
+    }
+    const billableWeightLb = calculateBillableWeight(actualWeight, volumetricWeightLb);
+
+    updateData.volumetric_weight_lb = volumetricWeightLb;
+    updateData.billable_weight_lb = billableWeightLb;
+  }
+
+  const { error } = await supabase
+    .from("packages")
+    .update(updateData)
+    .eq("id", packageId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Get warehouse locations for a warehouse
+// ---------------------------------------------------------------------------
+
+export async function getWarehouseLocationsForWarehouse(warehouseId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("warehouse_locations")
+    .select("id, name, code, warehouse_zones:zone_id(name, code)")
+    .eq("warehouse_id", warehouseId)
+    .order("code");
+
+  if (error) return [];
+
+  return (data ?? []).map((loc) => {
+    const zone = loc.warehouse_zones as { name: string; code: string } | { name: string; code: string }[] | null;
+    const zoneName = zone ? (Array.isArray(zone) ? zone[0]?.name : zone.name) : null;
+    return {
+      id: loc.id,
+      label: zoneName ? `${zoneName} / ${loc.code}` : loc.code,
+    };
+  });
+}
+
 export async function updateWarehouseReceiptStatus(
   id: string,
   newStatus: string,
