@@ -152,37 +152,9 @@ export function WrEditableDocument({
   }));
 
   return (
-    <div>
-      {/* ── Sticky toolbar — outside the document ── */}
-      <div className="sticky top-0 z-10 -mx-6 mb-5 border-b border-slate-200/80 bg-slate-100/90 px-6 py-2.5 backdrop-blur-sm print:hidden">
-        <div className="mx-auto flex max-w-[7.5in] items-center gap-3">
-          <Link
-            href={`/${locale}/inventory/${wr.id}`}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
-          >
-            &larr; Volver
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-sm font-semibold text-slate-900">{wr.wr_number}</span>
-            <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-              {statusLabel}
-            </span>
-          </div>
-          <p className="hidden text-[11px] text-slate-400 sm:block">
-            Haz clic en cualquier campo para editar
-          </p>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="ml-auto rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
-          >
-            Imprimir
-          </button>
-        </div>
-      </div>
-
+    <div className="flex items-start justify-center gap-5">
       {/* ── Document paper ── */}
-      <div className="mx-auto max-w-[7.5in] rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:rounded-none print:shadow-none print:ring-0">
+      <div className="max-w-[7.5in] shrink-0 rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:rounded-none print:shadow-none print:ring-0">
       <div className="px-8 py-6 print:px-0 print:py-0">
         {/* ── 1. Header ── */}
         <div className="border-b border-slate-200 pb-4">
@@ -544,6 +516,59 @@ export function WrEditableDocument({
           </div>
         </div>
       </div>
+      </div>
+
+      {/* ── Side panel ── */}
+      <div className="sticky top-6 hidden w-44 shrink-0 xl:block print:hidden">
+        <div className="space-y-4">
+          <Link
+            href={`/${locale}/inventory/${wr.id}`}
+            className="flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-900"
+          >
+            <span>&larr;</span>
+            <span>Volver al detalle</span>
+          </Link>
+
+          <div>
+            <p className="font-mono text-sm font-semibold text-slate-900">{wr.wr_number}</p>
+            <span className="mt-1 inline-block rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+              {statusLabel}
+            </span>
+          </div>
+
+          <div className="h-px bg-slate-200" />
+
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+          >
+            Imprimir
+          </button>
+
+          <div className="h-px bg-slate-200" />
+
+          <p className="text-[11px] leading-relaxed text-slate-400">
+            Haz clic en cualquier campo resaltado para editarlo. Los cambios se guardan automaticamente.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Compact controls for narrow screens ── */}
+      <div className="fixed bottom-5 right-5 z-10 flex gap-2 xl:hidden print:hidden">
+        <Link
+          href={`/${locale}/inventory/${wr.id}`}
+          className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg ring-1 ring-slate-200 transition-colors hover:bg-slate-50"
+        >
+          &larr; Volver
+        </Link>
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-slate-800"
+        >
+          Imprimir
+        </button>
       </div>
     </div>
   );
