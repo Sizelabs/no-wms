@@ -152,28 +152,38 @@ export function WrEditableDocument({
   }));
 
   return (
-    <div className="mx-auto max-w-[7.5in] rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:rounded-none print:shadow-none print:ring-0">
-      {/* ── Screen-only toolbar ── */}
-      <div className="mb-2 flex items-center gap-2 px-8 pt-6 print:hidden">
-        <Link
-          href={`/${locale}/inventory/${wr.id}`}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50"
-        >
-          Volver
-        </Link>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
-        >
-          Imprimir
-        </button>
-        <span className="ml-auto rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-500">
-          {statusLabel}
-        </span>
+    <div>
+      {/* ── Sticky toolbar — outside the document ── */}
+      <div className="sticky top-0 z-10 -mx-6 mb-5 border-b border-slate-200/80 bg-slate-100/90 px-6 py-2.5 backdrop-blur-sm print:hidden">
+        <div className="mx-auto flex max-w-[7.5in] items-center gap-3">
+          <Link
+            href={`/${locale}/inventory/${wr.id}`}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
+          >
+            &larr; Volver
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm font-semibold text-slate-900">{wr.wr_number}</span>
+            <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+              {statusLabel}
+            </span>
+          </div>
+          <p className="hidden text-[11px] text-slate-400 sm:block">
+            Haz clic en cualquier campo para editar
+          </p>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="ml-auto rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+          >
+            Imprimir
+          </button>
+        </div>
       </div>
 
-      <div className="px-8 pb-8 pt-4 print:px-0 print:pb-0 print:pt-0">
+      {/* ── Document paper ── */}
+      <div className="mx-auto max-w-[7.5in] rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:rounded-none print:shadow-none print:ring-0">
+      <div className="px-8 py-6 print:px-0 print:py-0">
         {/* ── 1. Header ── */}
         <div className="border-b border-slate-200 pb-4">
           <div className="flex items-start justify-between">
@@ -533,6 +543,7 @@ export function WrEditableDocument({
             <p>{new Date().toISOString().slice(0, 19).replace("T", " ")} UTC</p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

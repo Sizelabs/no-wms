@@ -28,7 +28,7 @@ export default async function WrEditPage({
   ]);
 
   return (
-    <div className="-m-6 min-h-screen bg-slate-100/80 px-6 py-8 print:m-0 print:bg-white print:p-0">
+    <div className="-m-6 min-h-screen bg-slate-100/80 px-6 pb-10 pt-6 print:m-0 print:bg-white print:p-0">
       <WrEditableDocument
         wr={wr}
         settings={settings}
