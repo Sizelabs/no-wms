@@ -838,6 +838,9 @@ const WR_EDITABLE_FIELDS = [
   "description",
   "notes",
   "condition_flags",
+  "wr_number",
+  "received_at",
+  "received_by",
 ] as const;
 
 type WrEditableField = (typeof WR_EDITABLE_FIELDS)[number];
@@ -874,6 +877,33 @@ export async function updateWarehouseReceiptField(
     updateData.consignee_id = null;
   } else if (field === "warehouse_location_id") {
     updateData.warehouse_location_id = value || null;
+  } else if (field === "wr_number") {
+    const trimmed = value.trim();
+    if (!trimmed) return { error: "El numero de WR no puede estar vacio" };
+    // Check uniqueness within org
+    const { data: wr } = await supabase
+      .from("warehouse_receipts")
+      .select("organization_id")
+      .eq("id", id)
+      .single();
+    if (!wr) return { error: "WR no encontrado" };
+    const { data: existing } = await supabase
+      .from("warehouse_receipts")
+      .select("id")
+      .eq("organization_id", wr.organization_id)
+      .eq("wr_number", trimmed)
+      .neq("id", id)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      return { error: `El numero "${trimmed}" ya esta en uso` };
+    }
+    updateData.wr_number = trimmed;
+  } else if (field === "received_at") {
+    if (!value) return { error: "La fecha es requerida" };
+    updateData.received_at = value;
+  } else if (field === "received_by") {
+    if (!value) return { error: "El receptor es requerido" };
+    updateData.received_by = value;
   } else {
     updateData[field] = value || null;
   }
@@ -901,6 +931,8 @@ const PKG_EDITABLE_FIELDS = [
   "pieces_count",
   "package_type",
   "declared_value_usd",
+  "tracking_number",
+  "carrier",
 ] as const;
 
 type PkgEditableField = (typeof PKG_EDITABLE_FIELDS)[number];
@@ -933,7 +965,30 @@ export async function updatePackageField(
   const numericFields = ["actual_weight_lb", "length_in", "width_in", "height_in", "pieces_count", "declared_value_usd"];
   const updateData: Record<string, unknown> = {};
 
-  if (numericFields.includes(field)) {
+  if (field === "tracking_number") {
+    const trimmed = value.trim();
+    if (!trimmed) return { error: "El tracking no puede estar vacio" };
+    // Check uniqueness within org
+    const { data: pkgWithOrg } = await supabase
+      .from("packages")
+      .select("organization_id")
+      .eq("id", packageId)
+      .single();
+    if (!pkgWithOrg) return { error: "Paquete no encontrado" };
+    const { data: existing } = await supabase
+      .from("packages")
+      .select("id")
+      .eq("organization_id", pkgWithOrg.organization_id)
+      .eq("tracking_number", trimmed)
+      .neq("id", packageId)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      return { error: `El tracking "${trimmed}" ya esta en uso` };
+    }
+    updateData.tracking_number = trimmed;
+  } else if (field === "carrier") {
+    updateData.carrier = value || null;
+  } else if (numericFields.includes(field)) {
     updateData[field] = value ? Number(value) : null;
   } else {
     updateData[field] = value || null;
@@ -993,6 +1048,24 @@ export async function getWarehouseLocationsForWarehouse(warehouseId: string) {
       label: zoneName ? `${zoneName} / ${loc.code}` : loc.code,
     };
   });
+}
+
+export async function getOrgMembers() {
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .limit(1)
+    .single();
+  if (!profile?.organization_id) return [];
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("organization_id", profile.organization_id)
+    .order("full_name");
+
+  return (data ?? []).map((p) => ({ id: p.id, name: p.full_name }));
 }
 
 export async function updateWarehouseReceiptStatus(

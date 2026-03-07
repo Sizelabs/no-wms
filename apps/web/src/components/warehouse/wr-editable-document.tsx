@@ -79,6 +79,7 @@ interface WrEditableDocumentProps {
   destination: { city: string; country_code: string } | null;
   org: { name: string; logo_url: string | null; slug: string | null } | null;
   warehouseLocations: { id: string; label: string }[];
+  orgMembers: { id: string; name: string }[];
   locale: string;
 }
 
@@ -197,12 +198,16 @@ export function WrEditableDocument({
   destination,
   org,
   warehouseLocations,
+  orgMembers,
   locale,
 }: WrEditableDocumentProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
   const { notify } = useNotification();
 
   /* ── Lifted state (shared between panel + document) ── */
+  const [wrNumber, setWrNumber] = useState(wr.wr_number);
+  const [receivedAt, setReceivedAt] = useState(wr.received_at.slice(0, 16)); // datetime-local format
+  const [receivedBy, setReceivedBy] = useState(wr.profiles ? (orgMembers.find((m) => m.name === wr.profiles!.full_name)?.id ?? "") : "");
   const [shipper, setShipper] = useState(wr.shipper_name ?? "");
   const [master, setMaster] = useState(wr.master_tracking ?? "");
   const [desc, setDesc] = useState(wr.content_description ?? wr.description ?? "");
@@ -217,7 +222,7 @@ export function WrEditableDocument({
   /* ── Barcode ── */
   useEffect(() => {
     if (barcodeRef.current) {
-      JsBarcode(barcodeRef.current, wr.wr_number, {
+      JsBarcode(barcodeRef.current, wrNumber, {
         format: "CODE128",
         width: 1.5,
         height: 36,
@@ -225,23 +230,43 @@ export function WrEditableDocument({
         margin: 0,
       });
     }
-  }, [wr.wr_number]);
+  }, [wrNumber]);
 
   /* ── Derived ── */
   const courier = wr.agencies?.couriers;
   const courierName = courier
     ? Array.isArray(courier) ? courier[0]?.name : courier.name
     : null;
-  const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
   const packages = wr.packages ?? [];
+  const carrierName = packages[0]?.carrier ?? null;
+  const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
   const statusLabel = WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status;
-  const receivedDate = new Date(wr.received_at).toLocaleDateString("es", {
+  const receivedDate = new Date(receivedAt).toLocaleDateString("es", {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+  const receivedByName = orgMembers.find((m) => m.id === receivedBy)?.name ?? wr.profiles?.full_name ?? "—";
 
   /* ── Save functions (used by both panel and document) ── */
+  const saveWrNumber = useCallback(async (value: string) => {
+    const result = await updateWarehouseReceiptField(wr.id, "wr_number", value);
+    if (!result.error) setWrNumber(value);
+    return result;
+  }, [wr.id]);
+
+  const saveReceivedAt = useCallback(async (value: string) => {
+    const result = await updateWarehouseReceiptField(wr.id, "received_at", value);
+    if (!result.error) setReceivedAt(value);
+    return result;
+  }, [wr.id]);
+
+  const saveReceivedBy = useCallback(async (value: string) => {
+    const result = await updateWarehouseReceiptField(wr.id, "received_by", value);
+    if (!result.error) setReceivedBy(value);
+    return result;
+  }, [wr.id]);
+
   const saveShipper = useCallback(async (value: string) => {
     const result = await updateWarehouseReceiptField(wr.id, "shipper_name", value);
     if (!result.error) setShipper(value);
@@ -296,6 +321,11 @@ export function WrEditableDocument({
     label: loc.label,
   }));
 
+  const memberOptions = orgMembers.map((m) => ({
+    value: m.id,
+    label: m.name,
+  }));
+
   const packageTypeOptions = PACKAGE_TYPES.map((pt) => ({
     value: pt,
     label: pt,
@@ -319,7 +349,7 @@ export function WrEditableDocument({
             </Link>
             <div className="mt-3 flex items-center justify-between">
               <div>
-                <p className="font-mono text-lg font-bold text-slate-900">{wr.wr_number}</p>
+                <p className="font-mono text-lg font-bold text-slate-900">{wrNumber}</p>
                 <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
                   {statusLabel}
                 </span>
@@ -336,6 +366,63 @@ export function WrEditableDocument({
 
           {/* Form */}
           <div className="space-y-4 px-5 py-4">
+            <PanelInput
+              label="Numero de WR"
+              value={wrNumber}
+              onChange={setWrNumber}
+              onSave={saveWrNumber}
+              placeholder="WR-0001"
+              mono
+            />
+
+            {/* Date */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Fecha de recibo</label>
+              <input
+                type="datetime-local"
+                value={receivedAt}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  const old = receivedAt;
+                  setReceivedAt(newVal);
+                  saveReceivedAt(newVal).then((res) => {
+                    if (res.error) {
+                      setReceivedAt(old);
+                      notify(res.error, "error");
+                    }
+                  });
+                }}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+              />
+            </div>
+
+            {/* Received by */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Recibido por</label>
+              <select
+                value={receivedBy}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  const old = receivedBy;
+                  setReceivedBy(newVal);
+                  saveReceivedBy(newVal).then((res) => {
+                    if (res.error) {
+                      setReceivedBy(old);
+                      notify(res.error, "error");
+                    }
+                  });
+                }}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+              >
+                <option value="">— Seleccionar —</option>
+                {memberOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="h-px bg-slate-100" />
+
             {/* Location */}
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">Ubicacion</label>
@@ -458,7 +545,12 @@ export function WrEditableDocument({
             </div>
             <div className="text-right">
               <p className="font-mono text-xl font-bold tracking-tight text-slate-900">
-                {wr.wr_number}
+                <EditableField
+                  value={wrNumber}
+                  onSave={saveWrNumber}
+                  placeholder="WR-0001"
+                  className="font-mono"
+                />
               </p>
               <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[13px] font-medium text-slate-500">
                 {statusLabel}
@@ -472,20 +564,33 @@ export function WrEditableDocument({
             </p>
             <div className="h-px flex-1 bg-slate-100" />
           </div>
-          <p className="mt-1 text-center text-xs font-medium text-slate-400">
-            No Negociable &middot; Nonnegotiable
-          </p>
         </div>
 
         {/* ── 2. Receipt details strip ── */}
         <div className="grid grid-cols-4 gap-4 border-b border-slate-200 bg-slate-50/60 px-4 py-3 text-[13px] print:bg-slate-50">
           <div>
             <p className="text-slate-400">Fecha / Date</p>
-            <p className="font-medium text-slate-700">{receivedDate}</p>
+            <p className="font-medium text-slate-700">
+              <EditableField
+                value={receivedAt}
+                onSave={saveReceivedAt}
+                formatDisplay={() => receivedDate}
+                className="text-slate-700"
+              />
+            </p>
           </div>
           <div>
             <p className="text-slate-400">Recibido por</p>
-            <p className="font-medium text-slate-700">{wr.profiles?.full_name ?? "—"}</p>
+            <p className="font-medium text-slate-700">
+              <EditableField
+                value={receivedBy}
+                onSave={saveReceivedBy}
+                type="select"
+                options={memberOptions}
+                emptyText="—"
+                formatDisplay={() => receivedByName}
+              />
+            </p>
           </div>
           <div>
             <p className="text-slate-400">Ubicacion</p>
@@ -527,6 +632,12 @@ export function WrEditableDocument({
               )}
             </p>
             <div className="mt-1.5 space-y-1 text-[13px]">
+              {carrierName && (
+                <div className="flex gap-1.5">
+                  <span className="shrink-0 text-slate-400">Carrier:</span>
+                  <span className="text-slate-700">{carrierName}</span>
+                </div>
+              )}
               {courierName && (
                 <div className="flex gap-1.5">
                   <span className="shrink-0 text-slate-400">Courier:</span>
@@ -615,8 +726,22 @@ export function WrEditableDocument({
                   {packages.map((pkg, i) => (
                     <tr key={pkg.id} className="text-slate-700">
                       <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
-                      <td className="px-3 py-1.5 font-mono font-medium">{pkg.tracking_number}</td>
-                      <td className="px-3 py-1.5">{pkg.carrier ?? "—"}</td>
+                      <td className="px-3 py-1.5 font-mono font-medium">
+                        <EditableField
+                          value={pkg.tracking_number}
+                          onSave={savePkgField(pkg.id, "tracking_number")}
+                          placeholder="Tracking"
+                          className="font-mono"
+                        />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <EditableField
+                          value={pkg.carrier}
+                          onSave={savePkgField(pkg.id, "carrier")}
+                          placeholder="Carrier"
+                          emptyText="—"
+                        />
+                      </td>
                       <td className="px-3 py-1.5 text-right">
                         <EditableField
                           value={pkg.pieces_count}

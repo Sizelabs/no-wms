@@ -123,6 +123,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
   const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
 
   const packages = wr.packages ?? [];
+  const carrierName = packages[0]?.carrier ?? null;
   const hasNoExceptions = wr.condition_flags.includes("sin_novedad");
 
   const statusLabel = WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status;
@@ -193,9 +194,6 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
           </p>
           <div className="h-px flex-1 bg-slate-100" />
         </div>
-        <p className="mt-1 text-center text-[9px] font-medium text-slate-400">
-          No Negociable &middot; Nonnegotiable
-        </p>
       </div>
 
       {/* ── 2. Receipt details strip ── */}
@@ -239,6 +237,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
             )}
           </p>
           <div className="mt-1.5 space-y-0.5">
+            {carrierName && <DetailRow label="Carrier:">{carrierName}</DetailRow>}
             {courierName && <DetailRow label="Courier:">{courierName}</DetailRow>}
             {wr.shipper_name && <DetailRow label="Shipper:">{wr.shipper_name}</DetailRow>}
             {wr.master_tracking && (
@@ -287,7 +286,6 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                 <tr className="bg-slate-50 text-left text-[9px] font-semibold uppercase tracking-wider text-slate-400">
                   <th className="px-3 py-2">#</th>
                   <th className="px-3 py-2">Tracking</th>
-                  <th className="px-3 py-2">Carrier</th>
                   <th className="px-3 py-2 text-right">Pzs</th>
                   <th className="px-3 py-2">Tipo</th>
                   <th className="px-3 py-2 text-right">Peso Real (lb)</th>
@@ -300,7 +298,6 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                   <tr key={pkg.id} className="text-slate-700">
                     <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
                     <td className="px-3 py-1.5 font-mono font-medium">{pkg.tracking_number}</td>
-                    <td className="px-3 py-1.5">{pkg.carrier ?? "—"}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{pkg.pieces_count}</td>
                     <td className="px-3 py-1.5">{pkg.package_type ?? "—"}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
@@ -319,7 +316,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
               </tbody>
               <tfoot>
                 <tr className="border-t border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-700">
-                  <td colSpan={3} className="px-3 py-2">
+                  <td colSpan={2} className="px-3 py-2">
                     {wr.total_packages ?? packages.length} paquete(s)
                   </td>
                   <td className="px-3 py-2" />

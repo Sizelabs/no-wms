@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { WrEditableDocument } from "@/components/warehouse/wr-editable-document";
 import {
   getAgencyHomeDestination,
+  getOrgMembers,
   getWarehouseLocationsForWarehouse,
   getWarehouseReceiptForPrint,
 } from "@/lib/actions/warehouse-receipts";
@@ -22,9 +23,10 @@ export default async function WrEditPage({
     notFound();
   }
 
-  const [destination, warehouseLocations] = await Promise.all([
+  const [destination, warehouseLocations, orgMembers] = await Promise.all([
     wr.agency_id ? getAgencyHomeDestination(wr.agency_id) : Promise.resolve(null),
     wr.warehouse_id ? getWarehouseLocationsForWarehouse(wr.warehouse_id) : Promise.resolve([]),
+    getOrgMembers(),
   ]);
 
   return (
@@ -35,6 +37,7 @@ export default async function WrEditPage({
         destination={destination}
         org={org}
         warehouseLocations={warehouseLocations}
+        orgMembers={orgMembers}
         locale={locale}
       />
     </div>
