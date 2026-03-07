@@ -19,24 +19,24 @@ export function Modal({ open, onClose, size = "md", children }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    },
-    [onClose],
-  );
+  // Use a ref to avoid re-running the effect when onClose changes
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
-    document.addEventListener("keydown", handleKeyDown);
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseRef.current();
+    };
+    document.addEventListener("keydown", handler);
     document.body.style.overflow = "hidden";
     // Focus trap: focus the content on open
     contentRef.current?.focus();
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handler);
       document.body.style.overflow = "";
     };
-  }, [open, handleKeyDown]);
+  }, [open]);
 
   if (!open) return null;
 
