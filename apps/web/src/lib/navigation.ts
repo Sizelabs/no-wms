@@ -22,19 +22,30 @@ export interface NavConfig {
 const NAV_CONFIG: NavConfig = {
   groups: [
     {
-      id: "operations",
+      id: "overview",
       items: [
         { label: "dashboard", href: "/", icon: "LayoutDashboard" },
+      ],
+    },
+    {
+      id: "warehouse",
+      items: [
         { label: "warehouseReceipts", href: "/warehouse-receipts", icon: "Package", resource: "warehouse_receipts" },
+        { label: "unknownWrs", href: "/unknown-wrs", icon: "PackageSearch", resource: "unknown_wrs" },
         { label: "inventory", href: "/inventory", icon: "Boxes", resource: "inventory" },
-        { label: "workOrders", href: "/work-orders", icon: "ClipboardList", resource: "work_orders" },
-        { label: "shipping", href: "/shipping", icon: "Truck", resource: "shipping" },
-        { label: "manifests", href: "/manifests", icon: "FileText", resource: "manifests" },
         { label: "history", href: "/history", icon: "History", resource: "history" },
       ],
     },
     {
-      id: "commercial",
+      id: "fulfillment",
+      items: [
+        { label: "workOrders", href: "/work-orders", icon: "ClipboardList", resource: "work_orders" },
+        { label: "shipping", href: "/shipping", icon: "Truck", resource: "shipping" },
+        { label: "manifests", href: "/manifests", icon: "FileText", resource: "manifests" },
+      ],
+    },
+    {
+      id: "clients",
       items: [
         { label: "agencies", href: "/agencies", icon: "Building2", resource: "agencies" },
         { label: "consignees", href: "/consignees", icon: "Contact", resource: "consignees" },
@@ -51,12 +62,11 @@ const NAV_CONFIG: NavConfig = {
       id: "reports",
       items: [
         { label: "reports", href: "/reports", icon: "BarChart3", resource: "reports" },
-        { label: "unknownWrs", href: "/unknown-wrs", icon: "HelpCircle", resource: "unknown_wrs" },
-        { label: "tickets", href: "/tickets", icon: "TicketCheck", resource: "tickets" },
       ],
     },
   ],
   bottomItems: [
+    { label: "tickets", href: "/tickets", icon: "TicketCheck", resource: "tickets" },
     { label: "settings", href: "/settings", icon: "Settings", resource: "settings" },
   ],
 };

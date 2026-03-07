@@ -27,7 +27,7 @@ const SETTINGS_GROUPS: SettingsNavGroup[] = [
     ],
   },
   {
-    id: "groupInfrastructure",
+    id: "groupNetwork",
     items: [
       { label: "forwarders", href: "/settings/forwarders", resource: "forwarders" },
       { label: "warehouses", href: "/settings/warehouses", resource: "warehouses" },
@@ -35,14 +35,14 @@ const SETTINGS_GROUPS: SettingsNavGroup[] = [
     ],
   },
   {
-    id: "groupUsers",
+    id: "groupAccess",
     items: [
       { label: "users", href: "/settings/users", resource: "users" },
       { label: "permissions", href: "/settings/permissions", superAdminOnly: true },
     ],
   },
   {
-    id: "groupOperations",
+    id: "groupCatalog",
     items: [
       { label: "destinations", href: "/settings/destinations", resource: "destinations" },
       { label: "modalities", href: "/settings/modalities", resource: "modalities" },
@@ -50,7 +50,7 @@ const SETTINGS_GROUPS: SettingsNavGroup[] = [
     ],
   },
   {
-    id: "groupSystem",
+    id: "groupPlatform",
     items: [
       { label: "integrations", href: "/settings/integrations" },
       { label: "notifications", href: "/settings/notifications" },

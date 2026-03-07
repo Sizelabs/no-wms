@@ -54,8 +54,10 @@
     "history": "Historial"
   },
   "navGroups": {
-    "operations": "Operaciones",
-    "commercial": "Comercial",
+    "overview": "Inicio",
+    "warehouse": "Almacén",
+    "fulfillment": "Despachos",
+    "clients": "Clientes",
     "finance": "Finanzas",
     "reports": "Reportes"
   },
@@ -78,10 +80,10 @@
     "notifications": "Notificaciones",
     "permissions": "Permisos",
     "groupOrganization": "Organización",
-    "groupInfrastructure": "Infraestructura",
-    "groupUsers": "Usuarios",
-    "groupOperations": "Operaciones",
-    "groupSystem": "Sistema"
+    "groupNetwork": "Red",
+    "groupAccess": "Acceso",
+    "groupCatalog": "Catálogo",
+    "groupPlatform": "Plataforma"
   },
   "couriers": {
     "title": "Couriers",

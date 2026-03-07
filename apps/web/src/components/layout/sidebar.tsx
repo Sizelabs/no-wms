@@ -9,10 +9,10 @@ import {
   Contact,
   DollarSign,
   FileText,
-  HelpCircle,
   History,
   LayoutDashboard,
   Package,
+  PackageSearch,
   PanelLeftClose,
   PanelLeftOpen,
   Receipt,
@@ -36,10 +36,10 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Contact,
   DollarSign,
   FileText,
-  HelpCircle,
   History,
   LayoutDashboard,
   Package,
+  PackageSearch,
   Receipt,
   Settings,
   TicketCheck,
@@ -122,13 +122,15 @@ export function Sidebar({ navConfig, locale, defaultCollapsed }: SidebarProps) {
         <nav className="flex-1 overflow-y-auto px-2 py-3">
           {navConfig.groups.map((group, groupIdx) => (
             <div key={group.id} className={groupIdx > 0 ? "mt-4" : ""}>
-              {/* Group label */}
-              {collapsed ? (
-                groupIdx > 0 && <div className="mx-2 mb-2 border-t" />
-              ) : (
-                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                  {tGroups(group.id)}
-                </p>
+              {/* Group label (skip for overview — Dashboard stands alone) */}
+              {group.id !== "overview" && (
+                collapsed ? (
+                  groupIdx > 0 && <div className="mx-2 mb-2 border-t" />
+                ) : (
+                  <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                    {tGroups(group.id)}
+                  </p>
+                )
               )}
               <ul className="space-y-0.5">
                 {group.items.map((item) => (

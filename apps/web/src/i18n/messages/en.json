@@ -52,8 +52,10 @@
     "history": "History"
   },
   "navGroups": {
-    "operations": "Operations",
-    "commercial": "Commercial",
+    "overview": "Overview",
+    "warehouse": "Warehouse",
+    "fulfillment": "Fulfillment",
+    "clients": "Clients",
     "finance": "Finance",
     "reports": "Reports"
   },
@@ -76,10 +78,10 @@
     "notifications": "Notifications",
     "permissions": "Permissions",
     "groupOrganization": "Organization",
-    "groupInfrastructure": "Infrastructure",
-    "groupUsers": "Users",
-    "groupOperations": "Operations",
-    "groupSystem": "System"
+    "groupNetwork": "Network",
+    "groupAccess": "Access",
+    "groupCatalog": "Catalog",
+    "groupPlatform": "Platform"
   },
   "couriers": {
     "title": "Couriers",
