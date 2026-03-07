@@ -67,7 +67,11 @@ export default async function WrDetailPage({
     ? `${zoneName ? `${zoneName} / ` : ""}${wr.warehouse_locations.code}`
     : null;
 
-  const backHref = from === "history" ? `/${locale}/history` : `/${locale}/inventory`;
+  const backHref = from === "history"
+    ? `/${locale}/history`
+    : from === "inventory"
+      ? `/${locale}/inventory`
+      : `/${locale}/warehouse-receipts`;
 
   const conditionFlags = (wr.condition_flags ?? []) as string[];
 

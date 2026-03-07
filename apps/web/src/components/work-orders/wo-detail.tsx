@@ -191,7 +191,7 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
               {wo.work_order_items.map((item) => (
                 <Link
                   key={item.warehouse_receipt_id}
-                  href={`/${locale}/inventory/${item.warehouse_receipt_id}`}
+                  href={`/${locale}/warehouse-receipts/${item.warehouse_receipt_id}`}
                   className="flex items-center justify-between rounded-md border p-2 text-sm hover:bg-gray-50"
                 >
                   <span className="font-mono text-xs font-medium">

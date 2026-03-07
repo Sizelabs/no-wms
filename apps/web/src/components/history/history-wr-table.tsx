@@ -285,7 +285,7 @@ export function HistoryWrTable({ data, count, locale, agencies = [], warehouses 
                         <tr key={wr.id} className="border-t border-gray-100 hover:bg-gray-50">
                           <td className="px-3 py-2.5">
                             <Link
-                              href={`/${locale}/inventory/${wr.id}?from=history`}
+                              href={`/${locale}/warehouse-receipts/${wr.id}?from=history`}
                               className="font-mono text-xs font-medium text-gray-900 hover:underline"
                             >
                               {wr.wr_number}

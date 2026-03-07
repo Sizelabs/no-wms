@@ -212,7 +212,7 @@ export function HistoryPackageTable({ data, count, locale, agencies = [], wareho
                     </td>
                     <td className="px-3 py-2.5">
                       <Link
-                        href={`/${locale}/inventory/${wr.id}?from=history`}
+                        href={`/${locale}/warehouse-receipts/${wr.id}?from=history`}
                         className="font-mono text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline"
                       >
                         {wr.wr_number}

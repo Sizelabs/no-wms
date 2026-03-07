@@ -238,7 +238,6 @@ export function WrEditableDocument({
     ? Array.isArray(courier) ? courier[0]?.name : courier.name
     : null;
   const packages = wr.packages ?? [];
-  const carrierName = packages[0]?.carrier ?? null;
   const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
   const statusLabel = WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status;
   const receivedDate = new Date(receivedAt).toLocaleDateString("es", {
@@ -341,7 +340,7 @@ export function WrEditableDocument({
           {/* Header */}
           <div className="border-b border-slate-100 px-5 py-4">
             <Link
-              href={`/${locale}/inventory/${wr.id}`}
+              href={`/${locale}/warehouse-receipts/${wr.id}`}
               className="flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-900"
             >
               <span>&larr;</span>
@@ -532,12 +531,12 @@ export function WrEditableDocument({
               ) : (
                 <div className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-900">
                   <span className="text-sm font-bold text-white">
-                    {(org?.name ?? "W")[0]}
+                    {(org?.name ?? wr.warehouses?.name ?? "W")[0]}
                   </span>
                 </div>
               )}
               <div>
-                <p className="text-sm font-semibold text-slate-900">{org?.name ?? "Warehouse"}</p>
+                <p className="text-sm font-semibold text-slate-900">{org?.name ?? wr.warehouses?.name ?? "Warehouse"}</p>
                 {wr.warehouses?.full_address && (
                   <p className="text-[13px] text-slate-400">{wr.warehouses.full_address}</p>
                 )}
@@ -632,10 +631,16 @@ export function WrEditableDocument({
               )}
             </p>
             <div className="mt-1.5 space-y-1 text-[13px]">
-              {carrierName && (
+              {packages[0] && (
                 <div className="flex gap-1.5">
                   <span className="shrink-0 text-slate-400">Carrier:</span>
-                  <span className="text-slate-700">{carrierName}</span>
+                  <EditableField
+                    value={packages[0].carrier}
+                    onSave={savePkgField(packages[0].id, "carrier")}
+                    placeholder="Carrier"
+                    emptyText="—"
+                    className="text-slate-700"
+                  />
                 </div>
               )}
               {courierName && (
@@ -874,7 +879,7 @@ export function WrEditableDocument({
       {/* ── Compact controls for narrow screens ── */}
       <div className="fixed bottom-5 right-5 z-10 flex gap-2 lg:hidden print:hidden">
         <Link
-          href={`/${locale}/inventory/${wr.id}`}
+          href={`/${locale}/warehouse-receipts/${wr.id}`}
           className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg ring-1 ring-slate-200 transition-colors hover:bg-slate-50"
         >
           &larr; Volver

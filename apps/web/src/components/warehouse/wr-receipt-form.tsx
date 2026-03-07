@@ -753,7 +753,7 @@ export function WrReceiptForm({
         </div>
         <button
           type="button"
-          onClick={() => router.push(`/${locale}/inventory/${createdWr.id}`)}
+          onClick={() => router.push(`/${locale}/warehouse-receipts/${createdWr.id}`)}
           className="w-full text-center text-sm text-gray-500 underline hover:text-gray-700"
         >
           Ver detalle del recibo

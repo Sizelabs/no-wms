@@ -205,7 +205,7 @@ export default async function WarehouseDetailPage({
                   <tr key={wr.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2.5">
                       <Link
-                        href={`/${locale}/inventory/${wr.id}`}
+                        href={`/${locale}/warehouse-receipts/${wr.id}`}
                         className="font-mono text-xs font-medium text-gray-900 hover:underline"
                       >
                         {wr.wr_number}
