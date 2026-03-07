@@ -83,7 +83,7 @@ interface WrEditableDocumentProps {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+    <p className="mb-1.5 text-[13px] font-semibold uppercase tracking-[0.08em] text-slate-400">
       {children}
     </p>
   );
@@ -152,10 +152,10 @@ export function WrEditableDocument({
   }));
 
   return (
-    <div className="flex items-start justify-center gap-5">
+    <div className="flex flex-1 items-stretch justify-center gap-5">
       {/* ── Document paper ── */}
-      <div className="max-w-[7.5in] shrink-0 rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:rounded-none print:shadow-none print:ring-0">
-      <div className="px-8 py-6 print:px-0 print:py-0">
+      <div className="flex max-w-[7.5in] shrink-0 flex-col rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:rounded-none print:shadow-none print:ring-0">
+      <div className="flex-1 px-8 py-6 print:px-0 print:py-0">
         {/* ── 1. Header ── */}
         <div className="border-b border-slate-200 pb-4">
           <div className="flex items-start justify-between">
@@ -173,7 +173,7 @@ export function WrEditableDocument({
               <div>
                 <p className="text-sm font-semibold text-slate-900">{org?.name ?? "Warehouse"}</p>
                 {wr.warehouses?.full_address && (
-                  <p className="text-[10px] text-slate-400">{wr.warehouses.full_address}</p>
+                  <p className="text-[13px] text-slate-400">{wr.warehouses.full_address}</p>
                 )}
               </div>
             </div>
@@ -183,7 +183,7 @@ export function WrEditableDocument({
               <p className="font-mono text-xl font-bold tracking-tight text-slate-900">
                 {wr.wr_number}
               </p>
-              <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+              <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[13px] font-medium text-slate-500">
                 {statusLabel}
               </span>
             </div>
@@ -192,18 +192,18 @@ export function WrEditableDocument({
           {/* Document title strip */}
           <div className="mt-3 flex items-center gap-2">
             <div className="h-px flex-1 bg-slate-100" />
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-slate-400">
               Recibo de Bodega &middot; Warehouse Receipt
             </p>
             <div className="h-px flex-1 bg-slate-100" />
           </div>
-          <p className="mt-1 text-center text-[9px] font-medium text-slate-400">
+          <p className="mt-1 text-center text-xs font-medium text-slate-400">
             No Negociable &middot; Nonnegotiable
           </p>
         </div>
 
         {/* ── 2. Receipt details strip ── */}
-        <div className="grid grid-cols-4 gap-4 border-b border-slate-200 bg-slate-50/60 px-4 py-3 text-[10px] print:bg-slate-50">
+        <div className="grid grid-cols-4 gap-4 border-b border-slate-200 bg-slate-50/60 px-4 py-3 text-[13px] print:bg-slate-50">
           <div>
             <p className="text-slate-400">Fecha / Date</p>
             <p className="font-medium text-slate-700">{receivedDate}</p>
@@ -243,15 +243,15 @@ export function WrEditableDocument({
           {/* Depositor */}
           <div className="rounded-lg border border-slate-200 px-4 py-3">
             <SectionLabel>Depositante / Depositor</SectionLabel>
-            <p className="text-[11px] font-semibold text-slate-900">
+            <p className="text-sm font-semibold text-slate-900">
               {wr.agencies ? wr.agencies.name : "Desconocido"}
               {wr.agencies && (
-                <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-400">
+                <span className="ml-1.5 font-mono text-[13px] font-normal text-slate-400">
                   {wr.agencies.code}
                 </span>
               )}
             </p>
-            <div className="mt-1.5 space-y-1 text-[10px]">
+            <div className="mt-1.5 space-y-1 text-[13px]">
               {courierName && (
                 <div className="flex gap-1.5">
                   <span className="shrink-0 text-slate-400">Courier:</span>
@@ -284,7 +284,7 @@ export function WrEditableDocument({
           {/* Consignee */}
           <div className="rounded-lg border border-slate-200 px-4 py-3">
             <SectionLabel>Consignatario / Consignee</SectionLabel>
-            <div className="text-[11px]">
+            <div className="text-sm">
               <ConsigneeInlineEdit
                 wrId={wr.id}
                 agencyId={wr.agency_id}
@@ -293,7 +293,7 @@ export function WrEditableDocument({
               />
             </div>
             {destLabel && (
-              <div className="mt-1.5 flex gap-1.5 text-[10px]">
+              <div className="mt-1.5 flex gap-1.5 text-[13px]">
                 <span className="shrink-0 text-slate-400">Destino:</span>
                 <span className="text-slate-700">{destLabel}</span>
               </div>
@@ -304,7 +304,7 @@ export function WrEditableDocument({
         {/* ── 4. Goods description ── */}
         <div className="border-b border-slate-200 py-4">
           <SectionLabel>Descripcion de bienes / Description of Goods</SectionLabel>
-          <div className="mb-2 text-[11px]">
+          <div className="mb-2 text-sm">
             <EditableField
               value={wr.content_description ?? wr.description}
               onSave={saveWrField("description")}
@@ -314,15 +314,15 @@ export function WrEditableDocument({
               className="text-slate-700"
             />
           </div>
-          <p className="mb-3 text-[9px] italic text-slate-400">
+          <p className="mb-3 text-xs italic text-slate-400">
             Received in apparent good order, except as noted. Contents, condition, and quality unknown.
           </p>
 
           {packages.length > 0 && (
             <div className="overflow-hidden rounded-lg border border-slate-200">
-              <table className="w-full text-[10px]">
+              <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="bg-slate-50 text-left text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                  <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
                     <th className="px-3 py-2">#</th>
                     <th className="px-3 py-2">Tracking</th>
                     <th className="px-3 py-2">Carrier</th>
@@ -406,7 +406,7 @@ export function WrEditableDocument({
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-700">
+                  <tr className="border-t border-slate-200 bg-slate-50 text-[13px] font-semibold text-slate-700">
                     <td colSpan={3} className="px-3 py-2">
                       {wr.total_packages ?? packages.length} paquete(s)
                     </td>
@@ -437,7 +437,7 @@ export function WrEditableDocument({
         {/* ── 6. Notes ── */}
         <div className="border-b border-slate-200 py-3">
           <SectionLabel>Notas / Notes</SectionLabel>
-          <div className="text-[11px]">
+          <div className="text-sm">
             <EditableField
               value={wr.notes}
               onSave={saveWrField("notes")}
@@ -450,7 +450,7 @@ export function WrEditableDocument({
           {wr.wr_notes && wr.wr_notes.length > 0 && (
             <div className="mt-1.5 space-y-0.5">
               {wr.wr_notes.map((note) => (
-                <p key={note.id} className="text-[10px] text-slate-500">{note.content}</p>
+                <p key={note.id} className="text-[13px] text-slate-500">{note.content}</p>
               ))}
             </div>
           )}
@@ -459,7 +459,7 @@ export function WrEditableDocument({
         {/* ── 7. Legal block ── */}
         <div className="border-b border-slate-200 py-3">
           <SectionLabel>Terminos y condiciones / Terms &amp; Conditions</SectionLabel>
-          <div className="space-y-1 text-[9px] leading-relaxed text-slate-500">
+          <div className="space-y-1 text-xs leading-relaxed text-slate-500">
             {settings.wr_storage_charges_text && (
               <p><span className="font-medium text-slate-600">Storage:</span> {settings.wr_storage_charges_text}</p>
             )}
@@ -485,9 +485,9 @@ export function WrEditableDocument({
         <div className="flex items-end justify-between border-t border-slate-200 pt-3">
           <div>
             <svg ref={barcodeRef} />
-            <p className="mt-1 font-mono text-[10px] font-medium text-slate-500">{wr.wr_number}</p>
+            <p className="mt-1 font-mono text-[13px] font-medium text-slate-500">{wr.wr_number}</p>
           </div>
-          <div className="text-right text-[8px] text-slate-400">
+          <div className="text-right text-[11px] text-slate-400">
             <p>UCC Article 7 &middot; FL Stat. Ch. 677</p>
             <p>{new Date().toISOString().slice(0, 19).replace("T", " ")} UTC</p>
           </div>
@@ -508,7 +508,7 @@ export function WrEditableDocument({
 
           <div>
             <p className="font-mono text-sm font-semibold text-slate-900">{wr.wr_number}</p>
-            <span className="mt-1 inline-block rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+            <span className="mt-1 inline-block rounded-full bg-slate-200/70 px-2 py-0.5 text-[13px] font-medium text-slate-500">
               {statusLabel}
             </span>
           </div>
@@ -525,7 +525,7 @@ export function WrEditableDocument({
 
           <div className="h-px bg-slate-200" />
 
-          <p className="text-[11px] leading-relaxed text-slate-400">
+          <p className="text-sm leading-relaxed text-slate-400">
             Haz clic en cualquier campo resaltado para editarlo. Los cambios se guardan automaticamente.
           </p>
         </div>
