@@ -513,16 +513,12 @@ export function WrReceiptForm({
 
   const handleQuickCreate = useCallback(() => {
     if (!consigneeSearch.trim()) return;
-    // If agency is selected, create directly; otherwise open modal to pick one
-    if (agencyId && agencyId !== "unknown") {
-      doQuickCreate(agencyId);
-    } else {
-      setQuickCreateAgencyId("");
-      setQuickCreateCasillero("");
-      setCasilleroError("");
-      setQuickCreateModal(true);
-    }
-  }, [agencyId, consigneeSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Always open modal — pre-fill agency if one is already selected
+    setQuickCreateAgencyId(agencyId && agencyId !== "unknown" ? agencyId : "");
+    setQuickCreateCasillero("");
+    setCasilleroError("");
+    setQuickCreateModal(true);
+  }, [agencyId, consigneeSearch]);
 
   const doQuickCreate = useCallback(async (targetAgencyId: string, casillero?: string) => {
     if (!consigneeSearch.trim() || !targetAgencyId) return;

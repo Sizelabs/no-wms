@@ -321,8 +321,8 @@ export async function quickCreateConsignee(formData: FormData) {
     return { data: null, error: "Perfil no encontrado" };
   }
 
-  // Auto-generate casillero
-  const casillero = await generateCasillero(parsed.data.agency_id);
+  // Use provided casillero or auto-generate
+  const casillero = (formData.get("casillero") as string)?.trim() || await generateCasillero(parsed.data.agency_id);
 
   const { data, error } = await supabase
     .from("consignees")
@@ -335,10 +335,31 @@ export async function quickCreateConsignee(formData: FormData) {
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      return { data: null, error: "Casillero ya existe para esta agencia" };
+    }
     return { data: null, error: error.message };
   }
 
   revalidatePath("/warehouse-receipts");
   revalidatePath("/consignees");
   return { data, error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Check casillero uniqueness for an agency
+// ---------------------------------------------------------------------------
+
+export async function checkCasilleroUnique(agencyId: string, casillero: string) {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("consignees")
+    .select("id")
+    .eq("agency_id", agencyId)
+    .eq("casillero", casillero)
+    .limit(1)
+    .maybeSingle();
+
+  return { unique: !data };
 }
