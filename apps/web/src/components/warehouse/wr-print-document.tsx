@@ -373,32 +373,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
         </div>
       )}
 
-      {/* ── 7. Legal block ── */}
-      <div className="border-b border-slate-200 py-3">
-        <SectionLabel>Terminos y condiciones / Terms &amp; Conditions</SectionLabel>
-        <div className="space-y-1 text-[9px] leading-relaxed text-slate-500">
-          {settings.wr_storage_charges_text && (
-            <p><span className="font-medium text-slate-600">Storage:</span> {settings.wr_storage_charges_text}</p>
-          )}
-          {settings.wr_lien_statement && (
-            <p><span className="font-medium text-slate-600">Liens:</span> {settings.wr_lien_statement}</p>
-          )}
-          {settings.wr_ownership_statement && (
-            <p><span className="font-medium text-slate-600">Ownership:</span> {settings.wr_ownership_statement}</p>
-          )}
-          {settings.wr_liability_per_pound && (
-            <p><span className="font-medium text-slate-600">Liability:</span> Limited to ${settings.wr_liability_per_pound}/lb per article unless declared value stated and additional charges paid.</p>
-          )}
-          {settings.wr_delivery_statement && (
-            <p><span className="font-medium text-slate-600">Delivery:</span> {settings.wr_delivery_statement}</p>
-          )}
-          {settings.wr_terms_url && (
-            <p><span className="font-medium text-slate-600">Full T&amp;C:</span> {settings.wr_terms_url}</p>
-          )}
-        </div>
-      </div>
-
-      {/* ── 8. Footer ── */}
+      {/* ── 7. Footer ── */}
       <div className="flex items-end justify-between border-t border-slate-200 pt-3">
         <div>
           <svg ref={barcodeRef} />
