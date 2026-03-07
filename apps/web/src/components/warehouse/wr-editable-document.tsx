@@ -5,8 +5,9 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import JsBarcode from "jsbarcode";
 import Link from "next/link";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { EditableField } from "@/components/ui/editable-field";
 import { ConditionFlagsInlineEdit } from "@/components/warehouse/condition-flags-inline-edit";
 import { ConsigneeInlineEdit } from "@/components/warehouse/consignee-inline-edit";
@@ -81,6 +82,105 @@ interface WrEditableDocumentProps {
   locale: string;
 }
 
+/* ── Panel input: save-on-blur with live preview ── */
+
+function PanelInput({
+  label,
+  value,
+  onChange,
+  onSave,
+  type = "text",
+  placeholder,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onSave: (v: string) => Promise<{ error?: string }>;
+  type?: "text" | "textarea";
+  placeholder?: string;
+  mono?: boolean;
+}) {
+  const [flash, setFlash] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [focused, setFocused] = useState(false);
+  const savedRef = useRef(value);
+  const { notify } = useNotification();
+
+  useEffect(() => {
+    if (!focused) savedRef.current = value;
+  }, [value, focused]);
+
+  const handleBlur = () => {
+    setFocused(false);
+    const trimmed = value.trim();
+    if (trimmed === savedRef.current.trim()) return;
+    startTransition(async () => {
+      const result = await onSave(trimmed);
+      if (result.error) {
+        onChange(savedRef.current);
+        notify(result.error, "error");
+      } else {
+        savedRef.current = trimmed;
+        setFlash(true);
+        setTimeout(() => setFlash(false), 800);
+      }
+    });
+  };
+
+  const inputClass = `w-full rounded-md border px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none transition-colors ${
+    flash ? "border-emerald-300 bg-emerald-50/50" : "border-slate-200 bg-white"
+  } ${mono ? "font-mono" : ""}`;
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
+      <div className="relative">
+        {type === "textarea" ? (
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                onChange(savedRef.current);
+                (e.target as HTMLTextAreaElement).blur();
+              }
+            }}
+            placeholder={placeholder}
+            rows={2}
+            className={inputClass}
+          />
+        ) : (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                onChange(savedRef.current);
+                (e.target as HTMLInputElement).blur();
+              } else if (e.key === "Enter") {
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder={placeholder}
+            className={inputClass}
+          />
+        )}
+        {isPending && (
+          <span className="absolute right-2 top-1/2 inline-block h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Helpers ── */
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="mb-1.5 text-[13px] font-semibold uppercase tracking-[0.08em] text-slate-400">
@@ -88,6 +188,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     </p>
   );
 }
+
+/* ── Main component ── */
 
 export function WrEditableDocument({
   wr,
@@ -98,7 +200,21 @@ export function WrEditableDocument({
   locale,
 }: WrEditableDocumentProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
+  const { notify } = useNotification();
 
+  /* ── Lifted state (shared between panel + document) ── */
+  const [shipper, setShipper] = useState(wr.shipper_name ?? "");
+  const [master, setMaster] = useState(wr.master_tracking ?? "");
+  const [desc, setDesc] = useState(wr.content_description ?? wr.description ?? "");
+  const [wrNotes, setWrNotes] = useState(wr.notes ?? "");
+  const [locId, setLocId] = useState(wr.warehouse_location_id ?? "");
+  const [consName, setConsName] = useState<string | null>(
+    wr.consignees?.full_name ?? wr.consignee_name ?? null,
+  );
+  const [consCas, setConsCas] = useState<string | null>(wr.consignees?.casillero ?? null);
+  const [flags, setFlags] = useState<string[]>(wr.condition_flags);
+
+  /* ── Barcode ── */
   useEffect(() => {
     if (barcodeRef.current) {
       JsBarcode(barcodeRef.current, wr.wr_number, {
@@ -111,15 +227,13 @@ export function WrEditableDocument({
     }
   }, [wr.wr_number]);
 
+  /* ── Derived ── */
   const courier = wr.agencies?.couriers;
   const courierName = courier
     ? Array.isArray(courier) ? courier[0]?.name : courier.name
     : null;
-
   const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
-
   const packages = wr.packages ?? [];
-
   const statusLabel = WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status;
   const receivedDate = new Date(wr.received_at).toLocaleDateString("es", {
     year: "numeric",
@@ -127,13 +241,48 @@ export function WrEditableDocument({
     day: "numeric",
   });
 
-  const saveWrField = useCallback(
-    (field: string) => async (value: string) => {
-      return updateWarehouseReceiptField(wr.id, field as Parameters<typeof updateWarehouseReceiptField>[1], value);
-    },
-    [wr.id],
-  );
+  /* ── Save functions (used by both panel and document) ── */
+  const saveShipper = useCallback(async (value: string) => {
+    const result = await updateWarehouseReceiptField(wr.id, "shipper_name", value);
+    if (!result.error) setShipper(value);
+    return result;
+  }, [wr.id]);
 
+  const saveMaster = useCallback(async (value: string) => {
+    const result = await updateWarehouseReceiptField(wr.id, "master_tracking", value);
+    if (!result.error) setMaster(value);
+    return result;
+  }, [wr.id]);
+
+  const saveDesc = useCallback(async (value: string) => {
+    const result = await updateWarehouseReceiptField(wr.id, "description", value);
+    if (!result.error) setDesc(value);
+    return result;
+  }, [wr.id]);
+
+  const saveNotes = useCallback(async (value: string) => {
+    const result = await updateWarehouseReceiptField(wr.id, "notes", value);
+    if (!result.error) setWrNotes(value);
+    return result;
+  }, [wr.id]);
+
+  const saveLoc = useCallback(async (value: string) => {
+    const result = await updateWarehouseReceiptField(wr.id, "warehouse_location_id", value);
+    if (!result.error) setLocId(value);
+    return result;
+  }, [wr.id]);
+
+  /* ── Sync callbacks for special components ── */
+  const handleConsigneeChange = useCallback((name: string | null, cas: string | null) => {
+    setConsName(name);
+    setConsCas(cas);
+  }, []);
+
+  const handleFlagsChanged = useCallback((newFlags: string[]) => {
+    setFlags(newFlags);
+  }, []);
+
+  /* ── Package field save (inline on document only) ── */
   const savePkgField = useCallback(
     (pkgId: string, field: string) => async (value: string) => {
       return updatePackageField(pkgId, field as Parameters<typeof updatePackageField>[1], value);
@@ -141,6 +290,7 @@ export function WrEditableDocument({
     [],
   );
 
+  /* ── Options ── */
   const locationOptions = warehouseLocations.map((loc) => ({
     value: loc.id,
     label: loc.label,
@@ -152,14 +302,143 @@ export function WrEditableDocument({
   }));
 
   return (
-    <div className="flex flex-1 items-stretch justify-center gap-5">
-      {/* ── Document paper ── */}
-      <div className="flex max-w-[7.5in] shrink-0 flex-col rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:rounded-none print:shadow-none print:ring-0">
-      <div className="flex-1 px-8 py-6 print:px-0 print:py-0">
+    <div className="flex items-start justify-center gap-6">
+      {/* ══════════════════════════════════════════════════
+          LEFT PANEL — Form inputs (lg+ only)
+          ══════════════════════════════════════════════════ */}
+      <div className="sticky top-6 hidden max-h-[calc(100vh-3rem)] w-72 shrink-0 overflow-y-auto lg:block print:hidden">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          {/* Header */}
+          <div className="border-b border-slate-100 px-5 py-4">
+            <Link
+              href={`/${locale}/inventory/${wr.id}`}
+              className="flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-900"
+            >
+              <span>&larr;</span>
+              <span>Volver al detalle</span>
+            </Link>
+            <div className="mt-3 flex items-center justify-between">
+              <div>
+                <p className="font-mono text-lg font-bold text-slate-900">{wr.wr_number}</p>
+                <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                  {statusLabel}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+              >
+                Imprimir
+              </button>
+            </div>
+          </div>
+
+          {/* Form */}
+          <div className="space-y-4 px-5 py-4">
+            {/* Location */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Ubicacion</label>
+              <select
+                value={locId}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  const old = locId;
+                  setLocId(newVal);
+                  updateWarehouseReceiptField(wr.id, "warehouse_location_id", newVal).then((res) => {
+                    if (res.error) {
+                      setLocId(old);
+                      notify(res.error, "error");
+                    }
+                  });
+                }}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
+              >
+                <option value="">— Sin asignar —</option>
+                {locationOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <PanelInput
+              label="Shipper / Remitente"
+              value={shipper}
+              onChange={setShipper}
+              onSave={saveShipper}
+              placeholder="Nombre del remitente"
+            />
+
+            <PanelInput
+              label="Master Tracking"
+              value={master}
+              onChange={setMaster}
+              onSave={saveMaster}
+              placeholder="Guia master"
+              mono
+            />
+
+            {/* Consignee */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Consignatario</label>
+              <ConsigneeInlineEdit
+                wrId={wr.id}
+                agencyId={wr.agency_id}
+                consigneeName={consName}
+                casillero={consCas}
+                onSelect={handleConsigneeChange}
+              />
+            </div>
+
+            <div className="h-px bg-slate-100" />
+
+            <PanelInput
+              label="Descripcion de bienes"
+              value={desc}
+              onChange={setDesc}
+              onSave={saveDesc}
+              type="textarea"
+              placeholder="Descripcion de bienes..."
+            />
+
+            {/* Condition flags */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Condicion</label>
+              <ConditionFlagsInlineEdit
+                wrId={wr.id}
+                flags={flags}
+                onFlagsChange={handleFlagsChanged}
+              />
+            </div>
+
+            <div className="h-px bg-slate-100" />
+
+            <PanelInput
+              label="Notas"
+              value={wrNotes}
+              onChange={setWrNotes}
+              onSave={saveNotes}
+              type="textarea"
+              placeholder="Agregar notas..."
+            />
+
+            <div className="h-px bg-slate-100" />
+
+            <p className="text-[11px] leading-relaxed text-slate-400">
+              Edita aqui o directamente en el documento. Los cambios se guardan automaticamente.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════
+          DOCUMENT — Live preview with inline editing
+          ══════════════════════════════════════════════════ */}
+      <div className="max-w-[7.5in] shrink-0 rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:rounded-none print:shadow-none print:ring-0">
+      <div className="px-8 py-6 print:px-0 print:py-0">
         {/* ── 1. Header ── */}
         <div className="border-b border-slate-200 pb-4">
           <div className="flex items-start justify-between">
-            {/* Left: Branding */}
             <div className="flex items-center gap-3">
               {org?.logo_url ? (
                 <img src={org.logo_url} alt="" className="h-9 w-9 rounded-md object-contain" />
@@ -177,8 +456,6 @@ export function WrEditableDocument({
                 )}
               </div>
             </div>
-
-            {/* Right: WR Number hero */}
             <div className="text-right">
               <p className="font-mono text-xl font-bold tracking-tight text-slate-900">
                 {wr.wr_number}
@@ -188,8 +465,6 @@ export function WrEditableDocument({
               </span>
             </div>
           </div>
-
-          {/* Document title strip */}
           <div className="mt-3 flex items-center gap-2">
             <div className="h-px flex-1 bg-slate-100" />
             <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-slate-400">
@@ -216,8 +491,8 @@ export function WrEditableDocument({
             <p className="text-slate-400">Ubicacion</p>
             <p className="font-medium text-slate-700">
               <EditableField
-                value={wr.warehouse_location_id}
-                onSave={saveWrField("warehouse_location_id")}
+                value={locId}
+                onSave={saveLoc}
                 type="select"
                 options={locationOptions}
                 emptyText="Sin asignar"
@@ -261,8 +536,8 @@ export function WrEditableDocument({
               <div className="flex gap-1.5">
                 <span className="shrink-0 text-slate-400">Shipper:</span>
                 <EditableField
-                  value={wr.shipper_name}
-                  onSave={saveWrField("shipper_name")}
+                  value={shipper}
+                  onSave={saveShipper}
                   placeholder="Nombre del remitente"
                   emptyText="—"
                   className="text-slate-700"
@@ -271,8 +546,8 @@ export function WrEditableDocument({
               <div className="flex gap-1.5">
                 <span className="shrink-0 text-slate-400">Master:</span>
                 <EditableField
-                  value={wr.master_tracking}
-                  onSave={saveWrField("master_tracking")}
+                  value={master}
+                  onSave={saveMaster}
                   placeholder="Guia master"
                   emptyText="—"
                   className="font-mono text-slate-700"
@@ -288,8 +563,9 @@ export function WrEditableDocument({
               <ConsigneeInlineEdit
                 wrId={wr.id}
                 agencyId={wr.agency_id}
-                consigneeName={wr.consignees?.full_name ?? wr.consignee_name}
-                casillero={wr.consignees?.casillero ?? null}
+                consigneeName={consName}
+                casillero={consCas}
+                onSelect={handleConsigneeChange}
               />
             </div>
             {destLabel && (
@@ -306,8 +582,8 @@ export function WrEditableDocument({
           <SectionLabel>Descripcion de bienes / Description of Goods</SectionLabel>
           <div className="mb-2 text-sm">
             <EditableField
-              value={wr.content_description ?? wr.description}
-              onSave={saveWrField("description")}
+              value={desc}
+              onSave={saveDesc}
               type="textarea"
               placeholder="Descripcion de bienes..."
               emptyText="Sin descripcion"
@@ -431,7 +707,7 @@ export function WrEditableDocument({
         {/* ── 5. Condition ── */}
         <div className="border-b border-slate-200 py-3">
           <SectionLabel>Condicion de ingreso / Condition on Arrival</SectionLabel>
-          <ConditionFlagsInlineEdit wrId={wr.id} flags={wr.condition_flags} />
+          <ConditionFlagsInlineEdit wrId={wr.id} flags={flags} onFlagsChange={handleFlagsChanged} />
         </div>
 
         {/* ── 6. Notes ── */}
@@ -439,8 +715,8 @@ export function WrEditableDocument({
           <SectionLabel>Notas / Notes</SectionLabel>
           <div className="text-sm">
             <EditableField
-              value={wr.notes}
-              onSave={saveWrField("notes")}
+              value={wrNotes}
+              onSave={saveNotes}
               type="textarea"
               placeholder="Agregar notas..."
               emptyText="Sin notas"
@@ -495,44 +771,8 @@ export function WrEditableDocument({
       </div>
       </div>
 
-      {/* ── Side panel ── */}
-      <div className="sticky top-6 hidden w-44 shrink-0 xl:block print:hidden">
-        <div className="space-y-4">
-          <Link
-            href={`/${locale}/inventory/${wr.id}`}
-            className="flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-900"
-          >
-            <span>&larr;</span>
-            <span>Volver al detalle</span>
-          </Link>
-
-          <div>
-            <p className="font-mono text-sm font-semibold text-slate-900">{wr.wr_number}</p>
-            <span className="mt-1 inline-block rounded-full bg-slate-200/70 px-2 py-0.5 text-[13px] font-medium text-slate-500">
-              {statusLabel}
-            </span>
-          </div>
-
-          <div className="h-px bg-slate-200" />
-
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
-          >
-            Imprimir
-          </button>
-
-          <div className="h-px bg-slate-200" />
-
-          <p className="text-sm leading-relaxed text-slate-400">
-            Haz clic en cualquier campo resaltado para editarlo. Los cambios se guardan automaticamente.
-          </p>
-        </div>
-      </div>
-
       {/* ── Compact controls for narrow screens ── */}
-      <div className="fixed bottom-5 right-5 z-10 flex gap-2 xl:hidden print:hidden">
+      <div className="fixed bottom-5 right-5 z-10 flex gap-2 lg:hidden print:hidden">
         <Link
           href={`/${locale}/inventory/${wr.id}`}
           className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg ring-1 ring-slate-200 transition-colors hover:bg-slate-50"

@@ -11,6 +11,7 @@ interface ConsigneeInlineEditProps {
   agencyId: string | null;
   consigneeName: string | null;
   casillero: string | null;
+  onSelect?: (name: string | null, casillero: string | null) => void;
 }
 
 interface ConsigneeResult {
@@ -24,6 +25,7 @@ export function ConsigneeInlineEdit({
   agencyId,
   consigneeName,
   casillero,
+  onSelect,
 }: ConsigneeInlineEditProps) {
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
@@ -82,6 +84,7 @@ export function ConsigneeInlineEdit({
     (c: ConsigneeResult) => {
       setDisplayName(c.full_name);
       setDisplayCasillero(c.casillero);
+      onSelect?.(c.full_name, c.casillero);
       setEditing(false);
       setQuery("");
       setResults([]);
@@ -91,6 +94,7 @@ export function ConsigneeInlineEdit({
         if (result.error) {
           setDisplayName(consigneeName);
           setDisplayCasillero(casillero);
+          onSelect?.(consigneeName, casillero);
           notify(result.error, "error");
         } else {
           setFlash(true);
@@ -98,7 +102,7 @@ export function ConsigneeInlineEdit({
         }
       });
     },
-    [wrId, consigneeName, casillero, notify],
+    [wrId, consigneeName, casillero, notify, onSelect],
   );
 
   const saveFreetext = useCallback(() => {
@@ -111,6 +115,7 @@ export function ConsigneeInlineEdit({
 
     setDisplayName(text);
     setDisplayCasillero(null);
+    onSelect?.(text, null);
     setEditing(false);
     setQuery("");
     setResults([]);
@@ -120,13 +125,14 @@ export function ConsigneeInlineEdit({
       if (result.error) {
         setDisplayName(consigneeName);
         setDisplayCasillero(casillero);
+        onSelect?.(consigneeName, casillero);
         notify(result.error, "error");
       } else {
         setFlash(true);
         setTimeout(() => setFlash(false), 800);
       }
     });
-  }, [query, wrId, consigneeName, casillero, notify]);
+  }, [query, wrId, consigneeName, casillero, notify, onSelect]);
 
   if (editing) {
     return (

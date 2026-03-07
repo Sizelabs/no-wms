@@ -93,7 +93,8 @@ export function EditableField({
   }
 
   if (editing) {
-    const inputBase = `rounded-md border border-slate-300 bg-white px-2 py-0.5 text-inherit shadow-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none ${inputClassName}`;
+    const widthClass = inputClassName || (type === "number" ? "w-20" : "");
+    const inputBase = `rounded-md border border-slate-300 bg-white px-2 py-0.5 text-inherit shadow-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none ${widthClass}`;
 
     if (type === "select" && options) {
       return (

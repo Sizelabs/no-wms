@@ -22,9 +22,10 @@ const FLAG_STYLES: Record<ConditionFlag, { bg: string; dot: string; text: string
 interface ConditionFlagsInlineEditProps {
   wrId: string;
   flags: string[];
+  onFlagsChange?: (flags: string[]) => void;
 }
 
-export function ConditionFlagsInlineEdit({ wrId, flags }: ConditionFlagsInlineEditProps) {
+export function ConditionFlagsInlineEdit({ wrId, flags, onFlagsChange }: ConditionFlagsInlineEditProps) {
   const [editing, setEditing] = useState(false);
   const [localFlags, setLocalFlags] = useState<string[]>(flags);
   const [flash, setFlash] = useState(false);
@@ -63,6 +64,7 @@ export function ConditionFlagsInlineEdit({ wrId, flags }: ConditionFlagsInlineEd
       }
 
       setLocalFlags(newFlags);
+      onFlagsChange?.(newFlags);
 
       startTransition(async () => {
         const result = await updateWarehouseReceiptField(
@@ -72,6 +74,7 @@ export function ConditionFlagsInlineEdit({ wrId, flags }: ConditionFlagsInlineEd
         );
         if (result.error) {
           setLocalFlags(flags);
+          onFlagsChange?.(flags);
           notify(result.error, "error");
         } else {
           setFlash(true);
@@ -79,7 +82,7 @@ export function ConditionFlagsInlineEdit({ wrId, flags }: ConditionFlagsInlineEd
         }
       });
     },
-    [localFlags, wrId, flags, notify],
+    [localFlags, wrId, flags, notify, onFlagsChange],
   );
 
   const hasNoExceptions = localFlags.includes("sin_novedad");
