@@ -288,11 +288,11 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                   <th className="px-3 py-2">#</th>
                   <th className="px-3 py-2">Tracking</th>
                   <th className="px-3 py-2">Carrier</th>
-                  <th className="px-3 py-2 text-right">Peso (lb)</th>
-                  <th className="px-3 py-2 text-right">Dimensiones (in)</th>
-                  <th className="px-3 py-2">Tipo</th>
                   <th className="px-3 py-2 text-right">Pzs</th>
-                  <th className="px-3 py-2 text-right">Valor</th>
+                  <th className="px-3 py-2">Tipo</th>
+                  <th className="px-3 py-2 text-right">Peso Real (lb)</th>
+                  <th className="px-3 py-2 text-right">Dim (in)</th>
+                  <th className="px-3 py-2 text-right">Peso Cobrable (lb)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -301,6 +301,8 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                     <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
                     <td className="px-3 py-1.5 font-mono font-medium">{pkg.tracking_number}</td>
                     <td className="px-3 py-1.5">{pkg.carrier ?? "—"}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">{pkg.pieces_count}</td>
+                    <td className="px-3 py-1.5">{pkg.package_type ?? "—"}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
                       {pkg.actual_weight_lb ?? "—"}
                     </td>
@@ -309,10 +311,8 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                         ? `${pkg.length_in} × ${pkg.width_in} × ${pkg.height_in}`
                         : "—"}
                     </td>
-                    <td className="px-3 py-1.5">{pkg.package_type ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{pkg.pieces_count}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">
-                      {pkg.declared_value_usd != null ? `$${Number(pkg.declared_value_usd).toFixed(2)}` : "—"}
+                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                      {pkg.billable_weight_lb ?? "—"}
                     </td>
                   </tr>
                 ))}
@@ -322,16 +322,14 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                   <td colSpan={3} className="px-3 py-2">
                     {wr.total_packages ?? packages.length} paquete(s)
                   </td>
+                  <td className="px-3 py-2" />
+                  <td className="px-3 py-2" />
                   <td className="px-3 py-2 text-right tabular-nums">
                     {wr.total_actual_weight_lb ?? "—"} lb
                   </td>
                   <td className="px-3 py-2" />
-                  <td className="px-3 py-2" />
-                  <td className="px-3 py-2" />
                   <td className="px-3 py-2 text-right tabular-nums">
-                    {wr.total_declared_value_usd != null
-                      ? `$${Number(wr.total_declared_value_usd).toFixed(2)}`
-                      : ""}
+                    {wr.total_billable_weight_lb ?? "—"} lb
                   </td>
                 </tr>
               </tfoot>
@@ -403,21 +401,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
         </div>
       </div>
 
-      {/* ── 8. Signatures ── */}
-      <div className="grid grid-cols-2 gap-10 py-6">
-        <div>
-          <div className="mb-1.5 h-8 border-b border-dashed border-slate-300" />
-          <p className="text-[10px] font-medium text-slate-600">Firma del Almacen / Warehouse</p>
-          <p className="text-[9px] text-slate-400">Fecha: _______________</p>
-        </div>
-        <div>
-          <div className="mb-1.5 h-8 border-b border-dashed border-slate-300" />
-          <p className="text-[10px] font-medium text-slate-600">Firma del Depositante / Depositor</p>
-          <p className="text-[9px] text-slate-400">Fecha: _______________</p>
-        </div>
-      </div>
-
-      {/* ── 9. Footer ── */}
+      {/* ── 8. Footer ── */}
       <div className="flex items-end justify-between border-t border-slate-200 pt-3">
         <div>
           <svg ref={barcodeRef} />
