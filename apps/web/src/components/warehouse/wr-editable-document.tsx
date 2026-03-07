@@ -331,7 +331,7 @@ export function WrEditableDocument({
   }));
 
   return (
-    <div className="flex items-start justify-center gap-6">
+    <div className="flex items-start justify-center gap-6 print:block">
       {/* ══════════════════════════════════════════════════
           LEFT PANEL — Form inputs (lg+ only)
           ══════════════════════════════════════════════════ */}
@@ -520,8 +520,8 @@ export function WrEditableDocument({
       {/* ══════════════════════════════════════════════════
           DOCUMENT — Live preview with inline editing
           ══════════════════════════════════════════════════ */}
-      <div className="max-w-[7.5in] shrink-0 rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:rounded-none print:shadow-none print:ring-0">
-      <div className="px-8 py-6 print:px-0 print:py-0">
+      <div className="max-w-[7.5in] shrink-0 overflow-hidden rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
+      <div className="px-8 py-6 print:px-[0.5in] print:py-[0.4in]">
         {/* ── 1. Header ── */}
         <div className="border-b border-slate-200 pb-4">
           <div className="flex items-start justify-between">
@@ -712,26 +712,28 @@ export function WrEditableDocument({
 
           {packages.length > 0 && (
             <div className="overflow-hidden rounded-lg border border-slate-200">
-              <table className="w-full text-[13px]">
+              <table className="w-full table-fixed text-[13px]">
+                <colgroup>
+                  <col className="w-[5%]" />
+                  <col className="w-[40%]" />
+                  <col className="w-[13%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[28%]" />
+                </colgroup>
                 <thead>
                   <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    <th className="px-3 py-2">#</th>
-                    <th className="px-3 py-2">Tracking</th>
-                    <th className="px-3 py-2">Carrier</th>
-                    <th className="px-3 py-2 text-right">Pzs</th>
-                    <th className="px-3 py-2">Tipo</th>
-                    <th className="px-3 py-2 text-right">Peso (lb)</th>
-                    <th className="px-3 py-2 text-right">L</th>
-                    <th className="px-3 py-2 text-right">W</th>
-                    <th className="px-3 py-2 text-right">H</th>
-                    <th className="px-3 py-2 text-right">Cobrable (lb)</th>
+                    <th className="px-2 py-2">#</th>
+                    <th className="px-2 py-2">Tracking</th>
+                    <th className="px-2 py-2">Tipo</th>
+                    <th className="px-2 py-2 text-right">Peso (lb)</th>
+                    <th className="px-2 py-2 text-center">Dim (in)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {packages.map((pkg, i) => (
                     <tr key={pkg.id} className="text-slate-700">
-                      <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
-                      <td className="px-3 py-1.5 font-mono font-medium">
+                      <td className="px-2 py-1.5 text-slate-400">{i + 1}</td>
+                      <td className="px-2 py-1.5 font-mono font-medium">
                         <EditableField
                           value={pkg.tracking_number}
                           onSave={savePkgField(pkg.id, "tracking_number")}
@@ -739,25 +741,7 @@ export function WrEditableDocument({
                           className="font-mono"
                         />
                       </td>
-                      <td className="px-3 py-1.5">
-                        <EditableField
-                          value={pkg.carrier}
-                          onSave={savePkgField(pkg.id, "carrier")}
-                          placeholder="Carrier"
-                          emptyText="—"
-                        />
-                      </td>
-                      <td className="px-3 py-1.5 text-right">
-                        <EditableField
-                          value={pkg.pieces_count}
-                          onSave={savePkgField(pkg.id, "pieces_count")}
-                          type="number"
-                          emptyText="1"
-                          className="tabular-nums"
-                          inputClassName="w-12"
-                        />
-                      </td>
-                      <td className="px-3 py-1.5">
+                      <td className="px-2 py-1.5">
                         <EditableField
                           value={pkg.package_type}
                           onSave={savePkgField(pkg.id, "package_type")}
@@ -766,7 +750,7 @@ export function WrEditableDocument({
                           emptyText="—"
                         />
                       </td>
-                      <td className="px-3 py-1.5 text-right">
+                      <td className="px-2 py-1.5 text-right">
                         <EditableField
                           value={pkg.actual_weight_lb}
                           onSave={savePkgField(pkg.id, "actual_weight_lb")}
@@ -775,58 +759,49 @@ export function WrEditableDocument({
                           className="tabular-nums"
                         />
                       </td>
-                      <td className="px-3 py-1.5 text-right">
-                        <EditableField
-                          value={pkg.length_in}
-                          onSave={savePkgField(pkg.id, "length_in")}
-                          type="number"
-                          emptyText="—"
-                          className="tabular-nums"
-                          inputClassName="w-12"
-                        />
-                      </td>
-                      <td className="px-3 py-1.5 text-right">
-                        <EditableField
-                          value={pkg.width_in}
-                          onSave={savePkgField(pkg.id, "width_in")}
-                          type="number"
-                          emptyText="—"
-                          className="tabular-nums"
-                          inputClassName="w-12"
-                        />
-                      </td>
-                      <td className="px-3 py-1.5 text-right">
-                        <EditableField
-                          value={pkg.height_in}
-                          onSave={savePkgField(pkg.id, "height_in")}
-                          type="number"
-                          emptyText="—"
-                          className="tabular-nums"
-                          inputClassName="w-12"
-                        />
-                      </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums font-medium text-slate-500">
-                        {pkg.billable_weight_lb ?? "—"}
+                      <td className="px-2 py-1.5">
+                        <div className="flex items-center justify-center gap-0.5 tabular-nums">
+                          <EditableField
+                            value={pkg.length_in}
+                            onSave={savePkgField(pkg.id, "length_in")}
+                            type="number"
+                            emptyText="—"
+                            className="tabular-nums"
+                            inputClassName="w-10"
+                          />
+                          <span className="text-slate-300">×</span>
+                          <EditableField
+                            value={pkg.width_in}
+                            onSave={savePkgField(pkg.id, "width_in")}
+                            type="number"
+                            emptyText="—"
+                            className="tabular-nums"
+                            inputClassName="w-10"
+                          />
+                          <span className="text-slate-300">×</span>
+                          <EditableField
+                            value={pkg.height_in}
+                            onSave={savePkgField(pkg.id, "height_in")}
+                            type="number"
+                            emptyText="—"
+                            className="tabular-nums"
+                            inputClassName="w-10"
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-slate-200 bg-slate-50 text-[13px] font-semibold text-slate-700">
-                    <td colSpan={3} className="px-3 py-2">
+                    <td colSpan={2} className="px-2 py-2">
                       {wr.total_packages ?? packages.length} paquete(s)
                     </td>
-                    <td className="px-3 py-2" />
-                    <td className="px-3 py-2" />
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="px-2 py-2" />
+                    <td className="px-2 py-2 text-right tabular-nums">
                       {wr.total_actual_weight_lb ?? "—"} lb
                     </td>
-                    <td className="px-3 py-2" />
-                    <td className="px-3 py-2" />
-                    <td className="px-3 py-2" />
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {wr.total_billable_weight_lb ?? "—"} lb
-                    </td>
+                    <td className="px-2 py-2" />
                   </tr>
                 </tfoot>
               </table>

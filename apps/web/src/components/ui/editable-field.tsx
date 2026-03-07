@@ -186,7 +186,7 @@ export function EditableField({
         setLocalValue(String(displayValue ?? ""));
         setEditing(true);
       }}
-      className={`cursor-pointer border-b border-dashed border-transparent transition-all hover:border-blue-300 print:border-0 print:cursor-default ${
+      className={`cursor-pointer border-b border-dashed border-blue-300 transition-all print:border-0 print:cursor-default ${
         flash
           ? "text-emerald-600"
           : isEmpty

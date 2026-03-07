@@ -134,7 +134,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
   });
 
   return (
-    <div className="mx-auto max-w-[7.5in] bg-white text-slate-900">
+    <div className="mx-auto max-w-[7.5in] overflow-hidden bg-white text-slate-900 print:max-w-none print:px-[0.5in] print:py-[0.4in]">
       {/* ── Screen-only toolbar ── */}
       <div className="mb-6 flex gap-2 print:hidden">
         <button
@@ -281,34 +281,43 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
 
         {packages.length > 0 && (
           <div className="overflow-hidden rounded-lg border border-slate-200">
-            <table className="w-full text-[10px]">
+            <table className="w-full table-fixed text-[10px]">
+              <colgroup>
+                <col className="w-[5%]" />
+                <col className="w-[33%]" />
+                <col className="w-[6%]" />
+                <col className="w-[10%]" />
+                <col className="w-[16%]" />
+                <col className="w-[15%]" />
+                <col className="w-[15%]" />
+              </colgroup>
               <thead>
                 <tr className="bg-slate-50 text-left text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-                  <th className="px-3 py-2">#</th>
-                  <th className="px-3 py-2">Tracking</th>
-                  <th className="px-3 py-2 text-right">Pzs</th>
-                  <th className="px-3 py-2">Tipo</th>
-                  <th className="px-3 py-2 text-right">Peso Real (lb)</th>
-                  <th className="px-3 py-2 text-right">Dim (in)</th>
-                  <th className="px-3 py-2 text-right">Peso Cobrable (lb)</th>
+                  <th className="px-2 py-2">#</th>
+                  <th className="px-2 py-2">Tracking</th>
+                  <th className="px-2 py-2 text-right">Pzs</th>
+                  <th className="px-2 py-2">Tipo</th>
+                  <th className="px-2 py-2 text-right">Peso Real (lb)</th>
+                  <th className="px-2 py-2 text-right">Dim (in)</th>
+                  <th className="px-2 py-2 text-right">Peso Cobrable (lb)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {packages.map((pkg, i) => (
                   <tr key={pkg.id} className="text-slate-700">
-                    <td className="px-3 py-1.5 text-slate-400">{i + 1}</td>
-                    <td className="px-3 py-1.5 font-mono font-medium">{pkg.tracking_number}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{pkg.pieces_count}</td>
-                    <td className="px-3 py-1.5">{pkg.package_type ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">
+                    <td className="px-2 py-1.5 text-slate-400">{i + 1}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-2 py-1.5 font-mono font-medium" title={pkg.tracking_number}>{pkg.tracking_number}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{pkg.pieces_count}</td>
+                    <td className="px-2 py-1.5">{pkg.package_type ?? "—"}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
                       {pkg.actual_weight_lb ?? "—"}
                     </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">
+                    <td className="px-2 py-1.5 text-right tabular-nums">
                       {pkg.length_in && pkg.width_in && pkg.height_in
-                        ? `${pkg.length_in} × ${pkg.width_in} × ${pkg.height_in}`
+                        ? `${pkg.length_in}×${pkg.width_in}×${pkg.height_in}`
                         : "—"}
                     </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                    <td className="px-2 py-1.5 text-right tabular-nums font-medium">
                       {pkg.billable_weight_lb ?? "—"}
                     </td>
                   </tr>
@@ -316,16 +325,16 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
               </tbody>
               <tfoot>
                 <tr className="border-t border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-700">
-                  <td colSpan={2} className="px-3 py-2">
+                  <td colSpan={2} className="px-2 py-2">
                     {wr.total_packages ?? packages.length} paquete(s)
                   </td>
-                  <td className="px-3 py-2" />
-                  <td className="px-3 py-2" />
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="px-2 py-2" />
+                  <td className="px-2 py-2" />
+                  <td className="px-2 py-2 text-right tabular-nums">
                     {wr.total_actual_weight_lb ?? "—"} lb
                   </td>
-                  <td className="px-3 py-2" />
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="px-2 py-2" />
+                  <td className="px-2 py-2 text-right tabular-nums">
                     {wr.total_billable_weight_lb ?? "—"} lb
                   </td>
                 </tr>
@@ -362,7 +371,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
       {((wr.wr_notes && wr.wr_notes.length > 0) || wr.notes) && (
         <div className="border-b border-slate-200 py-3">
           <SectionLabel>Notas / Notes</SectionLabel>
-          {wr.notes && <p className="text-[11px] text-slate-700">{wr.notes}</p>}
+          {wr.notes && <p className="break-words text-[11px] text-slate-700">{wr.notes}</p>}
           {wr.wr_notes && wr.wr_notes.length > 0 && (
             <div className="mt-1 space-y-0.5">
               {wr.wr_notes.map((note) => (
