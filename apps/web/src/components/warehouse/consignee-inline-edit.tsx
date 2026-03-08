@@ -12,6 +12,7 @@ interface ConsigneeInlineEditProps {
   consigneeName: string | null;
   casillero: string | null;
   onSelect?: (name: string | null, casillero: string | null) => void;
+  disabled?: boolean;
 }
 
 interface ConsigneeResult {
@@ -26,6 +27,7 @@ export function ConsigneeInlineEdit({
   consigneeName,
   casillero,
   onSelect,
+  disabled = false,
 }: ConsigneeInlineEditProps) {
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
@@ -179,6 +181,19 @@ export function ConsigneeInlineEdit({
   }
 
   const isEmpty = !displayName;
+
+  if (disabled) {
+    return (
+      <span className={isEmpty ? "italic text-slate-400" : "font-semibold text-slate-900"}>
+        {displayName ?? "Sin asignar"}
+        {displayCasillero && (
+          <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-400">
+            {displayCasillero}
+          </span>
+        )}
+      </span>
+    );
+  }
 
   return (
     <span

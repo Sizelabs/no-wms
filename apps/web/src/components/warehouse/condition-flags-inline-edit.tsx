@@ -23,9 +23,10 @@ interface ConditionFlagsInlineEditProps {
   wrId: string;
   flags: string[];
   onFlagsChange?: (flags: string[]) => void;
+  disabled?: boolean;
 }
 
-export function ConditionFlagsInlineEdit({ wrId, flags, onFlagsChange }: ConditionFlagsInlineEditProps) {
+export function ConditionFlagsInlineEdit({ wrId, flags, onFlagsChange, disabled = false }: ConditionFlagsInlineEditProps) {
   const [editing, setEditing] = useState(false);
   const [localFlags, setLocalFlags] = useState<string[]>(flags);
   const [flash, setFlash] = useState(false);
@@ -91,8 +92,8 @@ export function ConditionFlagsInlineEdit({ wrId, flags, onFlagsChange }: Conditi
     <div ref={containerRef}>
       {/* Display */}
       <div
-        onClick={() => setEditing(!editing)}
-        className={`cursor-pointer border-b border-dashed border-transparent transition-colors hover:border-blue-300 print:border-0 print:cursor-default ${
+        onClick={() => !disabled && setEditing(!editing)}
+        className={`${disabled ? "" : "cursor-pointer hover:border-blue-300"} border-b border-dashed border-transparent transition-colors print:border-0 print:cursor-default ${
           flash ? "text-green-600" : ""
         }`}
       >

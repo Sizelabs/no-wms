@@ -131,6 +131,7 @@ interface WrEditableDocumentProps {
   orgMembers: { id: string; name: string }[];
   locale: string;
   backHref?: string;
+  canEdit?: boolean;
 }
 
 /* ── Panel input: save-on-blur with live preview ── */
@@ -797,6 +798,7 @@ export function WrEditableDocument({
   orgMembers,
   locale,
   backHref,
+  canEdit = true,
 }: WrEditableDocumentProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
   const printBarcodeRef = useRef<SVGSVGElement>(null);
@@ -817,7 +819,7 @@ export function WrEditableDocument({
   const [consCas, setConsCas] = useState<string | null>(wr.consignees?.casillero ?? null);
   const [flags, setFlags] = useState<string[]>(wr.condition_flags);
   const [editPkgIndex, setEditPkgIndex] = useState<number | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<"recibo" | "envio" | "contenido" | "paquetes" | "detalles">("recibo");
+  const [sidebarTab, setSidebarTab] = useState<"recibo" | "envio" | "contenido" | "paquetes" | "detalles">(canEdit ? "recibo" : "detalles");
   const [moreActionsOpen, setMoreActionsOpen] = useState(false);
   const moreActionsRef = useRef<HTMLDivElement>(null);
 
@@ -1058,41 +1060,44 @@ export function WrEditableDocument({
                 </svg>
                 Descargar
               </button>
-              <div className="relative flex" ref={moreActionsRef}>
-                <button
-                  type="button"
-                  onClick={() => setMoreActionsOpen((v) => !v)}
-                  onBlur={(e) => {
-                    if (!moreActionsRef.current?.contains(e.relatedTarget as Node)) {
-                      setMoreActionsOpen(false);
-                    }
-                  }}
-                  className="flex h-full items-center justify-center rounded-lg border border-gray-200 px-2.5 text-gray-500 transition-colors hover:bg-gray-50"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
-                  </svg>
-                </button>
-                {moreActionsOpen && (
-                  <div className="absolute right-0 z-10 mt-1 w-56 rounded-md border bg-white py-1 shadow-lg">
-                    <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Crear Orden de Trabajo</button>
-                    <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Agregar a instruccion de embarque</button>
-                    <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Registrar novedad</button>
-                  </div>
-                )}
-              </div>
+              {canEdit && (
+                <div className="relative flex" ref={moreActionsRef}>
+                  <button
+                    type="button"
+                    onClick={() => setMoreActionsOpen((v) => !v)}
+                    onBlur={(e) => {
+                      if (!moreActionsRef.current?.contains(e.relatedTarget as Node)) {
+                        setMoreActionsOpen(false);
+                      }
+                    }}
+                    className="flex h-full items-center justify-center rounded-lg border border-gray-200 px-2.5 text-gray-500 transition-colors hover:bg-gray-50"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+                    </svg>
+                  </button>
+                  {moreActionsOpen && (
+                    <div className="absolute right-0 z-10 mt-1 w-56 rounded-md border bg-white py-1 shadow-lg">
+                      <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Crear Orden de Trabajo</button>
+                      <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Agregar a instruccion de embarque</button>
+                      <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Registrar novedad</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {/* ── Tabs ── */}
           {(() => {
-            const tabs = [
+            const allTabs = [
               { key: "recibo" as const, label: "Recibo" },
               { key: "envio" as const, label: "Envio" },
               { key: "contenido" as const, label: "Contenido" },
               { key: "paquetes" as const, label: `Pkgs (${packages.length})` },
               { key: "detalles" as const, label: "Info" },
             ];
+            const tabs = canEdit ? allTabs : allTabs.filter((t) => t.key === "paquetes" || t.key === "detalles");
             return (
               <div className="flex border-b border-gray-100">
                 {tabs.map((tab) => (
@@ -1234,11 +1239,11 @@ export function WrEditableDocument({
                 {packages.map((pkg, i) => {
                   const pkgPhotoCount = (wr.wr_photos ?? []).filter((p) => p.package_id === pkg.id).length;
                   return (
-                  <button
+                  <div
                     key={pkg.id}
-                    type="button"
-                    onClick={() => setEditPkgIndex(i)}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 text-left transition-colors hover:border-gray-200 hover:bg-gray-50"
+                    role={canEdit ? "button" : undefined}
+                    onClick={() => canEdit && setEditPkgIndex(i)}
+                    className={`flex w-full items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 text-left transition-colors ${canEdit ? "cursor-pointer hover:border-gray-200 hover:bg-gray-50" : ""}`}
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs font-medium text-gray-500">
                       {i + 1}
@@ -1264,20 +1269,24 @@ export function WrEditableDocument({
                         )}
                       </p>
                     </div>
-                    <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-                    </svg>
-                  </button>
+                    {canEdit && (
+                      <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                      </svg>
+                    )}
+                  </div>
                   );
                 })}
-                <button
-                  type="button"
-                  onClick={handleAddPackage}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                  Agregar paquete
-                </button>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={handleAddPackage}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Agregar paquete
+                  </button>
+                )}
               </div>
             )}
 
@@ -1399,11 +1408,13 @@ export function WrEditableDocument({
           </div>
 
           {/* ── Footer hint ── */}
-          <div className="border-t border-gray-100 px-5 py-2.5">
-            <p className="text-center text-xs text-gray-400">
-              Los cambios se guardan automaticamente
-            </p>
-          </div>
+          {canEdit && (
+            <div className="border-t border-gray-100 px-5 py-2.5">
+              <p className="text-center text-xs text-gray-400">
+                Los cambios se guardan automaticamente
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1489,6 +1500,7 @@ export function WrEditableDocument({
                     onSave={saveWrNumber}
                     placeholder="WR-0001"
                     className="font-mono"
+                    disabled={!canEdit}
                   />
                 </p>
                 {(wr.has_damaged_package || wr.has_dgr_package) && (
@@ -1535,6 +1547,7 @@ export function WrEditableDocument({
                 onSave={saveReceivedAt}
                 formatDisplay={() => receivedDate}
                 className="text-slate-700"
+                disabled={!canEdit}
               />
             </p>
           </div>
@@ -1548,6 +1561,7 @@ export function WrEditableDocument({
                 options={memberOptions}
                 emptyText="—"
                 formatDisplay={() => receivedByName}
+                disabled={!canEdit}
               />
             </p>
           </div>
@@ -1559,6 +1573,7 @@ export function WrEditableDocument({
                   value={packages[0].carrier}
                   onSave={savePkgField(packages[0].id, "carrier")}
                   emptyText="—"
+                  disabled={!canEdit}
                 />
               ) : "—"}
             </p>
@@ -1583,6 +1598,7 @@ export function WrEditableDocument({
                 onSave={saveShipper}
                 placeholder="Nombre del remitente"
                 emptyText="Desconocido"
+                disabled={!canEdit}
               />
             </p>
             <div className="mt-1.5 space-y-1 text-[13px]">
@@ -1594,6 +1610,7 @@ export function WrEditableDocument({
                   placeholder="Guia master"
                   emptyText="—"
                   className="font-mono text-slate-700"
+                  disabled={!canEdit}
                 />
               </div>
             </div>
@@ -1609,6 +1626,7 @@ export function WrEditableDocument({
                 consigneeName={consName}
                 casillero={consCas}
                 onSelect={handleConsigneeChange}
+                disabled={!canEdit}
               />
             </div>
             {destLabel && (
@@ -1631,6 +1649,7 @@ export function WrEditableDocument({
               placeholder="Descripcion de bienes..."
               emptyText="Sin descripcion"
               className="text-slate-700"
+              disabled={!canEdit}
             />
           </div>
           <p className="mb-3 text-xs italic text-slate-400">
@@ -1669,6 +1688,7 @@ export function WrEditableDocument({
                             onSave={savePkgField(pkg.id, "tracking_number")}
                             placeholder="Tracking"
                             className="font-mono"
+                            disabled={!canEdit}
                           />
                           {pkg.is_damaged && (
                             <span className="shrink-0 rounded bg-red-50 px-1 text-[9px] font-semibold text-red-600 print:bg-red-100" title={pkg.damage_description ?? "Danado"}>DMG</span>
@@ -1685,6 +1705,7 @@ export function WrEditableDocument({
                           type="select"
                           options={packageTypeOptions}
                           emptyText="—"
+                          disabled={!canEdit}
                         />
                       </td>
                       <td className="px-2 py-1.5 text-right">
@@ -1694,6 +1715,7 @@ export function WrEditableDocument({
                           type="number"
                           emptyText="—"
                           className="tabular-nums"
+                          disabled={!canEdit}
                         />
                       </td>
                       <td className="px-2 py-1.5">
@@ -1705,6 +1727,7 @@ export function WrEditableDocument({
                             emptyText="—"
                             className="tabular-nums"
                             inputClassName="w-10"
+                            disabled={!canEdit}
                           />
                           <span className="text-slate-300">×</span>
                           <EditableField
@@ -1714,6 +1737,7 @@ export function WrEditableDocument({
                             emptyText="—"
                             className="tabular-nums"
                             inputClassName="w-10"
+                            disabled={!canEdit}
                           />
                           <span className="text-slate-300">×</span>
                           <EditableField
@@ -1723,6 +1747,7 @@ export function WrEditableDocument({
                             emptyText="—"
                             className="tabular-nums"
                             inputClassName="w-10"
+                            disabled={!canEdit}
                           />
                         </div>
                       </td>
@@ -1738,6 +1763,7 @@ export function WrEditableDocument({
                             const loc = warehouseLocations.find((l) => l.id === String(v));
                             return loc?.label ?? String(v);
                           }}
+                          disabled={!canEdit}
                         />
                       </td>
                     </tr>
@@ -1774,20 +1800,22 @@ export function WrEditableDocument({
               </div>
             </div>
           )}
-          <button
-            type="button"
-            onClick={handleAddPackage}
-            className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 transition-colors hover:text-blue-800 print:hidden"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            Agregar paquete
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={handleAddPackage}
+              className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 transition-colors hover:text-blue-800 print:hidden"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              Agregar paquete
+            </button>
+          )}
         </div>
 
         {/* ── 5. Condition ── */}
         <div className="border-b border-slate-200 py-3 break-inside-avoid">
           <SectionLabel>Condicion de ingreso / Condition on Arrival</SectionLabel>
-          <ConditionFlagsInlineEdit wrId={wr.id} flags={flags} onFlagsChange={handleFlagsChanged} />
+          <ConditionFlagsInlineEdit wrId={wr.id} flags={flags} onFlagsChange={handleFlagsChanged} disabled={!canEdit} />
         </div>
 
         {/* ── 6. Notes ── */}
@@ -1801,6 +1829,7 @@ export function WrEditableDocument({
               placeholder="Agregar notas..."
               emptyText="Sin notas"
               className="text-slate-700"
+              disabled={!canEdit}
             />
           </div>
           {wr.wr_notes && wr.wr_notes.length > 0 && (

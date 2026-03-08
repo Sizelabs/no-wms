@@ -17,7 +17,8 @@ export default async function WrEditPage({
   searchParams: Promise<{ from?: string }>;
 }) {
   const { locale, id } = await params;
-  await requirePermission(locale, "inventory", "update");
+  const { permissions } = await requirePermission(locale, "inventory", "read");
+  const canEdit = permissions.warehouse_receipts.update;
   const { from } = await searchParams;
 
   const { data: wr, settings, org } = await getWarehouseReceiptForPrint(id);
@@ -49,6 +50,7 @@ export default async function WrEditPage({
         orgMembers={orgMembers}
         locale={locale}
         backHref={backHref}
+        canEdit={canEdit}
       />
     </div>
   );
