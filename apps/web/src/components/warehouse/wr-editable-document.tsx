@@ -18,7 +18,6 @@ import {
 import { Modal, ModalBody, ModalHeader } from "@/components/ui/modal";
 import { ConditionFlagsInlineEdit } from "@/components/warehouse/condition-flags-inline-edit";
 import { ConsigneeInlineEdit } from "@/components/warehouse/consignee-inline-edit";
-import { searchConsignees } from "@/lib/actions/consignees";
 import {
   addPackageToWarehouseReceipt,
   updatePackageField,
@@ -642,151 +641,6 @@ function NewPackageModal({
   );
 }
 
-/* ── Consignee typeahead for panel ── */
-
-function ConsigneeTypeahead({
-  wrId,
-  agencyId,
-  consigneeName,
-  casillero,
-  onSelect,
-}: {
-  wrId: string;
-  agencyId: string | null;
-  consigneeName: string | null;
-  casillero: string | null;
-  onSelect?: (name: string | null, casillero: string | null) => void;
-}) {
-  const [query, setQuery] = useState(consigneeName ?? "");
-  const [results, setResults] = useState<{ id: string; full_name: string; casillero: string | null }[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const { notify } = useNotification();
-
-  useEffect(() => {
-    setQuery(consigneeName ?? "");
-  }, [consigneeName]);
-
-  useEffect(() => {
-    if (query.length < 2 || query === consigneeName) {
-      setResults([]);
-      return;
-    }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      const { data } = await searchConsignees(agencyId, query);
-      const items = data ?? [];
-      setResults(items);
-      if (items.length > 0) setIsOpen(true);
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [query, agencyId, consigneeName]);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  const selectConsignee = useCallback(
-    (c: { id: string; full_name: string; casillero: string | null }) => {
-      setQuery(c.full_name);
-      setIsOpen(false);
-      setResults([]);
-      onSelect?.(c.full_name, c.casillero);
-      startTransition(async () => {
-        const result = await updateWarehouseReceiptField(wrId, "consignee_id", c.id);
-        if (result.error) {
-          setQuery(consigneeName ?? "");
-          onSelect?.(consigneeName, casillero);
-          notify(result.error, "error");
-        }
-      });
-    },
-    [wrId, consigneeName, casillero, notify, onSelect],
-  );
-
-  const handleBlur = useCallback(() => {
-    setTimeout(() => {
-      if (containerRef.current?.contains(document.activeElement)) return;
-      setIsOpen(false);
-      const trimmed = query.trim();
-      if (trimmed && trimmed !== (consigneeName ?? "")) {
-        onSelect?.(trimmed, null);
-        startTransition(async () => {
-          const result = await updateWarehouseReceiptField(wrId, "consignee_name", trimmed);
-          if (result.error) {
-            setQuery(consigneeName ?? "");
-            onSelect?.(consigneeName, casillero);
-            notify(result.error, "error");
-          }
-        });
-      } else if (!trimmed) {
-        setQuery(consigneeName ?? "");
-      }
-    }, 150);
-  }, [query, wrId, consigneeName, casillero, notify, onSelect]);
-
-  return (
-    <div ref={containerRef} className="relative">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          if (e.target.value.length >= 2) setIsOpen(true);
-        }}
-        onFocus={() => {
-          if (results.length > 0) setIsOpen(true);
-        }}
-        onBlur={handleBlur}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            setQuery(consigneeName ?? "");
-            setIsOpen(false);
-            (e.target as HTMLInputElement).blur();
-          } else if (e.key === "Enter") {
-            setIsOpen(false);
-            (e.target as HTMLInputElement).blur();
-          }
-        }}
-        placeholder="Buscar consignatario..."
-        className={platformInputClass}
-      />
-      {isPending && (
-        <span className="absolute right-3 top-1/2 inline-block h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
-      )}
-      {isOpen && results.length > 0 && (
-        <ul className="absolute left-0 z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-lg">
-          {results.map((c) => (
-            <li
-              key={c.id}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                selectConsignee(c);
-              }}
-              className="cursor-pointer px-3 py-2 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-            >
-              <span className="font-medium">{c.full_name}</span>
-              {c.casillero && (
-                <span className="ml-2 font-mono text-xs text-gray-400">{c.casillero}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 /* ── Main component ── */
 
 export function WrEditableDocument({
@@ -1194,12 +1048,14 @@ export function WrEditableDocument({
                 />
                 <div>
                   <label className="mb-1.5 block text-sm text-gray-600">Consignatario</label>
-                  <ConsigneeTypeahead
+                  <ConsigneeInlineEdit
                     wrId={wr.id}
                     agencyId={wr.agency_id}
                     consigneeName={consName}
                     casillero={consCas}
                     onSelect={handleConsigneeChange}
+                    variant="input"
+                    inputClassName={platformInputClass}
                   />
                 </div>
               </div>

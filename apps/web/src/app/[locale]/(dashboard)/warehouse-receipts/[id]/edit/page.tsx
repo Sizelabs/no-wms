@@ -29,7 +29,7 @@ export default async function WrEditPage({
 
   const [destination, warehouseLocations, orgMembers] = await Promise.all([
     wr.agency_id ? getAgencyHomeDestination(wr.agency_id) : Promise.resolve(null),
-    wr.warehouse_id ? getWarehouseLocationsForWarehouse(wr.warehouse_id) : Promise.resolve([]),
+    canEdit && wr.warehouse_id ? getWarehouseLocationsForWarehouse(wr.warehouse_id) : Promise.resolve([]),
     getOrgMembers(),
   ]);
 
