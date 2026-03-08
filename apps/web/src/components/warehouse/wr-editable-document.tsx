@@ -781,36 +781,36 @@ export function WrEditableDocument({
 
   const [addingPkg, startAddPkg] = useTransition();
   const handleAddPackage = useCallback(() => {
-    const tracking = prompt("Tracking number del nuevo paquete:");
-    if (!tracking?.trim()) return;
     startAddPkg(async () => {
-      const result = await addPackageToWarehouseReceipt(wr.id, tracking);
+      const result = await addPackageToWarehouseReceipt(wr.id);
       if (result.error) {
         notify(result.error, "error");
         return;
       }
       if (result.data) {
-        setPackages((prev) => [
-          ...prev,
-          {
-            id: result.data!.id,
-            tracking_number: result.data!.tracking_number,
-            carrier: null,
-            actual_weight_lb: null,
-            billable_weight_lb: null,
-            length_in: null,
-            width_in: null,
-            height_in: null,
-            pieces_count: 1,
-            package_type: null,
-            declared_value_usd: null,
-            is_damaged: false,
-            damage_description: null,
-            is_dgr: false,
-            dgr_class: null,
-            sender_name: null,
-          },
-        ]);
+        const newPkg: PrintPackage = {
+          id: result.data.id,
+          tracking_number: result.data.tracking_number,
+          carrier: null,
+          actual_weight_lb: null,
+          billable_weight_lb: null,
+          length_in: null,
+          width_in: null,
+          height_in: null,
+          pieces_count: 1,
+          package_type: null,
+          declared_value_usd: null,
+          is_damaged: false,
+          damage_description: null,
+          is_dgr: false,
+          dgr_class: null,
+          sender_name: null,
+        };
+        setPackages((prev) => {
+          const updated = [...prev, newPkg];
+          setEditPkgIndex(updated.length - 1);
+          return updated;
+        });
         setSidebarTab("paquetes");
       }
     });
@@ -1529,16 +1529,51 @@ export function WrEditableDocument({
                 <tfoot>
                   <tr className="border-t border-slate-200 bg-slate-50 text-[13px] font-semibold text-slate-700">
                     <td colSpan={2} className="px-2 py-2">
-                      {wr.total_packages ?? packages.length} paquete(s)
+                      {totals.count} paquete(s)
                     </td>
                     <td className="px-2 py-2" />
                     <td className="px-2 py-2 text-right tabular-nums">
-                      {wr.total_actual_weight_lb ?? "—"} lb
+                      {totals.totalWeightLb ? totals.totalWeightLb.toFixed(1) : "—"} lb
                     </td>
                     <td className="px-2 py-2" />
                   </tr>
                 </tfoot>
               </table>
+              {/* ── Totals summary ── */}
+              <div className="grid grid-cols-4 divide-x divide-slate-200 border-t border-slate-200 bg-slate-50/80 text-[12px]">
+                <div className="px-3 py-2">
+                  <p className="font-medium uppercase tracking-wide text-slate-400">Weight</p>
+                  <p className="mt-0.5 tabular-nums text-slate-700">
+                    <span className="font-semibold">{totals.totalWeightLb ? totals.totalWeightLb.toFixed(1) : "—"}</span> lb
+                    <span className="mx-1 text-slate-300">/</span>
+                    <span className="font-semibold">{totals.totalWeightKg ? totals.totalWeightKg.toFixed(1) : "—"}</span> kg
+                  </p>
+                </div>
+                <div className="px-3 py-2">
+                  <p className="font-medium uppercase tracking-wide text-slate-400">Volume</p>
+                  <p className="mt-0.5 tabular-nums text-slate-700">
+                    <span className="font-semibold">{totals.totalVolFt3 ? totals.totalVolFt3.toFixed(2) : "—"}</span> ft³
+                    <span className="mx-1 text-slate-300">/</span>
+                    <span className="font-semibold">{totals.totalVolM3 ? totals.totalVolM3.toFixed(4) : "—"}</span> m³
+                  </p>
+                </div>
+                <div className="px-3 py-2">
+                  <p className="font-medium uppercase tracking-wide text-slate-400">Vol. Weight</p>
+                  <p className="mt-0.5 tabular-nums text-slate-700">
+                    <span className="font-semibold">{totals.volWeightLb ? totals.volWeightLb.toFixed(1) : "—"}</span> lb
+                    <span className="mx-1 text-slate-300">/</span>
+                    <span className="font-semibold">{totals.volWeightKg ? totals.volWeightKg.toFixed(1) : "—"}</span> kg
+                  </p>
+                </div>
+                <div className="px-3 py-2">
+                  <p className="font-medium uppercase tracking-wide text-slate-400">Chargeable</p>
+                  <p className="mt-0.5 tabular-nums text-slate-700">
+                    <span className="font-semibold">{totals.chargeableWeightLb ? totals.chargeableWeightLb.toFixed(1) : "—"}</span> lb
+                    <span className="mx-1 text-slate-300">/</span>
+                    <span className="font-semibold">{totals.chargeableWeightKg ? totals.chargeableWeightKg.toFixed(1) : "—"}</span> kg
+                  </p>
+                </div>
+              </div>
             </div>
           )}
           <button

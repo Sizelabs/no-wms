@@ -1044,7 +1044,7 @@ export async function updatePackageField(
 
 export async function addPackageToWarehouseReceipt(
   warehouseReceiptId: string,
-  trackingNumber: string,
+  trackingNumber?: string,
 ): Promise<{ data?: { id: string; tracking_number: string }; error?: string }> {
   const supabase = await createClient();
 
@@ -1061,18 +1061,19 @@ export async function addPackageToWarehouseReceipt(
     .single();
   if (!wr) return { error: "WR no encontrado" };
 
-  const trimmed = trackingNumber.trim();
-  if (!trimmed) return { error: "El tracking no puede estar vacio" };
+  const trimmed = (trackingNumber ?? "").trim();
 
-  // Check uniqueness
-  const { data: existing } = await supabase
-    .from("packages")
-    .select("id")
-    .eq("organization_id", wr.organization_id)
-    .eq("tracking_number", trimmed)
-    .limit(1);
-  if (existing && existing.length > 0) {
-    return { error: `El tracking "${trimmed}" ya esta en uso` };
+  // Check uniqueness only for non-empty tracking numbers
+  if (trimmed) {
+    const { data: existing } = await supabase
+      .from("packages")
+      .select("id")
+      .eq("organization_id", wr.organization_id)
+      .eq("tracking_number", trimmed)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      return { error: `El tracking "${trimmed}" ya esta en uso` };
+    }
   }
 
   const { data: pkg, error } = await supabase
