@@ -1429,7 +1429,7 @@ export function WrEditableDocument({
           DOCUMENT — Live preview with inline editing
           ══════════════════════════════════════════════════ */}
       <div className="flex-1 overflow-y-auto p-6 lg:pl-3 print:overflow-visible print:p-0">
-      <div ref={documentRef} className="mx-auto max-w-[7.5in] overflow-hidden rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
+      <div ref={documentRef} className="wr-document mx-auto max-w-[7.5in] overflow-hidden rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
       <table className="block w-full border-collapse print:table">
         {/* ── Repeating print header (appears on every printed page) ── */}
         <thead className="hidden print:table-header-group">
@@ -1452,7 +1452,19 @@ export function WrEditableDocument({
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <p className="font-mono text-xl font-bold tracking-tight text-slate-900">{wrNumber}</p>
+                <div className="text-right">
+                  <p className="font-mono text-xl font-bold tracking-tight text-slate-900">{wrNumber}</p>
+                  {(wr.has_damaged_package || wr.has_dgr_package) && (
+                    <div className="mt-1 flex justify-end gap-1.5">
+                      {wr.has_damaged_package && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700">Danado</span>
+                      )}
+                      {wr.has_dgr_package && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-700">Mercancia peligrosa (DGR)</span>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <QRCodeSVG value={wrNumber} size={56} level="M" marginSize={0} />
               </div>
             </div>
@@ -1497,6 +1509,22 @@ export function WrEditableDocument({
                     className="font-mono"
                   />
                 </p>
+                {(wr.has_damaged_package || wr.has_dgr_package) && (
+                  <div className="mt-1 flex justify-end gap-1.5">
+                    {wr.has_damaged_package && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700">
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+                        Danado
+                      </span>
+                    )}
+                    {wr.has_dgr_package && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-700">
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+                        Mercancia peligrosa (DGR)
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <QRCodeSVG
                 value={wrNumber}
@@ -1514,24 +1542,6 @@ export function WrEditableDocument({
             <div className="h-px flex-1 bg-slate-100" />
           </div>
         </div>
-
-        {/* ── Damage / DGR alerts ── */}
-        {(wr.has_damaged_package || wr.has_dgr_package) && (
-          <div className="flex gap-2 border-b border-slate-200 px-4 py-2 print:px-0">
-            {wr.has_damaged_package && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
-                Contiene paquete(s) danado(s)
-              </span>
-            )}
-            {wr.has_dgr_package && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1 text-xs font-medium text-orange-700">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
-                Mercancia peligrosa (DGR)
-              </span>
-            )}
-          </div>
-        )}
 
         {/* ── 2. Receipt details strip ── */}
         <div className="grid grid-cols-4 gap-4 border-b border-slate-200 bg-slate-50/60 px-4 py-3 text-[13px] print:bg-slate-50">
@@ -1752,18 +1762,6 @@ export function WrEditableDocument({
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr className="border-t border-slate-200 bg-slate-50 text-[13px] font-semibold text-slate-700">
-                    <td colSpan={2} className="px-2 py-2">
-                      {totals.count} paquete(s)
-                    </td>
-                    <td className="px-2 py-2" />
-                    <td className="px-2 py-2 text-right tabular-nums">
-                      {totals.totalWeightLb ? totals.totalWeightLb.toFixed(1) : "—"} lb
-                    </td>
-                    <td className="px-2 py-2" />
-                  </tr>
-                </tfoot>
               </table>
               {/* ── Totals summary ── */}
               <div className="grid grid-cols-4 divide-x divide-slate-200 border-t border-slate-200 bg-slate-50/80 text-[12px]">
@@ -1841,22 +1839,24 @@ export function WrEditableDocument({
         </div>
 
         {/* ── 7. Signature (print only) ── */}
-        <div className="hidden border-b border-slate-200 py-4 break-inside-avoid print:block">
-          <div className="w-1/2">
-            <SectionLabel>Entregado por / Delivered by</SectionLabel>
-            <div className="mt-6 border-b border-slate-400" />
-            <p className="mt-1 text-[11px] text-slate-500">Nombre / Name</p>
-            <div className="mt-6 border-b border-slate-400" />
-            <p className="mt-1 text-[11px] text-slate-500">Firma / Signature</p>
-            <div className="mt-4 flex gap-6">
-              <div className="flex-1">
-                <div className="border-b border-slate-400" />
-                <p className="mt-1 text-[11px] text-slate-500">Fecha / Date</p>
-              </div>
-              <div className="flex-1">
-                <div className="border-b border-slate-400" />
-                <p className="mt-1 text-[11px] text-slate-500">Hora / Time</p>
-              </div>
+        <div className="hidden border-b border-slate-200 py-3 break-inside-avoid print:block">
+          <SectionLabel>Entregado por / Delivered by</SectionLabel>
+          <div className="mt-2 grid grid-cols-2 gap-x-8 gap-y-3">
+            <div>
+              <div className="border-b border-slate-400" />
+              <p className="mt-0.5 text-[10px] text-slate-500">Nombre / Name</p>
+            </div>
+            <div>
+              <div className="border-b border-slate-400" />
+              <p className="mt-0.5 text-[10px] text-slate-500">Firma / Signature</p>
+            </div>
+            <div>
+              <div className="border-b border-slate-400" />
+              <p className="mt-0.5 text-[10px] text-slate-500">Fecha / Date</p>
+            </div>
+            <div>
+              <div className="border-b border-slate-400" />
+              <p className="mt-0.5 text-[10px] text-slate-500">Hora / Time</p>
             </div>
           </div>
         </div>

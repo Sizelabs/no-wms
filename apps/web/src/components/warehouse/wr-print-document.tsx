@@ -135,7 +135,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
   });
 
   return (
-    <div className="mx-auto max-w-[7.5in] overflow-hidden bg-white text-slate-900 print:max-w-none print:px-[0.5in] print:py-[0.4in]">
+    <div className="wr-document mx-auto max-w-[7.5in] overflow-hidden bg-white text-slate-900 print:max-w-none print:px-[0.5in] print:py-[0.4in]">
       {/* ── Screen-only toolbar ── */}
       <div className="mb-6 flex gap-2 print:hidden">
         <button

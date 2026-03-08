@@ -44,4 +44,8 @@ input[type="radio"] {
 @media print {
   @page { size: letter portrait; margin: 0.3in 0.5in; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Scale WR document to fit one page */
+  .wr-document { font-size: 76%; }
+  .wr-document td { padding-top: 0; padding-bottom: 0; }
 }
