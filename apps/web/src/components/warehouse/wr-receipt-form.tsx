@@ -171,6 +171,7 @@ export function WrReceiptForm({
   const [wrNumber, setWrNumber] = useState("");
   const [isGeneratingWrNumber, setIsGeneratingWrNumber] = useState(false);
   const [wrNumberError, setWrNumberError] = useState<string | null>(null);
+  const wrNumberManuallyEdited = useRef(false);
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [agencyId, setAgencyId] = useState("");
   const [shipperName, setShipperName] = useState("");
@@ -368,6 +369,7 @@ export function WrReceiptForm({
     if (!warehouseId) return;
     let cancelled = false;
     setIsGeneratingWrNumber(true);
+    wrNumberManuallyEdited.current = false;
     generateWrNumberForWarehouse(warehouseId)
       .then((num) => {
         if (!cancelled) setWrNumber(num);
@@ -403,7 +405,15 @@ export function WrReceiptForm({
 
     const timeout = setTimeout(async () => {
       const isUnique = await checkWrNumberUnique(wrNumber.trim(), warehouseId || undefined);
-      setWrNumberError(isUnique ? null : "Este número ya existe");
+      if (isUnique) {
+        setWrNumberError(null);
+      } else if (!wrNumberManuallyEdited.current && warehouseId) {
+        // Auto-generated number is taken — silently regenerate
+        const newNum = await generateWrNumberForWarehouse(warehouseId);
+        setWrNumber(newNum);
+      } else {
+        setWrNumberError("Este número ya existe");
+      }
     }, 500);
 
     return () => clearTimeout(timeout);
@@ -708,6 +718,7 @@ export function WrReceiptForm({
     setError(null);
     setPhase("scan");
     // Re-fetch WR number for current warehouse
+    wrNumberManuallyEdited.current = false;
     if (warehouseId) {
       setIsGeneratingWrNumber(true);
       generateWrNumberForWarehouse(warehouseId)
@@ -864,7 +875,7 @@ export function WrReceiptForm({
                 <input
                   type="text"
                   value={wrNumber}
-                  onChange={(e) => setWrNumber(e.target.value.toUpperCase())}
+                  onChange={(e) => { wrNumberManuallyEdited.current = true; setWrNumber(e.target.value.toUpperCase()); }}
                   disabled={isGeneratingWrNumber}
                   className={`${inputCls} font-mono ${wrNumberError ? "border-red-300 focus:border-red-400 focus:ring-red-200" : ""} ${isGeneratingWrNumber ? "opacity-50" : ""}`}
                 />
