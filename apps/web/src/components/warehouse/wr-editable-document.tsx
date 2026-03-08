@@ -6,7 +6,7 @@ import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import JsBarcode from "jsbarcode";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { EditableField } from "@/components/ui/editable-field";
@@ -604,11 +604,57 @@ export function WrEditableDocument({
   }, [wrNumber]);
 
   /* ── Derived ── */
-  const courier = wr.agencies?.couriers;
-  const courierName = courier
-    ? Array.isArray(courier) ? courier[0]?.name : courier.name
-    : null;
   const [packages, setPackages] = useState<PrintPackage[]>(wr.packages ?? []);
+
+  /* ── Package totals ── */
+  const totals = useMemo(() => {
+    const LB_TO_KG = 0.453592;
+    const IN3_TO_FT3 = 1 / 1728;
+    const IN3_TO_M3 = 0.0000163871;
+    const DIM_FACTOR = 166; // IATA dimensional weight divisor (in³ → lb)
+
+    let totalWeightLb = 0;
+    let totalVolumeIn3 = 0;
+    let pkgsWithWeight = 0;
+    let pkgsWithDims = 0;
+
+    for (const pkg of packages) {
+      if (pkg.actual_weight_lb != null) {
+        totalWeightLb += pkg.actual_weight_lb;
+        pkgsWithWeight++;
+      }
+      const l = pkg.length_in;
+      const w = pkg.width_in;
+      const h = pkg.height_in;
+      if (l != null && w != null && h != null) {
+        totalVolumeIn3 += l * w * h;
+        pkgsWithDims++;
+      }
+    }
+
+    const totalWeightKg = totalWeightLb * LB_TO_KG;
+    const totalVolFt3 = totalVolumeIn3 * IN3_TO_FT3;
+    const totalVolM3 = totalVolumeIn3 * IN3_TO_M3;
+    const volWeightLb = totalVolumeIn3 / DIM_FACTOR;
+    const volWeightKg = volWeightLb * LB_TO_KG;
+    const chargeableWeightLb = Math.max(totalWeightLb, volWeightLb);
+    const chargeableWeightKg = chargeableWeightLb * LB_TO_KG;
+
+    return {
+      totalWeightLb,
+      totalWeightKg,
+      totalVolFt3,
+      totalVolM3,
+      volWeightLb,
+      volWeightKg,
+      chargeableWeightLb,
+      chargeableWeightKg,
+      pkgsWithWeight,
+      pkgsWithDims,
+      count: packages.length,
+    };
+  }, [packages]);
+
   const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
   const statusLabel = WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status;
   const statusColors: Record<string, string> = {
@@ -1225,9 +1271,6 @@ export function WrEditableDocument({
                     className="font-mono"
                   />
                 </p>
-                <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[13px] font-medium text-slate-500">
-                  {statusLabel}
-                </span>
               </div>
               <QRCodeSVG
                 value={wrNumber}
@@ -1318,16 +1361,16 @@ export function WrEditableDocument({
 
         {/* ── 3. Parties ── */}
         <div className="grid grid-cols-2 gap-4 border-b border-slate-200 py-4">
-          {/* Depositor */}
+          {/* Shipper */}
           <div className="rounded-lg border border-slate-200 px-4 py-3">
-            <SectionLabel>Depositante / Depositor</SectionLabel>
+            <SectionLabel>Remitente / Shipper</SectionLabel>
             <p className="text-sm font-semibold text-slate-900">
-              {wr.agencies ? wr.agencies.name : "Desconocido"}
-              {wr.agencies && (
-                <span className="ml-1.5 font-mono text-[13px] font-normal text-slate-400">
-                  {wr.agencies.code}
-                </span>
-              )}
+              <EditableField
+                value={shipper}
+                onSave={saveShipper}
+                placeholder="Nombre del remitente"
+                emptyText="Desconocido"
+              />
             </p>
             <div className="mt-1.5 space-y-1 text-[13px]">
               {packages[0] && (
@@ -1342,22 +1385,6 @@ export function WrEditableDocument({
                   />
                 </div>
               )}
-              {courierName && (
-                <div className="flex gap-1.5">
-                  <span className="shrink-0 text-slate-400">Courier:</span>
-                  <span className="text-slate-700">{courierName}</span>
-                </div>
-              )}
-              <div className="flex gap-1.5">
-                <span className="shrink-0 text-slate-400">Shipper:</span>
-                <EditableField
-                  value={shipper}
-                  onSave={saveShipper}
-                  placeholder="Nombre del remitente"
-                  emptyText="—"
-                  className="text-slate-700"
-                />
-              </div>
               <div className="flex gap-1.5">
                 <span className="shrink-0 text-slate-400">Master:</span>
                 <EditableField

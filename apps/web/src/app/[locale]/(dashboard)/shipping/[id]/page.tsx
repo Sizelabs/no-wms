@@ -130,7 +130,7 @@ export default async function ShippingDetailPage({
               }) => (
                 <Link
                   key={item.warehouse_receipt_id}
-                  href={`/${locale}/warehouse-receipts/${item.warehouse_receipt_id}`}
+                  href={`/${locale}/warehouse-receipts/${item.warehouse_receipt_id}/edit`}
                   className="flex items-center justify-between rounded-md border p-2 text-sm hover:bg-gray-50"
                 >
                   <div>

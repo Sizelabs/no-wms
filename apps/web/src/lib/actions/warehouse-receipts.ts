@@ -939,6 +939,11 @@ const PKG_EDITABLE_FIELDS = [
   "declared_value_usd",
   "tracking_number",
   "carrier",
+  "sender_name",
+  "is_damaged",
+  "damage_description",
+  "is_dgr",
+  "dgr_class",
 ] as const;
 
 type PkgEditableField = (typeof PKG_EDITABLE_FIELDS)[number];
@@ -992,8 +997,10 @@ export async function updatePackageField(
       return { error: `El tracking "${trimmed}" ya esta en uso` };
     }
     updateData.tracking_number = trimmed;
-  } else if (field === "carrier") {
-    updateData.carrier = value || null;
+  } else if (field === "carrier" || field === "sender_name" || field === "damage_description" || field === "dgr_class") {
+    updateData[field] = value || null;
+  } else if (field === "is_damaged" || field === "is_dgr") {
+    updateData[field] = value === "true";
   } else if (numericFields.includes(field)) {
     updateData[field] = value ? Number(value) : null;
   } else {

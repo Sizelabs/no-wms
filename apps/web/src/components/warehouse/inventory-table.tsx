@@ -374,7 +374,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                         </td>
                         <td className="px-3 py-2.5">
                           <Link
-                            href={`/${locale}/warehouse-receipts/${wr.id}?from=inventory`}
+                            href={`/${locale}/warehouse-receipts/${wr.id}/edit?from=inventory`}
                             className="font-mono text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline"
                           >
                             {wr.wr_number}
