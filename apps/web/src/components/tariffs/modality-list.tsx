@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import {
   deleteModality,
@@ -40,7 +40,7 @@ export function ModalityList({ data, selectedCourierId, canUpdate = false, canDe
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRate, setEditRate] = useState("");
@@ -56,8 +56,10 @@ export function ModalityList({ data, selectedCourierId, canUpdate = false, canDe
         !m.description?.toLowerCase().includes(q)
       ) return false;
     }
-    if (statusFilter === "active" && !m.is_active) return false;
-    if (statusFilter === "inactive" && m.is_active) return false;
+    if (statusFilter.length > 0) {
+      const matchesStatus = statusFilter.includes("active") && m.is_active || statusFilter.includes("inactive") && !m.is_active;
+      if (!matchesStatus) return false;
+    }
     return true;
   });
 
@@ -139,15 +141,15 @@ export function ModalityList({ data, selectedCourierId, canUpdate = false, canDe
           placeholder="Buscar modalidad..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          <option value="active">Activas</option>
-          <option value="inactive">Inactivas</option>
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={[
+            { value: "active", label: "Activas" },
+            { value: "inactive", label: "Inactivas" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
 
       <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-280px)]">

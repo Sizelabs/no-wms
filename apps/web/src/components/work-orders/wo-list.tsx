@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
 
@@ -47,7 +47,7 @@ export function WoList({ data, locale }: WoListProps) {
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState({ status: "", type: "" });
+  const [filter, setFilter] = useState({ status: [] as string[], type: [] as string[] });
   const [showFilters, setShowFilters] = useState(false);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
@@ -61,12 +61,12 @@ export function WoList({ data, locale }: WoListProps) {
         wo.profiles?.full_name?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (filter.status && wo.status !== filter.status) return false;
-    if (filter.type && wo.type !== filter.type) return false;
+    if (filter.status.length > 0 && !filter.status.includes(wo.status)) return false;
+    if (filter.type.length > 0 && !filter.type.includes(wo.type)) return false;
     return true;
   });
 
-  const activeFilterCount = [filter.type].filter(Boolean).length;
+  const activeFilterCount = [filter.type.length > 0].filter(Boolean).length;
 
   const handleStatusChange = (woId: string, newStatus: string) => {
     if (newStatus === "completed") {
@@ -108,16 +108,12 @@ export function WoList({ data, locale }: WoListProps) {
           placeholder="Buscar OT, agencia, responsable..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={filter.status}
-          onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          {Object.entries(WO_STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={Object.entries(WO_STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+          selected={filter.status}
+          onChange={(v) => setFilter((f) => ({ ...f, status: v }))}
+        />
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`rounded-md border px-3 py-2 text-sm ${
@@ -126,26 +122,22 @@ export function WoList({ data, locale }: WoListProps) {
               : "border-gray-300 text-gray-700 hover:bg-gray-50"
           }`}
         >
-          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          Filtros<span className={`transition-opacity ${activeFilterCount > 0 ? "opacity-100" : "opacity-0"}`}>{` (${Math.max(activeFilterCount, 1)})`}</span>
         </button>
       </div>
 
       {/* Expanded filters */}
       {showFilters && (
         <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
-          <select
-            value={filter.type}
-            onChange={(e) => setFilter((f) => ({ ...f, type: e.target.value }))}
-            className={filterSelectClass}
-          >
-            <option value="">Todos los tipos</option>
-            {Object.entries(WORK_ORDER_TYPE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
+          <MultiSelectFilter
+            label="Todos los tipos"
+            options={Object.entries(WORK_ORDER_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+            selected={filter.type}
+            onChange={(v) => setFilter((f) => ({ ...f, type: v }))}
+          />
           {activeFilterCount > 0 && (
             <button
-              onClick={() => setFilter((f) => ({ ...f, type: "" }))}
+              onClick={() => setFilter((f) => ({ ...f, type: [] }))}
               className="text-xs text-red-600 hover:text-red-800"
             >
               Limpiar filtros

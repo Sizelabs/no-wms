@@ -4,7 +4,7 @@ import { MAWB_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { updateMawbStatus } from "@/lib/actions/manifests";
 
@@ -58,7 +58,7 @@ export function MawbList({ data }: MawbListProps) {
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = data.filter((m) => {
@@ -72,7 +72,7 @@ export function MawbList({ data }: MawbListProps) {
         m.hawbs.some((h) => h.hawb_number.toLowerCase().includes(q));
       if (!matches) return false;
     }
-    if (filter && m.status !== filter) return false;
+    if (filter.length > 0 && !filter.includes(m.status)) return false;
     return true;
   });
 
@@ -99,18 +99,12 @@ export function MawbList({ data }: MawbListProps) {
           placeholder="Buscar MAWB, aerolínea, vuelo, HAWB..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          {Object.entries(MAWB_STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={Object.entries(MAWB_STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+          selected={filter}
+          onChange={setFilter}
+        />
       </div>
 
       <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">

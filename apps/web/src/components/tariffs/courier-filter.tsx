@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 
 interface CourierFilterProps {
   couriers: { id: string; name: string; code: string }[];
@@ -18,8 +18,9 @@ export function CourierFilter({ couriers, selectedCourierId, isCourierScoped }: 
   // Hide filter entirely if courier-scoped with only one courier
   if (isCourierScoped && couriers.length <= 1) return null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
+  const handleChange = (values: string[]) => {
+    // Take the most recently added value for navigation
+    const value = values.length > 0 ? values[values.length - 1] : undefined;
     if (value) {
       router.push(`${pathname}?courier=${value}`);
     } else {
@@ -27,21 +28,23 @@ export function CourierFilter({ couriers, selectedCourierId, isCourierScoped }: 
     }
   };
 
+  const options = couriers.map((c) => ({
+    value: c.id,
+    label: `${c.name} (${c.code})`,
+  }));
+  if (!isCourierScoped) {
+    options.unshift({ value: "", label: "Tarifa Base (todos)" });
+  }
+
   return (
     <div className="flex items-center gap-3">
       <label className="text-sm font-medium text-gray-700">Ver tarifas de:</label>
-      <select
-        value={selectedCourierId ?? ""}
+      <MultiSelectFilter
+        label="Tarifa Base (todos)"
+        options={options}
+        selected={selectedCourierId ? [selectedCourierId] : []}
         onChange={handleChange}
-        className={filterSelectClass + " min-w-[200px]"}
-      >
-        {!isCourierScoped && <option value="">Tarifa Base (todos)</option>}
-        {couriers.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name} ({c.code})
-          </option>
-        ))}
-      </select>
+      />
       {selectedCourierId && (
         <span className="text-xs text-gray-500">
           Los valores personalizados se muestran con etiqueta

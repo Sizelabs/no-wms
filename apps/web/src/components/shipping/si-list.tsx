@@ -5,7 +5,7 @@ import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import {
   approveShippingInstruction,
@@ -44,7 +44,7 @@ export function SiList({ data }: SiListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState({ status: "", modality: "" });
+  const [filter, setFilter] = useState({ status: [] as string[], modality: [] as string[] });
   const [showFilters, setShowFilters] = useState(false);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
@@ -59,12 +59,12 @@ export function SiList({ data }: SiListProps) {
         si.hawbs.some((h) => h.hawb_number.toLowerCase().includes(q));
       if (!matches) return false;
     }
-    if (filter.status && si.status !== filter.status) return false;
-    if (filter.modality && si.modality !== filter.modality) return false;
+    if (filter.status.length > 0 && !filter.status.includes(si.status)) return false;
+    if (filter.modality.length > 0 && !filter.modality.includes(si.modality)) return false;
     return true;
   });
 
-  const activeFilterCount = [filter.modality].filter(Boolean).length;
+  const activeFilterCount = [filter.modality].filter((f) => f.length > 0).length;
 
   const handleApprove = (id: string) => {
     startTransition(async () => {
@@ -102,16 +102,12 @@ export function SiList({ data }: SiListProps) {
           placeholder="Buscar SI, agencia, consignatario, HAWB..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={filter.status}
-          onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          {Object.entries(SI_STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={Object.entries(SI_STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+          selected={filter.status}
+          onChange={(v) => setFilter((f) => ({ ...f, status: v }))}
+        />
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`rounded-md border px-3 py-2 text-sm ${
@@ -120,26 +116,22 @@ export function SiList({ data }: SiListProps) {
               : "border-gray-300 text-gray-700 hover:bg-gray-50"
           }`}
         >
-          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          Filtros<span className={`transition-opacity ${activeFilterCount > 0 ? "opacity-100" : "opacity-0"}`}>{` (${Math.max(activeFilterCount, 1)})`}</span>
         </button>
       </div>
 
       {/* Expanded filters */}
       {showFilters && (
         <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
-          <select
-            value={filter.modality}
-            onChange={(e) => setFilter((f) => ({ ...f, modality: e.target.value }))}
-            className={filterSelectClass}
-          >
-            <option value="">Todas las modalidades</option>
-            {Object.entries(MODALITY_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
+          <MultiSelectFilter
+            label="Todas las modalidades"
+            options={Object.entries(MODALITY_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+            selected={filter.modality}
+            onChange={(v) => setFilter((f) => ({ ...f, modality: v }))}
+          />
           {activeFilterCount > 0 && (
             <button
-              onClick={() => setFilter((f) => ({ ...f, modality: "" }))}
+              onClick={() => setFilter((f) => ({ ...f, modality: [] }))}
               className="text-xs text-red-600 hover:text-red-800"
             >
               Limpiar filtros

@@ -4,7 +4,9 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useTransition } from "react";
+
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 
 interface PackageRow {
   id: string;
@@ -60,6 +62,8 @@ export function HistoryPackageTable({ data, count, locale, agencies = [], wareho
   const searchParams = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
 
+  const [isFiltering, startFiltering] = useTransition();
+
   const updateFilter = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -69,7 +73,9 @@ export function HistoryPackageTable({ data, count, locale, agencies = [], wareho
         params.delete(key);
       }
       params.delete("offset");
-      router.push(`${pathname}?${params.toString()}`);
+      startFiltering(() => {
+        router.push(`${pathname}?${params.toString()}`);
+      });
     },
     [pathname, router, searchParams],
   );
@@ -88,18 +94,12 @@ export function HistoryPackageTable({ data, count, locale, agencies = [], wareho
           placeholder="Buscar guía, remitente, descripción..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          defaultValue={searchParams.get("status") ?? ""}
-          onChange={(e) => updateFilter("status", e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-        >
-          <option value="">Todos los estados</option>
-          {Object.entries(WR_STATUS_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={Object.entries(WR_STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+          selected={searchParams.get("status")?.split(",").filter(Boolean) ?? []}
+          onChange={(v) => updateFilter("status", v.join(","))}
+        />
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`rounded-md border px-3 py-2 text-sm ${
@@ -108,37 +108,25 @@ export function HistoryPackageTable({ data, count, locale, agencies = [], wareho
               : "border-gray-300 text-gray-700 hover:bg-gray-50"
           }`}
         >
-          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          Filtros<span className={`transition-opacity ${activeFilterCount > 0 ? "opacity-100" : "opacity-0"}`}>{` (${Math.max(activeFilterCount, 1)})`}</span>
         </button>
       </div>
 
       {/* Expanded filters */}
       {showFilters && (
         <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
-          <select
-            defaultValue={searchParams.get("warehouse_id") ?? ""}
-            onChange={(e) => updateFilter("warehouse_id", e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-          >
-            <option value="">Todas las bodegas</option>
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.code})
-              </option>
-            ))}
-          </select>
-          <select
-            defaultValue={searchParams.get("agency_id") ?? ""}
-            onChange={(e) => updateFilter("agency_id", e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-          >
-            <option value="">Todas las agencias</option>
-            {agencies.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.code})
-              </option>
-            ))}
-          </select>
+          <MultiSelectFilter
+            label="Todas las bodegas"
+            options={warehouses.map((w) => ({ value: w.id, label: `${w.name} (${w.code})` }))}
+            selected={searchParams.get("warehouse_id")?.split(",").filter(Boolean) ?? []}
+            onChange={(v) => updateFilter("warehouse_id", v.join(","))}
+          />
+          <MultiSelectFilter
+            label="Todas las agencias"
+            options={agencies.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
+            selected={searchParams.get("agency_id")?.split(",").filter(Boolean) ?? []}
+            onChange={(v) => updateFilter("agency_id", v.join(","))}
+          />
           <input
             type="date"
             defaultValue={searchParams.get("date_from") ?? ""}
@@ -172,7 +160,7 @@ export function HistoryPackageTable({ data, count, locale, agencies = [], wareho
       )}
 
       {/* Table */}
-      <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
+      <div className={`overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)] transition-opacity ${isFiltering ? "opacity-50" : ""}`}>
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">

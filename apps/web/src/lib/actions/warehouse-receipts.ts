@@ -469,7 +469,10 @@ export async function getPackages(filters?: {
   }
 
   if (filters?.status) {
-    query = query.eq("warehouse_receipts.status", filters.status);
+    const statuses = filters.status.split(",");
+    query = statuses.length === 1
+      ? query.eq("warehouse_receipts.status", statuses[0]!)
+      : query.in("warehouse_receipts.status", statuses);
   }
 
   if (filters?.agency_id) {
@@ -554,7 +557,10 @@ export async function getWarehouseReceipts(filters?: {
   }
 
   if (filters?.status) {
-    query = query.eq("status", filters.status);
+    const statuses = filters.status.split(",");
+    query = statuses.length === 1
+      ? query.eq("status", statuses[0]!)
+      : query.in("status", statuses);
   }
 
   if (filters?.agency_id) {
@@ -1026,6 +1032,62 @@ export async function updatePackageField(
 }
 
 // ---------------------------------------------------------------------------
+// Add a new package to a warehouse receipt
+// ---------------------------------------------------------------------------
+
+export async function addPackageToWarehouseReceipt(
+  warehouseReceiptId: string,
+  trackingNumber: string,
+): Promise<{ data?: { id: string; tracking_number: string }; error?: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // Get org from WR
+  const { data: wr } = await supabase
+    .from("warehouse_receipts")
+    .select("organization_id")
+    .eq("id", warehouseReceiptId)
+    .single();
+  if (!wr) return { error: "WR no encontrado" };
+
+  const trimmed = trackingNumber.trim();
+  if (!trimmed) return { error: "El tracking no puede estar vacio" };
+
+  // Check uniqueness
+  const { data: existing } = await supabase
+    .from("packages")
+    .select("id")
+    .eq("organization_id", wr.organization_id)
+    .eq("tracking_number", trimmed)
+    .limit(1);
+  if (existing && existing.length > 0) {
+    return { error: `El tracking "${trimmed}" ya esta en uso` };
+  }
+
+  const { data: pkg, error } = await supabase
+    .from("packages")
+    .insert({
+      organization_id: wr.organization_id,
+      warehouse_receipt_id: warehouseReceiptId,
+      tracking_number: trimmed,
+      pieces_count: 1,
+      condition_flags: ["sin_novedad"],
+    })
+    .select("id, tracking_number")
+    .single();
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  revalidatePath("/warehouse-receipts");
+  return { data: pkg };
+}
+
+// ---------------------------------------------------------------------------
 // Get warehouse locations for a warehouse
 // ---------------------------------------------------------------------------
 
@@ -1223,7 +1285,10 @@ export async function getWarehouseReceiptsForHistory(filters?: {
   }
 
   if (filters?.status) {
-    query = query.eq("status", filters.status);
+    const statuses = filters.status.split(",");
+    query = statuses.length === 1
+      ? query.eq("status", statuses[0]!)
+      : query.in("status", statuses);
   }
 
   if (filters?.agency_id) {

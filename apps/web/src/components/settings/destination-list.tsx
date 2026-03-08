@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { upsertCourierDestination } from "@/lib/actions/couriers";
 import { deleteDestination } from "@/lib/actions/destinations";
@@ -43,7 +43,7 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = data.filter((d) => {
@@ -52,8 +52,10 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
       const location = formatLocation(d).toLowerCase();
       if (!location.includes(q)) return false;
     }
-    if (statusFilter === "active" && !d.is_active) return false;
-    if (statusFilter === "inactive" && d.is_active) return false;
+    if (statusFilter.length > 0) {
+      const isActive = d.is_active ? "active" : "inactive";
+      if (!statusFilter.includes(isActive)) return false;
+    }
     return true;
   });
 
@@ -79,15 +81,15 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
           placeholder="Buscar destino..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          <option value="active">Activos</option>
-          <option value="inactive">Inactivos</option>
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={[
+            { value: "active", label: "Activos" },
+            { value: "inactive", label: "Inactivos" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
 
       <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-280px)]">

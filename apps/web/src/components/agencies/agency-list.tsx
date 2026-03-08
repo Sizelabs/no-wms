@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
 interface Agency {
@@ -28,7 +28,7 @@ interface AgencyListProps {
 export function AgencyList({ agencies }: AgencyListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = agencies.filter((a) => {
@@ -42,8 +42,12 @@ export function AgencyList({ agencies }: AgencyListProps) {
         homeDestination?.country_code?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (statusFilter === "active" && !a.is_active) return false;
-    if (statusFilter === "inactive" && a.is_active) return false;
+    if (statusFilter.length > 0) {
+      const isActive = statusFilter.includes("active");
+      const isInactive = statusFilter.includes("inactive");
+      if (isActive && !isInactive && !a.is_active) return false;
+      if (isInactive && !isActive && a.is_active) return false;
+    }
     return true;
   });
 
@@ -58,15 +62,15 @@ export function AgencyList({ agencies }: AgencyListProps) {
           placeholder="Buscar agencia, código, país..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          <option value="active">Activa</option>
-          <option value="inactive">Inactiva</option>
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={[
+            { value: "active", label: "Activa" },
+            { value: "inactive", label: "Inactiva" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
 
     <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">

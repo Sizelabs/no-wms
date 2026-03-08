@@ -1,6 +1,8 @@
 "use client";
 
-import { filterSelectClass } from "@/components/ui/form-section";
+import { useState } from "react";
+
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 
 interface ReportFiltersProps {
   agencies?: Array<{ id: string; name: string }>;
@@ -10,13 +12,16 @@ interface ReportFiltersProps {
 }
 
 export function ReportFilters({ agencies, warehouses, showWarehouse, onFilter }: ReportFiltersProps) {
+  const [agencyFilter, setAgencyFilter] = useState<string[]>([]);
+  const [warehouseFilter, setWarehouseFilter] = useState<string[]>([]);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
     onFilter({
-      agency_id: (formData.get("agency_id") as string) || undefined,
-      warehouse_id: (formData.get("warehouse_id") as string) || undefined,
+      agency_id: agencyFilter.length > 0 ? agencyFilter[agencyFilter.length - 1] : undefined,
+      warehouse_id: warehouseFilter.length > 0 ? warehouseFilter[warehouseFilter.length - 1] : undefined,
       date_from: (formData.get("date_from") as string) || undefined,
       date_to: (formData.get("date_to") as string) || undefined,
     });
@@ -27,23 +32,23 @@ export function ReportFilters({ agencies, warehouses, showWarehouse, onFilter }:
       {agencies && agencies.length > 0 && (
         <div>
           <label className="block text-xs font-medium text-gray-500">Agencia</label>
-          <select name="agency_id" className={filterSelectClass}>
-            <option value="">Todas</option>
-            {agencies.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
+          <MultiSelectFilter
+            label="Todas"
+            options={agencies.map((a) => ({ value: a.id, label: a.name }))}
+            selected={agencyFilter}
+            onChange={setAgencyFilter}
+          />
         </div>
       )}
       {showWarehouse && warehouses && warehouses.length > 0 && (
         <div>
           <label className="block text-xs font-medium text-gray-500">Bodega</label>
-          <select name="warehouse_id" className={filterSelectClass}>
-            <option value="">Todas</option>
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>{w.name}</option>
-            ))}
-          </select>
+          <MultiSelectFilter
+            label="Todas"
+            options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
+            selected={warehouseFilter}
+            onChange={setWarehouseFilter}
+          />
         </div>
       )}
       <div>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
 interface Warehouse {
@@ -24,7 +24,7 @@ interface WarehouseListProps {
 export function WarehouseList({ warehouses }: WarehouseListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = warehouses.filter((w) => {
@@ -37,8 +37,12 @@ export function WarehouseList({ warehouses }: WarehouseListProps) {
         w.country?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (statusFilter === "active" && !w.is_active) return false;
-    if (statusFilter === "inactive" && w.is_active) return false;
+    if (statusFilter.length > 0) {
+      const isActive = statusFilter.includes("active");
+      const isInactive = statusFilter.includes("inactive");
+      if (isActive && !isInactive && !w.is_active) return false;
+      if (isInactive && !isActive && w.is_active) return false;
+    }
     return true;
   });
 
@@ -53,15 +57,15 @@ export function WarehouseList({ warehouses }: WarehouseListProps) {
           placeholder="Buscar bodega, código, ciudad..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          <option value="active">Activa</option>
-          <option value="inactive">Inactiva</option>
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={[
+            { value: "active", label: "Activa" },
+            { value: "inactive", label: "Inactiva" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
 
     <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">

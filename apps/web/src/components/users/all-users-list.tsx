@@ -7,7 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import {
   resendInvite,
   resetUserPassword,
@@ -114,8 +114,8 @@ export function AllUsersList({ users }: AllUsersListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const toggleCollapse = useCallback((key: string) => {
@@ -163,15 +163,19 @@ export function AllUsersList({ users }: AllUsersListProps) {
         agencyNames.includes(q);
       if (!matches) return false;
     }
-    if (statusFilter === "active" && !u.is_active) return false;
-    if (statusFilter === "inactive" && u.is_active) return false;
+    if (statusFilter.length > 0) {
+      const isActive = statusFilter.includes("active");
+      const isInactive = statusFilter.includes("inactive");
+      if (isActive && !isInactive && !u.is_active) return false;
+      if (isInactive && !isActive && u.is_active) return false;
+    }
     return true;
   });
 
   let groups = groupUsers(filtered);
 
-  if (typeFilter) {
-    groups = groups.filter((g) => g.entityType === typeFilter);
+  if (typeFilter.length > 0) {
+    groups = groups.filter((g) => typeFilter.includes(g.entityType));
   }
 
   const totalCount = groups.reduce((sum, g) => sum + g.users.length, 0);
@@ -187,26 +191,26 @@ export function AllUsersList({ users }: AllUsersListProps) {
           placeholder="Buscar usuario, rol, organización..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los tipos</option>
-          <option value="forwarder">Forwarder</option>
-          <option value="courier">Courier</option>
-          <option value="agency">Agencia</option>
-          <option value="platform">Plataforma</option>
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          <option value="active">Activo</option>
-          <option value="inactive">Inactivo</option>
-        </select>
+        <MultiSelectFilter
+          label="Todos los tipos"
+          options={[
+            { value: "forwarder", label: "Forwarder" },
+            { value: "courier", label: "Courier" },
+            { value: "agency", label: "Agencia" },
+            { value: "platform", label: "Plataforma" },
+          ]}
+          selected={typeFilter}
+          onChange={setTypeFilter}
+        />
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={[
+            { value: "active", label: "Activo" },
+            { value: "inactive", label: "Inactivo" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
 
       <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">

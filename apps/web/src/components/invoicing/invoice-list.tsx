@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { InvoiceStatusBadge } from "@/components/invoicing/invoice-status-badge";
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 
 interface Invoice {
@@ -29,7 +29,7 @@ interface InvoiceListProps {
 
 export function InvoiceList({ data }: InvoiceListProps) {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState({ status: "", agency: "" });
+  const [filter, setFilter] = useState({ status: [] as string[], agency: [] as string[] });
   const [showFilters, setShowFilters] = useState(false);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
@@ -42,13 +42,13 @@ export function InvoiceList({ data }: InvoiceListProps) {
         inv.agencies?.code?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (filter.status && inv.status !== filter.status) return false;
-    if (filter.agency && inv.agencies?.code !== filter.agency) return false;
+    if (filter.status.length > 0 && !filter.status.includes(inv.status)) return false;
+    if (filter.agency.length > 0 && !filter.agency.includes(inv.agencies?.code ?? "")) return false;
     return true;
   });
 
   const agencies = [...new Set(data.map((inv) => inv.agencies?.code).filter(Boolean))];
-  const activeFilterCount = [filter.agency].filter(Boolean).length;
+  const activeFilterCount = [filter.agency.length > 0].filter(Boolean).length;
 
   return (
     <div className="space-y-3">
@@ -61,16 +61,12 @@ export function InvoiceList({ data }: InvoiceListProps) {
           placeholder="Buscar factura, agencia..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={filter.status}
-          onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          {Object.entries(INVOICE_STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={Object.entries(INVOICE_STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+          selected={filter.status}
+          onChange={(v) => setFilter((f) => ({ ...f, status: v }))}
+        />
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`rounded-md border px-3 py-2 text-sm ${
@@ -79,26 +75,22 @@ export function InvoiceList({ data }: InvoiceListProps) {
               : "border-gray-300 text-gray-700 hover:bg-gray-50"
           }`}
         >
-          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          Filtros<span className={`transition-opacity ${activeFilterCount > 0 ? "opacity-100" : "opacity-0"}`}>{` (${Math.max(activeFilterCount, 1)})`}</span>
         </button>
       </div>
 
       {/* Expanded filters */}
       {showFilters && (
         <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
-          <select
-            value={filter.agency}
-            onChange={(e) => setFilter((f) => ({ ...f, agency: e.target.value }))}
-            className={filterSelectClass}
-          >
-            <option value="">Todas las agencias</option>
-            {agencies.map((code) => (
-              <option key={code} value={code}>{code}</option>
-            ))}
-          </select>
+          <MultiSelectFilter
+            label="Todas las agencias"
+            options={agencies.map((code) => ({ value: code!, label: code! }))}
+            selected={filter.agency}
+            onChange={(v) => setFilter((f) => ({ ...f, agency: v }))}
+          />
           {activeFilterCount > 0 && (
             <button
-              onClick={() => setFilter((f) => ({ ...f, agency: "" }))}
+              onClick={() => setFilter((f) => ({ ...f, agency: [] }))}
               className="text-xs text-red-600 hover:text-red-800"
             >
               Limpiar filtros

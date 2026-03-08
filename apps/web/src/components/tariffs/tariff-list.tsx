@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import { filterSelectClass } from "@/components/ui/form-section";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { deleteTariffSchedule } from "@/lib/actions/tariffs";
 
@@ -45,9 +45,9 @@ export function TariffList({ data, warehouses }: TariffListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [warehouseFilter, setWarehouseFilter] = useState("");
-  const [viewFilter, setViewFilter] = useState<"base" | "overrides" | "">("");
-  const [activeFilter, setActiveFilter] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState<string[]>([]);
+  const [viewFilter, setViewFilter] = useState<string[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = data.filter((t) => {
@@ -61,11 +61,16 @@ export function TariffList({ data, warehouses }: TariffListProps) {
         t.notes?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (warehouseFilter && t.warehouse_id !== warehouseFilter) return false;
-    if (viewFilter === "base" && t.agency_id !== null) return false;
-    if (viewFilter === "overrides" && t.agency_id === null) return false;
-    if (activeFilter === "true" && !t.is_active) return false;
-    if (activeFilter === "false" && t.is_active) return false;
+    if (warehouseFilter.length > 0 && !warehouseFilter.includes(t.warehouse_id)) return false;
+    if (viewFilter.length > 0) {
+      const isBase = t.agency_id === null;
+      const matchesView = viewFilter.includes("base") && isBase || viewFilter.includes("overrides") && !isBase;
+      if (!matchesView) return false;
+    }
+    if (activeFilter.length > 0) {
+      const matchesActive = activeFilter.includes("true") && t.is_active || activeFilter.includes("false") && !t.is_active;
+      if (!matchesActive) return false;
+    }
     return true;
   });
 
@@ -91,34 +96,30 @@ export function TariffList({ data, warehouses }: TariffListProps) {
           placeholder="Buscar costo de manejo, destino, agencia..."
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />
-        <select
-          value={warehouseFilter}
-          onChange={(e) => setWarehouseFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todas las bodegas</option>
-          {warehouses.map((w) => (
-            <option key={w.id} value={w.id}>{w.name}</option>
-          ))}
-        </select>
-        <select
-          value={viewFilter}
-          onChange={(e) => setViewFilter(e.target.value as "base" | "overrides" | "")}
-          className={filterSelectClass}
-        >
-          <option value="">Todas las tarifas</option>
-          <option value="base">Tarifas base</option>
-          <option value="overrides">Overrides agencia</option>
-        </select>
-        <select
-          value={activeFilter}
-          onChange={(e) => setActiveFilter(e.target.value)}
-          className={filterSelectClass}
-        >
-          <option value="">Todos los estados</option>
-          <option value="true">Activas</option>
-          <option value="false">Inactivas</option>
-        </select>
+        <MultiSelectFilter
+          label="Todas las bodegas"
+          options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
+          selected={warehouseFilter}
+          onChange={setWarehouseFilter}
+        />
+        <MultiSelectFilter
+          label="Todas las tarifas"
+          options={[
+            { value: "base", label: "Tarifas base" },
+            { value: "overrides", label: "Overrides agencia" },
+          ]}
+          selected={viewFilter}
+          onChange={setViewFilter}
+        />
+        <MultiSelectFilter
+          label="Todos los estados"
+          options={[
+            { value: "true", label: "Activas" },
+            { value: "false", label: "Inactivas" },
+          ]}
+          selected={activeFilter}
+          onChange={setActiveFilter}
+        />
       </div>
 
       <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
