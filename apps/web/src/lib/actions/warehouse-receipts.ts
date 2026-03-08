@@ -1044,7 +1044,22 @@ export async function updatePackageField(
 
 export async function addPackageToWarehouseReceipt(
   warehouseReceiptId: string,
-  trackingNumber?: string,
+  trackingNumber: string,
+  extraFields?: {
+    carrier?: string;
+    sender_name?: string;
+    package_type?: string;
+    actual_weight_lb?: number;
+    pieces_count?: number;
+    length_in?: number;
+    width_in?: number;
+    height_in?: number;
+    declared_value_usd?: number;
+    is_damaged?: boolean;
+    damage_description?: string;
+    is_dgr?: boolean;
+    dgr_class?: string;
+  },
 ): Promise<{ data?: { id: string; tracking_number: string }; error?: string }> {
   const supabase = await createClient();
 
@@ -1061,30 +1076,54 @@ export async function addPackageToWarehouseReceipt(
     .single();
   if (!wr) return { error: "WR no encontrado" };
 
-  const trimmed = (trackingNumber ?? "").trim();
+  const trimmed = trackingNumber.trim();
+  if (!trimmed) return { error: "El tracking no puede estar vacio" };
 
-  // Check uniqueness only for non-empty tracking numbers
-  if (trimmed) {
-    const { data: existing } = await supabase
-      .from("packages")
-      .select("id")
-      .eq("organization_id", wr.organization_id)
-      .eq("tracking_number", trimmed)
-      .limit(1);
-    if (existing && existing.length > 0) {
-      return { error: `El tracking "${trimmed}" ya esta en uso` };
+  // Check uniqueness
+  const { data: existing } = await supabase
+    .from("packages")
+    .select("id")
+    .eq("organization_id", wr.organization_id)
+    .eq("tracking_number", trimmed)
+    .limit(1);
+  if (existing && existing.length > 0) {
+    return { error: `El tracking "${trimmed}" ya esta en uso` };
+  }
+
+  // Build insert data with optional extra fields
+  const insertData: Record<string, unknown> = {
+    organization_id: wr.organization_id,
+    warehouse_receipt_id: warehouseReceiptId,
+    tracking_number: trimmed,
+    pieces_count: extraFields?.pieces_count ?? 1,
+    condition_flags: ["sin_novedad"],
+  };
+
+  if (extraFields) {
+    if (extraFields.carrier) insertData.carrier = extraFields.carrier;
+    if (extraFields.sender_name) insertData.sender_name = extraFields.sender_name;
+    if (extraFields.package_type) insertData.package_type = extraFields.package_type;
+    if (extraFields.actual_weight_lb != null) insertData.actual_weight_lb = extraFields.actual_weight_lb;
+    if (extraFields.length_in != null) insertData.length_in = extraFields.length_in;
+    if (extraFields.width_in != null) insertData.width_in = extraFields.width_in;
+    if (extraFields.height_in != null) insertData.height_in = extraFields.height_in;
+    if (extraFields.declared_value_usd != null) insertData.declared_value_usd = extraFields.declared_value_usd;
+    if (extraFields.is_damaged != null) insertData.is_damaged = extraFields.is_damaged;
+    if (extraFields.damage_description) insertData.damage_description = extraFields.damage_description;
+    if (extraFields.is_dgr != null) insertData.is_dgr = extraFields.is_dgr;
+    if (extraFields.dgr_class) insertData.dgr_class = extraFields.dgr_class;
+
+    // Calculate volumetric/billable weight if dimensions provided
+    if (extraFields.length_in && extraFields.width_in && extraFields.height_in) {
+      const vol = calculateVolumetricWeight(extraFields.length_in, extraFields.width_in, extraFields.height_in, 166);
+      insertData.volumetric_weight_lb = vol;
+      insertData.billable_weight_lb = calculateBillableWeight(extraFields.actual_weight_lb ?? null, vol);
     }
   }
 
   const { data: pkg, error } = await supabase
     .from("packages")
-    .insert({
-      organization_id: wr.organization_id,
-      warehouse_receipt_id: warehouseReceiptId,
-      tracking_number: trimmed,
-      pieces_count: 1,
-      condition_flags: ["sin_novedad"],
-    })
+    .insert(insertData)
     .select("id, tracking_number")
     .single();
 

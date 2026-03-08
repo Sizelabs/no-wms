@@ -410,6 +410,221 @@ function PackageEditModal({
   );
 }
 
+/* ── New package modal (create-on-save) ── */
+
+function NewPackageModal({
+  wrId,
+  packageIndex,
+  open,
+  onClose,
+  onCreated,
+  packageTypeOptions,
+}: {
+  wrId: string;
+  packageIndex: number;
+  open: boolean;
+  onClose: () => void;
+  onCreated: (pkg: PrintPackage) => void;
+  packageTypeOptions: { value: string; label: string }[];
+}) {
+  const { notify } = useNotification();
+  const [tracking, setTracking] = useState("");
+  const [carrier, setCarrier] = useState("");
+  const [pkgType, setPkgType] = useState("");
+  const [weight, setWeight] = useState("");
+  const [length, setLength] = useState("");
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+  const [pieces, setPieces] = useState("1");
+  const [declaredValue, setDeclaredValue] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [isDamaged, setIsDamaged] = useState(false);
+  const [damageDesc, setDamageDesc] = useState("");
+  const [isDgr, setIsDgr] = useState(false);
+  const [dgrClass, setDgrClass] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const fields: { label: string; key: string; value: string; setter: (v: string) => void; type?: string; mono?: boolean; half?: boolean }[] = [
+    { label: "Tracking", key: "tracking_number", value: tracking, setter: setTracking, mono: true },
+    { label: "Carrier", key: "carrier", value: carrier, setter: setCarrier },
+    { label: "Remitente", key: "sender_name", value: senderName, setter: setSenderName },
+    { label: "Tipo", key: "package_type", value: pkgType, setter: setPkgType, type: "select" },
+    { label: "Peso (lb)", key: "actual_weight_lb", value: weight, setter: setWeight, type: "number", half: true },
+    { label: "Piezas", key: "pieces_count", value: pieces, setter: setPieces, type: "number", half: true },
+    { label: "Largo (in)", key: "length_in", value: length, setter: setLength, type: "number", half: true },
+    { label: "Ancho (in)", key: "width_in", value: width, setter: setWidth, type: "number", half: true },
+    { label: "Alto (in)", key: "height_in", value: height, setter: setHeight, type: "number", half: true },
+    { label: "Valor declarado ($)", key: "declared_value_usd", value: declaredValue, setter: setDeclaredValue, type: "number", half: true },
+  ];
+
+  const handleCreate = async () => {
+    const trimmed = tracking.trim();
+    if (!trimmed) {
+      notify("El tracking no puede estar vacio", "error");
+      return;
+    }
+    setSaving(true);
+    const extraFields: Record<string, unknown> = {};
+    if (carrier) extraFields.carrier = carrier;
+    if (senderName) extraFields.sender_name = senderName;
+    if (pkgType) extraFields.package_type = pkgType;
+    if (weight) extraFields.actual_weight_lb = parseFloat(weight);
+    if (pieces) extraFields.pieces_count = parseInt(pieces, 10);
+    if (length) extraFields.length_in = parseFloat(length);
+    if (width) extraFields.width_in = parseFloat(width);
+    if (height) extraFields.height_in = parseFloat(height);
+    if (declaredValue) extraFields.declared_value_usd = parseFloat(declaredValue);
+    if (isDamaged) extraFields.is_damaged = true;
+    if (damageDesc) extraFields.damage_description = damageDesc;
+    if (isDgr) extraFields.is_dgr = true;
+    if (dgrClass) extraFields.dgr_class = dgrClass;
+
+    const result = await addPackageToWarehouseReceipt(
+      wrId,
+      trimmed,
+      extraFields as Parameters<typeof addPackageToWarehouseReceipt>[2],
+    );
+    setSaving(false);
+    if (result.error) {
+      notify(result.error, "error");
+      return;
+    }
+    if (result.data) {
+      const volWeight = length && width && height
+        ? (parseFloat(length) * parseFloat(width) * parseFloat(height)) / 166
+        : null;
+      const billableWeight = weight && volWeight
+        ? Math.max(parseFloat(weight), volWeight)
+        : null;
+      onCreated({
+        id: result.data.id,
+        tracking_number: result.data.tracking_number,
+        carrier: carrier || null,
+        actual_weight_lb: weight ? parseFloat(weight) : null,
+        billable_weight_lb: billableWeight,
+        length_in: length ? parseFloat(length) : null,
+        width_in: width ? parseFloat(width) : null,
+        height_in: height ? parseFloat(height) : null,
+        pieces_count: pieces ? parseInt(pieces, 10) : 1,
+        package_type: pkgType || null,
+        declared_value_usd: declaredValue ? parseFloat(declaredValue) : null,
+        is_damaged: isDamaged,
+        damage_description: damageDesc || null,
+        is_dgr: isDgr,
+        dgr_class: dgrClass || null,
+        sender_name: senderName || null,
+      });
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} size="sm">
+      <ModalHeader onClose={onClose}>
+        Nuevo paquete #{packageIndex + 1}
+      </ModalHeader>
+      <ModalBody>
+        <div className="grid grid-cols-2 gap-4">
+          {fields.map((f) => (
+            <div key={f.key} className={f.half ? "" : "col-span-2"}>
+              <label className="mb-1.5 block text-sm text-gray-600">{f.label}</label>
+              {f.type === "select" ? (
+                <select
+                  value={f.value}
+                  onChange={(e) => f.setter(e.target.value)}
+                  className={platformSelectClass}
+                >
+                  <option value="">—</option>
+                  {packageTypeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={f.type === "number" ? "number" : "text"}
+                  step={f.type === "number" ? "any" : undefined}
+                  value={f.value}
+                  onChange={(e) => f.setter(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  className={`${platformInputClass} ${f.mono ? "font-mono" : ""}`}
+                  autoFocus={f.key === "tracking_number"}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Damage / DGR toggles */}
+        <div className="mt-4 space-y-3 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-600">Danado</label>
+            <button
+              type="button"
+              onClick={() => setIsDamaged(!isDamaged)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${isDamaged ? "bg-red-500" : "bg-gray-200"}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${isDamaged ? "translate-x-4.5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+          {isDamaged && (
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">Descripcion del dano</label>
+              <input
+                type="text"
+                value={damageDesc}
+                onChange={(e) => setDamageDesc(e.target.value)}
+                placeholder="Describir el dano..."
+                className={platformInputClass}
+              />
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-600">Mercancia peligrosa (DGR)</label>
+            <button
+              type="button"
+              onClick={() => setIsDgr(!isDgr)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${isDgr ? "bg-orange-500" : "bg-gray-200"}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${isDgr ? "translate-x-4.5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+          {isDgr && (
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">Clase DGR</label>
+              <input
+                type="text"
+                value={dgrClass}
+                onChange={(e) => setDgrClass(e.target.value)}
+                placeholder="Ej: 3, 8, 9..."
+                className={platformInputClass}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={saving || !tracking.trim()}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+          >
+            {saving ? "Creando..." : "Crear paquete"}
+          </button>
+        </div>
+      </ModalBody>
+    </Modal>
+  );
+}
+
 /* ── Consignee typeahead for panel ── */
 
 function ConsigneeTypeahead({
@@ -779,42 +994,15 @@ export function WrEditableDocument({
       .save();
   }, [wrNumber, receivedAt]);
 
-  const [addingPkg, startAddPkg] = useTransition();
+  const [showNewPkgModal, setShowNewPkgModal] = useState(false);
   const handleAddPackage = useCallback(() => {
-    startAddPkg(async () => {
-      const result = await addPackageToWarehouseReceipt(wr.id);
-      if (result.error) {
-        notify(result.error, "error");
-        return;
-      }
-      if (result.data) {
-        const newPkg: PrintPackage = {
-          id: result.data.id,
-          tracking_number: result.data.tracking_number,
-          carrier: null,
-          actual_weight_lb: null,
-          billable_weight_lb: null,
-          length_in: null,
-          width_in: null,
-          height_in: null,
-          pieces_count: 1,
-          package_type: null,
-          declared_value_usd: null,
-          is_damaged: false,
-          damage_description: null,
-          is_dgr: false,
-          dgr_class: null,
-          sender_name: null,
-        };
-        setPackages((prev) => {
-          const updated = [...prev, newPkg];
-          setEditPkgIndex(updated.length - 1);
-          return updated;
-        });
-        setSidebarTab("paquetes");
-      }
-    });
-  }, [wr.id, notify]);
+    setShowNewPkgModal(true);
+  }, []);
+  const handleNewPkgCreated = useCallback((pkg: PrintPackage) => {
+    setPackages((prev) => [...prev, pkg]);
+    setShowNewPkgModal(false);
+    setSidebarTab("paquetes");
+  }, []);
 
   const packageTypeOptions = PACKAGE_TYPES.map((pt) => ({
     value: pt,
@@ -1101,11 +1289,10 @@ export function WrEditableDocument({
                 <button
                   type="button"
                   onClick={handleAddPackage}
-                  disabled={addingPkg}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                  {addingPkg ? "Agregando..." : "Agregar paquete"}
+                  Agregar paquete
                 </button>
               </div>
             )}
@@ -1579,11 +1766,10 @@ export function WrEditableDocument({
           <button
             type="button"
             onClick={handleAddPackage}
-            disabled={addingPkg}
-            className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 transition-colors hover:text-blue-800 disabled:opacity-50 print:hidden"
+            className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 transition-colors hover:text-blue-800 print:hidden"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            {addingPkg ? "Agregando..." : "Agregar paquete"}
+            Agregar paquete
           </button>
         </div>
 
@@ -1615,7 +1801,47 @@ export function WrEditableDocument({
           )}
         </div>
 
-        {/* ── 7. Footer ── */}
+        {/* ── 7. Signature (print only) ── */}
+        <div className="hidden border-b border-slate-200 py-4 print:block">
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <SectionLabel>Entregado por / Delivered by</SectionLabel>
+              <div className="mt-6 border-b border-slate-400" />
+              <p className="mt-1 text-[11px] text-slate-500">Nombre / Name</p>
+              <div className="mt-6 border-b border-slate-400" />
+              <p className="mt-1 text-[11px] text-slate-500">Firma / Signature</p>
+              <div className="mt-4 flex gap-6">
+                <div className="flex-1">
+                  <div className="border-b border-slate-400" />
+                  <p className="mt-1 text-[11px] text-slate-500">Fecha / Date</p>
+                </div>
+                <div className="flex-1">
+                  <div className="border-b border-slate-400" />
+                  <p className="mt-1 text-[11px] text-slate-500">Hora / Time</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <SectionLabel>Recibido por / Received by</SectionLabel>
+              <div className="mt-6 border-b border-slate-400" />
+              <p className="mt-1 text-[11px] text-slate-500">Nombre / Name</p>
+              <div className="mt-6 border-b border-slate-400" />
+              <p className="mt-1 text-[11px] text-slate-500">Firma / Signature</p>
+              <div className="mt-4 flex gap-6">
+                <div className="flex-1">
+                  <div className="border-b border-slate-400" />
+                  <p className="mt-1 text-[11px] text-slate-500">Fecha / Date</p>
+                </div>
+                <div className="flex-1">
+                  <div className="border-b border-slate-400" />
+                  <p className="mt-1 text-[11px] text-slate-500">Hora / Time</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 8. Footer ── */}
         <div className="flex items-end justify-between border-t border-slate-200 pt-3">
           <div className="text-[11px] text-slate-400">
             <p>UCC Article 7 &middot; FL Stat. Ch. 677</p>
@@ -1660,6 +1886,18 @@ export function WrEditableDocument({
           open
           onClose={() => setEditPkgIndex(null)}
           onSave={savePkgField}
+          packageTypeOptions={packageTypeOptions}
+        />
+      )}
+
+      {/* ── New package modal ── */}
+      {showNewPkgModal && (
+        <NewPackageModal
+          wrId={wr.id}
+          packageIndex={packages.length}
+          open
+          onClose={() => setShowNewPkgModal(false)}
+          onCreated={handleNewPkgCreated}
           packageTypeOptions={packageTypeOptions}
         />
       )}
