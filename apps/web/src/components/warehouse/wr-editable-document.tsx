@@ -832,10 +832,12 @@ export function WrEditableDocument({
 
     let totalWeightLb = 0;
     let totalVolumeIn3 = 0;
+    let totalPieces = 0;
     let pkgsWithWeight = 0;
     let pkgsWithDims = 0;
 
     for (const pkg of packages) {
+      totalPieces += pkg.pieces_count;
       if (pkg.actual_weight_lb != null) {
         totalWeightLb += pkg.actual_weight_lb;
         pkgsWithWeight++;
@@ -866,6 +868,7 @@ export function WrEditableDocument({
       volWeightKg,
       chargeableWeightLb,
       chargeableWeightKg,
+      totalPieces,
       pkgsWithWeight,
       pkgsWithDims,
       count: packages.length,
@@ -1764,38 +1767,31 @@ export function WrEditableDocument({
                 </tbody>
               </table>
               {/* ── Totals summary ── */}
-              <div className="grid grid-cols-4 divide-x divide-slate-200 border-t border-slate-200 bg-slate-50/80 text-[12px]">
+              <div className="grid grid-cols-5 divide-x divide-slate-200 border-t border-slate-200 bg-slate-50/80 text-[12px]">
+                <div className="px-3 py-2">
+                  <p className="font-medium uppercase tracking-wide text-slate-400">Pieces</p>
+                  <p className="mt-0.5 tabular-nums text-slate-700"><span className="font-semibold">{totals.totalPieces}</span> pzs</p>
+                  <p className="tabular-nums text-slate-400"><span className="font-semibold">{totals.count}</span> pkg</p>
+                </div>
                 <div className="px-3 py-2">
                   <p className="font-medium uppercase tracking-wide text-slate-400">Weight</p>
-                  <p className="mt-0.5 tabular-nums text-slate-700">
-                    <span className="font-semibold">{totals.totalWeightLb ? totals.totalWeightLb.toFixed(1) : "—"}</span> lb
-                    <span className="mx-1 text-slate-300">/</span>
-                    <span className="font-semibold">{totals.totalWeightKg ? totals.totalWeightKg.toFixed(1) : "—"}</span> kg
-                  </p>
+                  <p className="mt-0.5 tabular-nums text-slate-700"><span className="font-semibold">{totals.totalWeightLb ? totals.totalWeightLb.toFixed(1) : "—"}</span> lb</p>
+                  <p className="tabular-nums text-slate-400"><span className="font-semibold">{totals.totalWeightKg ? totals.totalWeightKg.toFixed(1) : "—"}</span> kg</p>
                 </div>
                 <div className="px-3 py-2">
                   <p className="font-medium uppercase tracking-wide text-slate-400">Volume</p>
-                  <p className="mt-0.5 tabular-nums text-slate-700">
-                    <span className="font-semibold">{totals.totalVolFt3 ? totals.totalVolFt3.toFixed(2) : "—"}</span> ft³
-                    <span className="mx-1 text-slate-300">/</span>
-                    <span className="font-semibold">{totals.totalVolM3 ? totals.totalVolM3.toFixed(4) : "—"}</span> m³
-                  </p>
+                  <p className="mt-0.5 tabular-nums text-slate-700"><span className="font-semibold">{totals.totalVolFt3 ? totals.totalVolFt3.toFixed(2) : "—"}</span> ft³</p>
+                  <p className="tabular-nums text-slate-400"><span className="font-semibold">{totals.totalVolM3 ? totals.totalVolM3.toFixed(4) : "—"}</span> m³</p>
                 </div>
                 <div className="px-3 py-2">
                   <p className="font-medium uppercase tracking-wide text-slate-400">Vol. Weight</p>
-                  <p className="mt-0.5 tabular-nums text-slate-700">
-                    <span className="font-semibold">{totals.volWeightLb ? totals.volWeightLb.toFixed(1) : "—"}</span> lb
-                    <span className="mx-1 text-slate-300">/</span>
-                    <span className="font-semibold">{totals.volWeightKg ? totals.volWeightKg.toFixed(1) : "—"}</span> kg
-                  </p>
+                  <p className="mt-0.5 tabular-nums text-slate-700"><span className="font-semibold">{totals.volWeightLb ? totals.volWeightLb.toFixed(1) : "—"}</span> lb</p>
+                  <p className="tabular-nums text-slate-400"><span className="font-semibold">{totals.volWeightKg ? totals.volWeightKg.toFixed(1) : "—"}</span> kg</p>
                 </div>
                 <div className="px-3 py-2">
                   <p className="font-medium uppercase tracking-wide text-slate-400">Chargeable</p>
-                  <p className="mt-0.5 tabular-nums text-slate-700">
-                    <span className="font-semibold">{totals.chargeableWeightLb ? totals.chargeableWeightLb.toFixed(1) : "—"}</span> lb
-                    <span className="mx-1 text-slate-300">/</span>
-                    <span className="font-semibold">{totals.chargeableWeightKg ? totals.chargeableWeightKg.toFixed(1) : "—"}</span> kg
-                  </p>
+                  <p className="mt-0.5 tabular-nums text-slate-700"><span className="font-semibold">{totals.chargeableWeightLb ? totals.chargeableWeightLb.toFixed(1) : "—"}</span> lb</p>
+                  <p className="tabular-nums text-slate-400"><span className="font-semibold">{totals.chargeableWeightKg ? totals.chargeableWeightKg.toFixed(1) : "—"}</span> kg</p>
                 </div>
               </div>
             </div>
