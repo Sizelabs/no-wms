@@ -42,6 +42,12 @@ interface PrintPackage {
   is_dgr: boolean;
   dgr_class: string | null;
   sender_name: string | null;
+  warehouse_location_id: string | null;
+  warehouse_locations: {
+    name: string;
+    code: string;
+    warehouse_zones: { name: string; code: string } | { name: string; code: string }[] | null;
+  } | null;
 }
 
 interface WrPhoto {
@@ -112,12 +118,6 @@ interface WrEditableDocumentProps {
       email: string | null;
     } | null;
     profiles: { full_name: string } | null;
-    warehouse_locations: {
-      name: string;
-      code: string;
-      warehouse_zones: { name: string; code: string } | { name: string; code: string }[] | null;
-    } | null;
-    warehouse_location_id: string | null;
     packages: PrintPackage[] | null;
     wr_photos: WrPhoto[] | null;
     wr_attachments: WrAttachment[] | null;
@@ -250,6 +250,7 @@ function PackageEditModal({
   onClose,
   onSave,
   packageTypeOptions,
+  locationOptions,
 }: {
   pkg: PrintPackage;
   index: number;
@@ -257,6 +258,7 @@ function PackageEditModal({
   onClose: () => void;
   onSave: (pkgId: string, field: string) => (value: string) => Promise<{ error?: string }>;
   packageTypeOptions: { value: string; label: string }[];
+  locationOptions: { value: string; label: string }[];
 }) {
   const { notify } = useNotification();
   const [tracking, setTracking] = useState(pkg.tracking_number);
@@ -273,13 +275,15 @@ function PackageEditModal({
   const [damageDesc, setDamageDesc] = useState(pkg.damage_description ?? "");
   const [isDgr, setIsDgr] = useState(pkg.is_dgr);
   const [dgrClass, setDgrClass] = useState(pkg.dgr_class ?? "");
+  const [pkgLocId, setPkgLocId] = useState(pkg.warehouse_location_id ?? "");
   const [saving, setSaving] = useState(false);
 
-  const fields: { label: string; field: string; value: string; setter: (v: string) => void; type?: string; mono?: boolean; half?: boolean }[] = [
+  const fields: { label: string; field: string; value: string; setter: (v: string) => void; type?: string; mono?: boolean; half?: boolean; selectOptions?: { value: string; label: string }[] }[] = [
     { label: "Tracking", field: "tracking_number", value: tracking, setter: setTracking, mono: true },
     { label: "Carrier", field: "carrier", value: carrier, setter: setCarrier },
     { label: "Remitente", field: "sender_name", value: senderName, setter: setSenderName },
     { label: "Tipo", field: "package_type", value: pkgType, setter: setPkgType, type: "select" },
+    { label: "Ubicacion", field: "warehouse_location_id", value: pkgLocId, setter: setPkgLocId, type: "select", selectOptions: locationOptions },
     { label: "Peso (lb)", field: "actual_weight_lb", value: weight, setter: setWeight, type: "number", half: true },
     { label: "Piezas", field: "pieces_count", value: pieces, setter: setPieces, type: "number", half: true },
     { label: "Largo (in)", field: "length_in", value: length, setter: setLength, type: "number", half: true },
@@ -305,7 +309,9 @@ function PackageEditModal({
       </ModalHeader>
       <ModalBody>
         <div className="grid grid-cols-2 gap-4">
-          {fields.map((f) => (
+          {fields.map((f) => {
+            const opts = f.selectOptions ?? packageTypeOptions;
+            return (
             <div key={f.field} className={f.half ? "" : "col-span-2"}>
               <label className="mb-1.5 block text-sm text-gray-600">{f.label}</label>
               {f.type === "select" ? (
@@ -318,7 +324,7 @@ function PackageEditModal({
                   className={platformSelectClass}
                 >
                   <option value="">—</option>
-                  {packageTypeOptions.map((opt) => (
+                  {opts.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -336,7 +342,8 @@ function PackageEditModal({
                 />
               )}
             </div>
-          ))}
+          );
+          })}
         </div>
 
         {/* Damage / DGR toggles */}
@@ -520,6 +527,8 @@ function NewPackageModal({
         is_dgr: isDgr,
         dgr_class: dgrClass || null,
         sender_name: senderName || null,
+        warehouse_location_id: null,
+        warehouse_locations: null,
       });
     }
   };
@@ -802,7 +811,6 @@ export function WrEditableDocument({
   const [master, setMaster] = useState(wr.master_tracking ?? "");
   const [desc, setDesc] = useState(wr.content_description ?? wr.description ?? "");
   const [wrNotes, setWrNotes] = useState(wr.notes ?? "");
-  const [locId, setLocId] = useState(wr.warehouse_location_id ?? "");
   const [consName, setConsName] = useState<string | null>(
     wr.consignees?.full_name ?? wr.consignee_name ?? null,
   );
@@ -935,12 +943,6 @@ export function WrEditableDocument({
   const saveNotes = useCallback(async (value: string) => {
     const result = await updateWarehouseReceiptField(wr.id, "notes", value);
     if (!result.error) setWrNotes(value);
-    return result;
-  }, [wr.id]);
-
-  const saveLoc = useCallback(async (value: string) => {
-    const result = await updateWarehouseReceiptField(wr.id, "warehouse_location_id", value);
-    if (!result.error) setLocId(value);
     return result;
   }, [wr.id]);
 
@@ -1161,29 +1163,6 @@ export function WrEditableDocument({
                   >
                     <option value="">— Seleccionar —</option>
                     {memberOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm text-gray-600">Ubicacion</label>
-                  <select
-                    value={locId}
-                    onChange={(e) => {
-                      const newVal = e.target.value;
-                      const old = locId;
-                      setLocId(newVal);
-                      updateWarehouseReceiptField(wr.id, "warehouse_location_id", newVal).then((res) => {
-                        if (res.error) {
-                          setLocId(old);
-                          notify(res.error, "error");
-                        }
-                      });
-                    }}
-                    className={platformSelectClass}
-                  >
-                    <option value="">— Sin asignar —</option>
-                    {locationOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
@@ -1573,20 +1552,15 @@ export function WrEditableDocument({
             </p>
           </div>
           <div>
-            <p className="text-slate-400">Ubicacion</p>
+            <p className="text-slate-400">Carrier</p>
             <p className="font-medium text-slate-700">
-              <EditableField
-                value={locId}
-                onSave={saveLoc}
-                type="select"
-                options={locationOptions}
-                emptyText="Sin asignar"
-                formatDisplay={(v) => {
-                  if (!v) return "";
-                  const loc = warehouseLocations.find((l) => l.id === String(v));
-                  return loc?.label ?? String(v);
-                }}
-              />
+              {packages[0] ? (
+                <EditableField
+                  value={packages[0].carrier}
+                  onSave={savePkgField(packages[0].id, "carrier")}
+                  emptyText="—"
+                />
+              ) : "—"}
             </p>
           </div>
           <div>
@@ -1612,18 +1586,6 @@ export function WrEditableDocument({
               />
             </p>
             <div className="mt-1.5 space-y-1 text-[13px]">
-              {packages[0] && (
-                <div className="flex gap-1.5">
-                  <span className="shrink-0 text-slate-400">Carrier:</span>
-                  <EditableField
-                    value={packages[0].carrier}
-                    onSave={savePkgField(packages[0].id, "carrier")}
-                    placeholder="Carrier"
-                    emptyText="—"
-                    className="text-slate-700"
-                  />
-                </div>
-              )}
               <div className="flex gap-1.5">
                 <span className="shrink-0 text-slate-400">Master:</span>
                 <EditableField
@@ -1680,10 +1642,11 @@ export function WrEditableDocument({
               <table className="w-full table-fixed text-[13px]">
                 <colgroup>
                   <col className="w-[5%]" />
-                  <col className="w-[40%]" />
-                  <col className="w-[13%]" />
-                  <col className="w-[14%]" />
-                  <col className="w-[28%]" />
+                  <col className="w-[32%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[24%]" />
+                  <col className="w-[16%]" />
                 </colgroup>
                 <thead>
                   <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -1692,6 +1655,7 @@ export function WrEditableDocument({
                     <th className="px-2 py-2">Tipo</th>
                     <th className="px-2 py-2 text-right">Peso (lb)</th>
                     <th className="px-2 py-2 text-center">Dim (in)</th>
+                    <th className="px-2 py-2">Ubicacion</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1761,6 +1725,20 @@ export function WrEditableDocument({
                             inputClassName="w-10"
                           />
                         </div>
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <EditableField
+                          value={pkg.warehouse_location_id}
+                          onSave={savePkgField(pkg.id, "warehouse_location_id")}
+                          type="select"
+                          options={locationOptions}
+                          emptyText="—"
+                          formatDisplay={(v) => {
+                            if (!v) return "";
+                            const loc = warehouseLocations.find((l) => l.id === String(v));
+                            return loc?.label ?? String(v);
+                          }}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -1906,6 +1884,7 @@ export function WrEditableDocument({
           onClose={() => setEditPkgIndex(null)}
           onSave={savePkgField}
           packageTypeOptions={packageTypeOptions}
+          locationOptions={locationOptions}
         />
       )}
 

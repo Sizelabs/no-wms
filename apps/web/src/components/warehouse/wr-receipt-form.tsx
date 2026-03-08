@@ -96,6 +96,7 @@ interface PackageData {
   package_type: string;
   condition_flags: string[];
   photos: UploadedPhoto[];
+  warehouse_location_id: string;
 }
 
 interface WrReceiptFormProps {
@@ -127,6 +128,7 @@ function emptyPackage(tracking = ""): PackageData {
     package_type: "Box",
     condition_flags: ["sin_novedad"],
     photos: [],
+    warehouse_location_id: "",
   };
 }
 
@@ -181,7 +183,7 @@ export function WrReceiptForm({
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
-  const [warehouseLocationId, setWarehouseLocationId] = useState("");
+  // warehouseLocationId is now per-package (in PackageData)
 
   // Package state
   const [packages, setPackages] = useState<PackageData[]>([emptyPackage()]);
@@ -609,7 +611,6 @@ export function WrReceiptForm({
           formData.set("consignee_name", consigneeSearch.trim());
         }
         if (notes) formData.set("notes", notes);
-        if (warehouseLocationId) formData.set("warehouse_location_id", warehouseLocationId);
         if (shipperName.trim()) formData.set("shipper_name", shipperName.trim());
         if (masterTracking.trim()) formData.set("master_tracking", masterTracking.trim());
         if (description.trim()) formData.set("description", description.trim());
@@ -642,6 +643,7 @@ export function WrReceiptForm({
               package_type: p.package_type || null,
               notes: p.pkg_notes || null,
               condition_flags: p.condition_flags,
+              warehouse_location_id: p.warehouse_location_id || undefined,
             })),
           ),
         );
@@ -679,7 +681,7 @@ export function WrReceiptForm({
       }
     });
   }, [
-    warehouseId, agencyId, consigneeId, consigneeSearch, notes, warehouseLocationId,
+    warehouseId, agencyId, consigneeId, consigneeSearch, notes,
     shipperName, masterTracking, description, wrNumber,
     carrier, packages, attachments, wrNumberError, notify,
   ]);
@@ -701,7 +703,6 @@ export function WrReceiptForm({
     setDescription("");
     setNotes("");
     setAttachments([]);
-    setWarehouseLocationId("");
     setDuplicateInfo(null);
     setCreatedWr(null);
     setError(null);
@@ -1222,29 +1223,6 @@ export function WrReceiptForm({
           </div>
         </FormSection>
 
-        {/* Warehouse Location (if available) */}
-        {warehouseLocations.length > 0 && (
-          <FormSection title="Ubicación" icon={Building2}>
-            <div>
-              <label className="mb-1.5 block text-sm text-gray-600">
-                Ubicación en bodega
-              </label>
-              <select
-                value={warehouseLocationId}
-                onChange={(e) => setWarehouseLocationId(e.target.value)}
-                className={inputCls}
-              >
-                <option value="">Sin asignar</option>
-                {warehouseLocations.map((loc) => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.zone_name ? `${loc.zone_name} — ` : ""}
-                    {loc.location_code}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </FormSection>
-        )}
       </FormCard>
 
       {/* ----------------------------------------------------------------- */}
@@ -1257,6 +1235,7 @@ export function WrReceiptForm({
           index={pkgIndex}
           total={packages.length}
           warehouseId={warehouseId}
+          warehouseLocations={warehouseLocations}
           onUpdate={(field, value) => updatePackage(pkgIndex, field, value)}
           onRemove={packages.length > 1 ? () => removePackage(pkgIndex) : undefined}
         />
@@ -1597,6 +1576,7 @@ function PackageCard({
   index,
   total,
   warehouseId,
+  warehouseLocations,
   onUpdate,
   onRemove,
 }: {
@@ -1604,6 +1584,7 @@ function PackageCard({
   index: number;
   total: number;
   warehouseId: string;
+  warehouseLocations: WarehouseLocation[];
   onUpdate: (field: keyof PackageData, value: string | boolean | string[] | UploadedPhoto[]) => void;
   onRemove?: () => void;
 }) {
@@ -1778,6 +1759,28 @@ function PackageCard({
             />
           </div>
         </div>
+
+        {/* Location */}
+        {warehouseLocations.length > 0 && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Ubicación en bodega
+            </label>
+            <select
+              value={pkg.warehouse_location_id}
+              onChange={(e) => onUpdate("warehouse_location_id", e.target.value)}
+              className={inputCls}
+            >
+              <option value="">Sin asignar</option>
+              {warehouseLocations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.zone_name ? `${loc.zone_name} — ` : ""}
+                  {loc.location_code}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Photos */}
         <div>

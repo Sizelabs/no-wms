@@ -155,7 +155,6 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
     agency_id: (formData.get("agency_id") as string) || null,
     consignee_id: (formData.get("consignee_id") as string) || null,
     consignee_name: (formData.get("consignee_name") as string) || undefined,
-    warehouse_location_id: (formData.get("warehouse_location_id") as string) || undefined,
     notes: (formData.get("notes") as string) || undefined,
     client_id: (formData.get("client_id") as string) || undefined,
     shipper_name: (formData.get("shipper_name") as string) || undefined,
@@ -253,7 +252,6 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       is_unknown: !input.agency_id,
       consignee_id: input.consignee_id ?? null,
       consignee_name: input.consignee_name ?? null,
-      warehouse_location_id: input.warehouse_location_id ?? null,
       notes: input.notes ?? null,
       shipper_name: input.shipper_name ?? null,
       master_tracking: input.master_tracking ?? null,
@@ -293,6 +291,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
       pieces_count: pkg.pieces_count,
       package_type: pkg.package_type ?? null,
       condition_flags: pkg.condition_flags ?? ["sin_novedad"],
+      warehouse_location_id: pkg.warehouse_location_id ?? null,
     })),
   ).select("id");
 
@@ -727,7 +726,7 @@ export async function getWarehouseReceipt(id: string) {
   const { data, error } = await supabase
     .from("warehouse_receipts")
     .select(
-      "*, agencies(name, code, type, couriers(name, code)), consignees(full_name, casillero), warehouses(name, code, city, country, full_address, phone, email), profiles:received_by(full_name), warehouse_locations:warehouse_location_id(name, code, warehouse_zones:zone_id(name, code)), packages(*), wr_photos(*), wr_attachments(*), wr_status_history(*, profiles:changed_by(full_name)), wr_notes(*, profiles:created_by(full_name))",
+      "*, agencies(name, code, type, couriers(name, code)), consignees(full_name, casillero), warehouses(name, code, city, country, full_address, phone, email), profiles:received_by(full_name), packages(*, warehouse_locations:warehouse_location_id(name, code, warehouse_zones:zone_id(name, code))), wr_photos(*), wr_attachments(*), wr_status_history(*, profiles:changed_by(full_name)), wr_notes(*, profiles:created_by(full_name))",
     )
     .eq("id", id)
     .single();
@@ -836,7 +835,6 @@ export async function getWarehouseReceiptForPrint(id: string) {
 // ---------------------------------------------------------------------------
 
 const WR_EDITABLE_FIELDS = [
-  "warehouse_location_id",
   "consignee_id",
   "consignee_name",
   "shipper_name",
@@ -881,8 +879,6 @@ export async function updateWarehouseReceiptField(
   } else if (field === "consignee_name") {
     updateData.consignee_name = value || null;
     updateData.consignee_id = null;
-  } else if (field === "warehouse_location_id") {
-    updateData.warehouse_location_id = value || null;
   } else if (field === "wr_number") {
     const trimmed = value.trim();
     if (!trimmed) return { error: "El numero de WR no puede estar vacio" };
@@ -944,6 +940,7 @@ const PKG_EDITABLE_FIELDS = [
   "damage_description",
   "is_dgr",
   "dgr_class",
+  "warehouse_location_id",
 ] as const;
 
 type PkgEditableField = (typeof PKG_EDITABLE_FIELDS)[number];

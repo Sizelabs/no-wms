@@ -20,6 +20,7 @@ export const createPackageSchema = z.object({
   package_type: z.enum(PACKAGE_TYPES).nullish(),
   notes: z.string().nullish(),
   condition_flags: z.array(z.string()).optional().default(["sin_novedad"]),
+  warehouse_location_id: z.string().uuid().optional(),
 });
 
 export type CreatePackageInput = z.infer<typeof createPackageSchema>;
@@ -29,7 +30,6 @@ export const createWarehouseReceiptSchema = z.object({
   agency_id: z.string().uuid().nullable().optional(),
   consignee_id: z.string().uuid().nullable().optional(),
   consignee_name: z.string().optional(),
-  warehouse_location_id: z.string().uuid().optional(),
   notes: z.string().optional(),
   client_id: z.string().optional(),
   shipper_name: z.string().optional(),

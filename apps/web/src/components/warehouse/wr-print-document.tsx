@@ -24,6 +24,12 @@ interface PrintPackage {
   pieces_count: number;
   package_type: string | null;
   declared_value_usd: number | null;
+  warehouse_location_id: string | null;
+  warehouse_locations: {
+    name: string;
+    code: string;
+    warehouse_zones: { name: string; code: string } | { name: string; code: string }[] | null;
+  } | null;
 }
 
 interface WrPrintDocumentProps {
@@ -60,11 +66,6 @@ interface WrPrintDocumentProps {
       email: string | null;
     } | null;
     profiles: { full_name: string } | null;
-    warehouse_locations: {
-      name: string;
-      code: string;
-      warehouse_zones: { name: string; code: string } | { name: string; code: string }[] | null;
-    } | null;
     packages: PrintPackage[] | null;
     wr_notes: { id: string; content: string; created_at: string }[] | null;
   };
@@ -117,9 +118,6 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
   const courierName = courier
     ? Array.isArray(courier) ? courier[0]?.name : courier.name
     : null;
-
-  const zone = wr.warehouse_locations?.warehouse_zones;
-  const zoneName = zone ? (Array.isArray(zone) ? zone[0]?.name : zone.name) : null;
 
   const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
 
@@ -205,7 +203,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
       </div>
 
       {/* ── 2. Receipt details strip ── */}
-      <div className="grid grid-cols-4 gap-4 border-b border-slate-200 bg-slate-50/60 px-4 py-3 text-[10px] print:bg-slate-50">
+      <div className="grid grid-cols-3 gap-4 border-b border-slate-200 bg-slate-50/60 px-4 py-3 text-[10px] print:bg-slate-50">
         <div>
           <p className="text-slate-400">Fecha / Date</p>
           <p className="font-medium text-slate-700">{receivedDate}</p>
@@ -213,14 +211,6 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
         <div>
           <p className="text-slate-400">Recibido por</p>
           <p className="font-medium text-slate-700">{wr.profiles?.full_name ?? "—"}</p>
-        </div>
-        <div>
-          <p className="text-slate-400">Ubicacion</p>
-          <p className="font-medium text-slate-700">
-            {wr.warehouse_locations
-              ? `${zoneName ? `${zoneName} / ` : ""}${wr.warehouse_locations.code}`
-              : "—"}
-          </p>
         </div>
         <div>
           <p className="text-slate-400">Bodega</p>
@@ -291,13 +281,14 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <table className="w-full table-fixed text-[10px]">
               <colgroup>
+                <col className="w-[4%]" />
+                <col className="w-[28%]" />
                 <col className="w-[5%]" />
-                <col className="w-[33%]" />
-                <col className="w-[6%]" />
-                <col className="w-[10%]" />
-                <col className="w-[16%]" />
-                <col className="w-[15%]" />
-                <col className="w-[15%]" />
+                <col className="w-[9%]" />
+                <col className="w-[12%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
               </colgroup>
               <thead>
                 <tr className="bg-slate-50 text-left text-[9px] font-semibold uppercase tracking-wider text-slate-400">
@@ -308,6 +299,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                   <th className="px-2 py-2 text-right">Peso Real (lb)</th>
                   <th className="px-2 py-2 text-right">Dim (in)</th>
                   <th className="px-2 py-2 text-right">Peso Cobrable (lb)</th>
+                  <th className="px-2 py-2">Ubicacion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -328,6 +320,15 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                     <td className="px-2 py-1.5 text-right tabular-nums font-medium">
                       {pkg.billable_weight_lb ?? "—"}
                     </td>
+                    <td className="px-2 py-1.5">
+                      {(() => {
+                        const loc = pkg.warehouse_locations;
+                        if (!loc) return "—";
+                        const z = loc.warehouse_zones;
+                        const zName = z ? (Array.isArray(z) ? z[0]?.name : z.name) : null;
+                        return zName ? `${zName} / ${loc.code}` : loc.code;
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -345,6 +346,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
                   <td className="px-2 py-2 text-right tabular-nums">
                     {wr.total_billable_weight_lb ?? "—"} lb
                   </td>
+                  <td className="px-2 py-2" />
                 </tr>
               </tfoot>
             </table>
