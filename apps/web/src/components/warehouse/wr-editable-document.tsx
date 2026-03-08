@@ -443,9 +443,16 @@ function NewPackageModal({
   const [isDgr, setIsDgr] = useState(false);
   const [dgrClass, setDgrClass] = useState("");
   const [saving, setSaving] = useState(false);
+  const trackingRef = useRef<HTMLInputElement>(null);
 
-  const fields: { label: string; key: string; value: string; setter: (v: string) => void; type?: string; mono?: boolean; half?: boolean }[] = [
-    { label: "Tracking", key: "tracking_number", value: tracking, setter: setTracking, mono: true },
+  useEffect(() => {
+    // Focus after modal animation renders
+    const t = setTimeout(() => trackingRef.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  const fields: { label: string; key: string; value: string; setter: (v: string) => void; type?: string; mono?: boolean; half?: boolean; ref?: React.RefObject<HTMLInputElement | null> }[] = [
+    { label: "Tracking", key: "tracking_number", value: tracking, setter: setTracking, mono: true, ref: trackingRef },
     { label: "Carrier", key: "carrier", value: carrier, setter: setCarrier },
     { label: "Remitente", key: "sender_name", value: senderName, setter: setSenderName },
     { label: "Tipo", key: "package_type", value: pkgType, setter: setPkgType, type: "select" },
@@ -540,6 +547,7 @@ function NewPackageModal({
                 </select>
               ) : (
                 <input
+                  ref={f.ref}
                   type={f.type === "number" ? "number" : "text"}
                   step={f.type === "number" ? "any" : undefined}
                   value={f.value}
@@ -548,7 +556,6 @@ function NewPackageModal({
                     if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                   }}
                   className={`${platformInputClass} ${f.mono ? "font-mono" : ""}`}
-                  autoFocus={f.key === "tracking_number"}
                 />
               )}
             </div>
@@ -783,6 +790,7 @@ export function WrEditableDocument({
   backHref,
 }: WrEditableDocumentProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
+  const printBarcodeRef = useRef<SVGSVGElement>(null);
   const documentRef = useRef<HTMLDivElement>(null);
   const { notify } = useNotification();
 
@@ -807,15 +815,9 @@ export function WrEditableDocument({
 
   /* ── Barcode ── */
   useEffect(() => {
-    if (barcodeRef.current) {
-      JsBarcode(barcodeRef.current, wrNumber, {
-        format: "CODE128",
-        width: 1.5,
-        height: 36,
-        displayValue: false,
-        margin: 0,
-      });
-    }
+    const opts = { format: "CODE128" as const, width: 1.5, height: 36, displayValue: false, margin: 0 };
+    if (barcodeRef.current) JsBarcode(barcodeRef.current, wrNumber, opts);
+    if (printBarcodeRef.current) JsBarcode(printBarcodeRef.current, wrNumber, opts);
   }, [wrNumber]);
 
   /* ── Derived ── */
@@ -984,7 +986,7 @@ export function WrEditableDocument({
     const filename = `[NOWMS] ${wrNumber} - ${date}.pdf`;
     html2pdf()
       .set({
-        margin: [0.4, 0.5, 0.4, 0.5],
+        margin: [0.3, 0.5, 0.3, 0.5],
         filename,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
@@ -1428,9 +1430,46 @@ export function WrEditableDocument({
           ══════════════════════════════════════════════════ */}
       <div className="flex-1 overflow-y-auto p-6 lg:pl-3 print:overflow-visible print:p-0">
       <div ref={documentRef} className="mx-auto max-w-[7.5in] overflow-hidden rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
-      <div className="px-8 py-6 print:px-[0.5in] print:py-[0.4in]">
-        {/* ── 1. Header ── */}
-        <div className="border-b border-slate-200 pb-4">
+      <table className="block w-full border-collapse print:table">
+        {/* ── Repeating print header (appears on every printed page) ── */}
+        <thead className="hidden print:table-header-group">
+          <tr><td className="pb-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  {org?.logo_url && (
+                    <img src={org.logo_url} alt="" className="h-9 w-9 rounded-md object-contain" />
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{org?.name ?? "Warehouse"}</p>
+                    {wr.warehouses?.full_address && (
+                      <p className="text-[13px] text-slate-400">{wr.warehouses.full_address}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <svg ref={printBarcodeRef} />
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <p className="font-mono text-xl font-bold tracking-tight text-slate-900">{wrNumber}</p>
+                <QRCodeSVG value={wrNumber} size={56} level="M" marginSize={0} />
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <div className="h-px flex-1 bg-slate-100" />
+              <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                Recibo de Bodega &middot; Warehouse Receipt
+              </p>
+              <div className="h-px flex-1 bg-slate-100" />
+            </div>
+          </td></tr>
+        </thead>
+        <tbody className="block print:table-row-group">
+          <tr className="block print:table-row">
+            <td className="block print:table-cell px-8 py-6 print:p-0">
+        {/* ── 1. Header (screen only; print uses repeating thead) ── */}
+        <div className="border-b border-slate-200 pb-4 print:hidden">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3">
@@ -1547,7 +1586,7 @@ export function WrEditableDocument({
         </div>
 
         {/* ── 3. Parties ── */}
-        <div className="grid grid-cols-2 gap-4 border-b border-slate-200 py-4">
+        <div className="grid grid-cols-2 gap-4 border-b border-slate-200 py-4 break-inside-avoid">
           {/* Shipper */}
           <div className="rounded-lg border border-slate-200 px-4 py-3">
             <SectionLabel>Remitente / Shipper</SectionLabel>
@@ -1774,7 +1813,7 @@ export function WrEditableDocument({
         </div>
 
         {/* ── 5. Condition ── */}
-        <div className="border-b border-slate-200 py-3">
+        <div className="border-b border-slate-200 py-3 break-inside-avoid">
           <SectionLabel>Condicion de ingreso / Condition on Arrival</SectionLabel>
           <ConditionFlagsInlineEdit wrId={wr.id} flags={flags} onFlagsChange={handleFlagsChanged} />
         </div>
@@ -1802,40 +1841,21 @@ export function WrEditableDocument({
         </div>
 
         {/* ── 7. Signature (print only) ── */}
-        <div className="hidden border-b border-slate-200 py-4 print:block">
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <SectionLabel>Entregado por / Delivered by</SectionLabel>
-              <div className="mt-6 border-b border-slate-400" />
-              <p className="mt-1 text-[11px] text-slate-500">Nombre / Name</p>
-              <div className="mt-6 border-b border-slate-400" />
-              <p className="mt-1 text-[11px] text-slate-500">Firma / Signature</p>
-              <div className="mt-4 flex gap-6">
-                <div className="flex-1">
-                  <div className="border-b border-slate-400" />
-                  <p className="mt-1 text-[11px] text-slate-500">Fecha / Date</p>
-                </div>
-                <div className="flex-1">
-                  <div className="border-b border-slate-400" />
-                  <p className="mt-1 text-[11px] text-slate-500">Hora / Time</p>
-                </div>
+        <div className="hidden border-b border-slate-200 py-4 break-inside-avoid print:block">
+          <div className="w-1/2">
+            <SectionLabel>Entregado por / Delivered by</SectionLabel>
+            <div className="mt-6 border-b border-slate-400" />
+            <p className="mt-1 text-[11px] text-slate-500">Nombre / Name</p>
+            <div className="mt-6 border-b border-slate-400" />
+            <p className="mt-1 text-[11px] text-slate-500">Firma / Signature</p>
+            <div className="mt-4 flex gap-6">
+              <div className="flex-1">
+                <div className="border-b border-slate-400" />
+                <p className="mt-1 text-[11px] text-slate-500">Fecha / Date</p>
               </div>
-            </div>
-            <div>
-              <SectionLabel>Recibido por / Received by</SectionLabel>
-              <div className="mt-6 border-b border-slate-400" />
-              <p className="mt-1 text-[11px] text-slate-500">Nombre / Name</p>
-              <div className="mt-6 border-b border-slate-400" />
-              <p className="mt-1 text-[11px] text-slate-500">Firma / Signature</p>
-              <div className="mt-4 flex gap-6">
-                <div className="flex-1">
-                  <div className="border-b border-slate-400" />
-                  <p className="mt-1 text-[11px] text-slate-500">Fecha / Date</p>
-                </div>
-                <div className="flex-1">
-                  <div className="border-b border-slate-400" />
-                  <p className="mt-1 text-[11px] text-slate-500">Hora / Time</p>
-                </div>
+              <div className="flex-1">
+                <div className="border-b border-slate-400" />
+                <p className="mt-1 text-[11px] text-slate-500">Hora / Time</p>
               </div>
             </div>
           </div>
@@ -1848,7 +1868,10 @@ export function WrEditableDocument({
             <p>{new Date().toISOString().slice(0, 19).replace("T", " ")} UTC</p>
           </div>
         </div>
-      </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
       </div>
       </div>
 

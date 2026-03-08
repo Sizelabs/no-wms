@@ -42,6 +42,6 @@ input[type="radio"] {
 }
 
 @media print {
-  @page { size: letter portrait; margin: 0; }
+  @page { size: letter portrait; margin: 0.3in 0.5in; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
