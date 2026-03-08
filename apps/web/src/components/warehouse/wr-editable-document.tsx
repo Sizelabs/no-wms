@@ -850,7 +850,52 @@ export function WrEditableDocument({
         margin: [0.3, 0.5, 0.3, 0.5],
         filename,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          onclone: (_doc: Document, clonedEl: HTMLElement) => {
+            // html2canvas can't parse oklch() colors from Tailwind v4.
+            // Convert them to rgb via canvas pixel readback.
+            const cvs = document.createElement("canvas");
+            cvs.width = 1;
+            cvs.height = 1;
+            const ctx = cvs.getContext("2d")!;
+            const cache = new Map<string, string>();
+            function resolve(color: string): string {
+              const cached = cache.get(color);
+              if (cached) return cached;
+              ctx.clearRect(0, 0, 1, 1);
+              ctx.fillStyle = color;
+              ctx.fillRect(0, 0, 1, 1);
+              const d = ctx.getImageData(0, 0, 1, 1).data;
+              const r = d[0] ?? 0, g = d[1] ?? 0, b = d[2] ?? 0, a = d[3] ?? 0;
+              let rgb: string;
+              if (a === 0) rgb = "transparent";
+              else if (a === 255) rgb = `rgb(${r}, ${g}, ${b})`;
+              else rgb = `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
+              cache.set(color, rgb);
+              return rgb;
+            }
+            const colorProps = [
+              "color",
+              "backgroundColor",
+              "borderColor",
+              "borderTopColor",
+              "borderRightColor",
+              "borderBottomColor",
+              "borderLeftColor",
+            ] as const;
+            for (const node of [clonedEl, ...clonedEl.querySelectorAll("*")]) {
+              const cs = getComputedStyle(node);
+              for (const prop of colorProps) {
+                const val = cs[prop];
+                if (typeof val === "string" && val.includes("oklch")) {
+                  (node as HTMLElement).style[prop] = resolve(val);
+                }
+              }
+            }
+          },
+        },
         jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
       })
       .from(el)

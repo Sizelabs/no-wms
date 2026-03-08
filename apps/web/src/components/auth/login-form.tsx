@@ -26,8 +26,20 @@ export function LoginForm({
   labels: { email: string; password: string; login: string; forgotPassword: string };
   forgotPasswordHref: string;
 }) {
+  const isDev = process.env.NODE_ENV === "development";
+
   const [error, formAction] = useActionState(
     async (_prev: string | null, formData: FormData) => {
+      if (isDev) {
+        const email = (formData.get("email") as string) ?? "";
+        if (email && !email.includes("@")) {
+          formData.set("email", `${email}@test.nowms.dev`);
+        }
+        const password = (formData.get("password") as string) ?? "";
+        if (!password) {
+          formData.set("password", "TestPassword1234");
+        }
+      }
       const result = await login(formData);
       return result ?? null;
     },
@@ -52,7 +64,7 @@ export function LoginForm({
         <input
           id="email"
           name="email"
-          type="email"
+          type={isDev ? "text" : "email"}
           required
           autoComplete="email"
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
@@ -70,7 +82,7 @@ export function LoginForm({
           id="password"
           name="password"
           type="password"
-          required
+          required={!isDev}
           autoComplete="current-password"
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
         />

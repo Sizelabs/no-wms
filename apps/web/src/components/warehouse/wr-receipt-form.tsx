@@ -592,18 +592,14 @@ export function WrReceiptForm({
       }
     }
 
-    // Validate photo count
+    // Validate photo count when damaged
     const anyDamaged = packages.some((p) => p.is_damaged);
-    const totalPhotos = packages.reduce((sum, p) => sum + p.photos.length, 0);
-    const minRequired = anyDamaged ? 3 : 1;
-    if (totalPhotos < minRequired) {
-      notify(
-        anyDamaged
-          ? "Se requieren mínimo 3 fotos cuando hay daño"
-          : "Agregue al menos 1 foto del paquete",
-        "error",
-      );
-      return;
+    if (anyDamaged) {
+      const totalPhotos = packages.reduce((sum, p) => sum + p.photos.length, 0);
+      if (totalPhotos < 1) {
+        notify("Se requiere al menos 1 foto cuando hay daño", "error");
+        return;
+      }
     }
 
     if (wrNumberError) {
