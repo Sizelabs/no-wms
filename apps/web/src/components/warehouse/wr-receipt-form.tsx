@@ -172,6 +172,7 @@ export function WrReceiptForm({
   const [isGeneratingWrNumber, setIsGeneratingWrNumber] = useState(false);
   const [wrNumberError, setWrNumberError] = useState<string | null>(null);
   const wrNumberManuallyEdited = useRef(false);
+  const wrNumberRegenCount = useRef(0);
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [agencyId, setAgencyId] = useState("");
   const [shipperName, setShipperName] = useState("");
@@ -370,6 +371,7 @@ export function WrReceiptForm({
     let cancelled = false;
     setIsGeneratingWrNumber(true);
     wrNumberManuallyEdited.current = false;
+    wrNumberRegenCount.current = 0;
     generateWrNumberForWarehouse(warehouseId)
       .then((num) => {
         if (!cancelled) setWrNumber(num);
@@ -407,8 +409,9 @@ export function WrReceiptForm({
       const isUnique = await checkWrNumberUnique(wrNumber.trim(), warehouseId || undefined);
       if (isUnique) {
         setWrNumberError(null);
-      } else if (!wrNumberManuallyEdited.current && warehouseId) {
-        // Auto-generated number is taken — silently regenerate
+      } else if (!wrNumberManuallyEdited.current && warehouseId && wrNumberRegenCount.current < 3) {
+        // Auto-generated number is taken — silently regenerate (max 3 attempts)
+        wrNumberRegenCount.current++;
         const newNum = await generateWrNumberForWarehouse(warehouseId);
         setWrNumber(newNum);
       } else {
@@ -719,6 +722,7 @@ export function WrReceiptForm({
     setPhase("scan");
     // Re-fetch WR number for current warehouse
     wrNumberManuallyEdited.current = false;
+    wrNumberRegenCount.current = 0;
     if (warehouseId) {
       setIsGeneratingWrNumber(true);
       generateWrNumberForWarehouse(warehouseId)
