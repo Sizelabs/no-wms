@@ -5,6 +5,7 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import JsBarcode from "jsbarcode";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
@@ -36,6 +37,41 @@ interface PrintPackage {
   pieces_count: number;
   package_type: string | null;
   declared_value_usd: number | null;
+  is_damaged: boolean;
+  damage_description: string | null;
+  is_dgr: boolean;
+  dgr_class: string | null;
+  sender_name: string | null;
+}
+
+interface WrPhoto {
+  id: string;
+  package_id: string | null;
+  signed_url: string | null;
+  file_name: string;
+  is_damage_photo: boolean;
+}
+
+interface WrAttachment {
+  id: string;
+  signed_url: string | null;
+  file_name: string;
+}
+
+interface WrStatusHistoryEntry {
+  id: string;
+  old_status: string | null;
+  new_status: string;
+  created_at: string;
+  reason: string | null;
+  profiles: { full_name: string } | null;
+}
+
+interface WrNote {
+  id: string;
+  content: string;
+  created_at: string;
+  profiles: { full_name: string } | null;
 }
 
 interface WrEditableDocumentProps {
@@ -54,6 +90,8 @@ interface WrEditableDocumentProps {
     total_billable_weight_lb: number | null;
     total_packages: number | null;
     total_declared_value_usd: number | null;
+    has_damaged_package: boolean;
+    has_dgr_package: boolean;
     agency_id: string | null;
     agencies: {
       name: string;
@@ -81,7 +119,10 @@ interface WrEditableDocumentProps {
     } | null;
     warehouse_location_id: string | null;
     packages: PrintPackage[] | null;
-    wr_notes: { id: string; content: string; created_at: string }[] | null;
+    wr_photos: WrPhoto[] | null;
+    wr_attachments: WrAttachment[] | null;
+    wr_status_history: WrStatusHistoryEntry[] | null;
+    wr_notes: WrNote[] | null;
   };
   settings: Record<string, string>;
   destination: { city: string; country_code: string } | null;
@@ -89,6 +130,7 @@ interface WrEditableDocumentProps {
   warehouseLocations: { id: string; label: string }[];
   orgMembers: { id: string; name: string }[];
   locale: string;
+  backHref?: string;
 }
 
 /* ── Panel input: save-on-blur with live preview ── */
@@ -226,11 +268,17 @@ function PackageEditModal({
   const [height, setHeight] = useState(pkg.height_in != null ? String(pkg.height_in) : "");
   const [pieces, setPieces] = useState(String(pkg.pieces_count));
   const [declaredValue, setDeclaredValue] = useState(pkg.declared_value_usd != null ? String(pkg.declared_value_usd) : "");
+  const [senderName, setSenderName] = useState(pkg.sender_name ?? "");
+  const [isDamaged, setIsDamaged] = useState(pkg.is_damaged);
+  const [damageDesc, setDamageDesc] = useState(pkg.damage_description ?? "");
+  const [isDgr, setIsDgr] = useState(pkg.is_dgr);
+  const [dgrClass, setDgrClass] = useState(pkg.dgr_class ?? "");
   const [saving, setSaving] = useState(false);
 
   const fields: { label: string; field: string; value: string; setter: (v: string) => void; type?: string; mono?: boolean; half?: boolean }[] = [
     { label: "Tracking", field: "tracking_number", value: tracking, setter: setTracking, mono: true },
     { label: "Carrier", field: "carrier", value: carrier, setter: setCarrier },
+    { label: "Remitente", field: "sender_name", value: senderName, setter: setSenderName },
     { label: "Tipo", field: "package_type", value: pkgType, setter: setPkgType, type: "select" },
     { label: "Peso (lb)", field: "actual_weight_lb", value: weight, setter: setWeight, type: "number", half: true },
     { label: "Piezas", field: "pieces_count", value: pieces, setter: setPieces, type: "number", half: true },
@@ -290,6 +338,67 @@ function PackageEditModal({
             </div>
           ))}
         </div>
+
+        {/* Damage / DGR toggles */}
+        <div className="mt-4 space-y-3 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-600">Danado</label>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isDamaged;
+                setIsDamaged(next);
+                handleSaveField("is_damaged", String(next));
+              }}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${isDamaged ? "bg-red-500" : "bg-gray-200"}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${isDamaged ? "translate-x-4.5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+          {isDamaged && (
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">Descripcion del dano</label>
+              <input
+                type="text"
+                value={damageDesc}
+                onChange={(e) => setDamageDesc(e.target.value)}
+                onBlur={() => handleSaveField("damage_description", damageDesc)}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                placeholder="Describir el dano..."
+                className={platformInputClass}
+              />
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-600">Mercancia peligrosa (DGR)</label>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isDgr;
+                setIsDgr(next);
+                handleSaveField("is_dgr", String(next));
+              }}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${isDgr ? "bg-orange-500" : "bg-gray-200"}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${isDgr ? "translate-x-4.5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+          {isDgr && (
+            <div>
+              <label className="mb-1.5 block text-sm text-gray-600">Clase DGR</label>
+              <input
+                type="text"
+                value={dgrClass}
+                onChange={(e) => setDgrClass(e.target.value)}
+                onBlur={() => handleSaveField("dgr_class", dgrClass)}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                placeholder="Ej: 3, 8, 9..."
+                className={platformInputClass}
+              />
+            </div>
+          )}
+        </div>
+
         {saving && (
           <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-400">
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600" />
@@ -456,6 +565,7 @@ export function WrEditableDocument({
   warehouseLocations,
   orgMembers,
   locale,
+  backHref,
 }: WrEditableDocumentProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
   const documentRef = useRef<HTMLDivElement>(null);
@@ -476,7 +586,9 @@ export function WrEditableDocument({
   const [consCas, setConsCas] = useState<string | null>(wr.consignees?.casillero ?? null);
   const [flags, setFlags] = useState<string[]>(wr.condition_flags);
   const [editPkgIndex, setEditPkgIndex] = useState<number | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<"recibo" | "envio" | "contenido" | "paquetes">("recibo");
+  const [sidebarTab, setSidebarTab] = useState<"recibo" | "envio" | "contenido" | "paquetes" | "detalles">("recibo");
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false);
+  const moreActionsRef = useRef<HTMLDivElement>(null);
 
   /* ── Barcode ── */
   useEffect(() => {
@@ -514,6 +626,8 @@ export function WrEditableDocument({
     day: "numeric",
   });
   const receivedByName = orgMembers.find((m) => m.id === receivedBy)?.name ?? wr.profiles?.full_name ?? "—";
+  const storageDays = Math.floor((Date.now() - new Date(wr.received_at).getTime()) / (1000 * 60 * 60 * 24));
+  const daysColor = storageDays > 60 ? "bg-red-50 text-red-700" : storageDays > 30 ? "bg-yellow-50 text-yellow-700" : "bg-green-50 text-green-700";
 
   /* ── Save functions (used by both panel and document) ── */
   const saveWrNumber = useCallback(async (value: string) => {
@@ -644,6 +758,11 @@ export function WrEditableDocument({
             pieces_count: 1,
             package_type: null,
             declared_value_usd: null,
+            is_damaged: false,
+            damage_description: null,
+            is_dgr: false,
+            dgr_class: null,
+            sender_name: null,
           },
         ]);
         setSidebarTab("paquetes");
@@ -667,9 +786,14 @@ export function WrEditableDocument({
           <div className="border-b border-gray-100 px-5 py-3">
             <div className="flex items-center justify-between">
               <p className="truncate font-mono text-base font-bold tracking-tight text-gray-900">{wrNumber}</p>
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusColors[wr.status] ?? "bg-gray-100 text-gray-600"}`}>
-                {statusLabel}
-              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusColors[wr.status] ?? "bg-gray-100 text-gray-600"}`}>
+                  {statusLabel}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${daysColor}`}>
+                  {storageDays}d
+                </span>
+              </div>
             </div>
             {/* Actions */}
             <div className="mt-2 flex gap-2">
@@ -693,6 +817,29 @@ export function WrEditableDocument({
                 </svg>
                 Descargar
               </button>
+              <div className="relative flex" ref={moreActionsRef}>
+                <button
+                  type="button"
+                  onClick={() => setMoreActionsOpen((v) => !v)}
+                  onBlur={(e) => {
+                    if (!moreActionsRef.current?.contains(e.relatedTarget as Node)) {
+                      setMoreActionsOpen(false);
+                    }
+                  }}
+                  className="flex h-full items-center justify-center rounded-lg border border-gray-200 px-2.5 text-gray-500 transition-colors hover:bg-gray-50"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+                  </svg>
+                </button>
+                {moreActionsOpen && (
+                  <div className="absolute right-0 z-10 mt-1 w-56 rounded-md border bg-white py-1 shadow-lg">
+                    <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Crear Orden de Trabajo</button>
+                    <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Agregar a instruccion de embarque</button>
+                    <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50" onClick={() => setMoreActionsOpen(false)}>Registrar novedad</button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -702,7 +849,8 @@ export function WrEditableDocument({
               { key: "recibo" as const, label: "Recibo" },
               { key: "envio" as const, label: "Envio" },
               { key: "contenido" as const, label: "Contenido" },
-              { key: "paquetes" as const, label: `Paquetes (${packages.length})` },
+              { key: "paquetes" as const, label: `Pkgs (${packages.length})` },
+              { key: "detalles" as const, label: "Info" },
             ];
             return (
               <div className="flex border-b border-gray-100">
@@ -865,7 +1013,9 @@ export function WrEditableDocument({
 
             {sidebarTab === "paquetes" && (
               <div className="space-y-1.5">
-                {packages.map((pkg, i) => (
+                {packages.map((pkg, i) => {
+                  const pkgPhotoCount = (wr.wr_photos ?? []).filter((p) => p.package_id === pkg.id).length;
+                  return (
                   <button
                     key={pkg.id}
                     type="button"
@@ -879,16 +1029,29 @@ export function WrEditableDocument({
                       <p className="truncate font-mono text-sm font-medium text-gray-900">
                         {pkg.tracking_number}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="flex items-center gap-1.5 text-xs text-gray-400">
                         {pkg.actual_weight_lb != null ? `${pkg.actual_weight_lb} lb` : "Sin peso"}
                         {pkg.package_type && ` · ${pkg.package_type}`}
+                        {pkg.is_damaged && (
+                          <span className="inline-flex h-4 items-center rounded bg-red-50 px-1 text-[10px] font-medium text-red-600" title={pkg.damage_description ?? "Danado"}>Dano</span>
+                        )}
+                        {pkg.is_dgr && (
+                          <span className="inline-flex h-4 items-center rounded bg-orange-50 px-1 text-[10px] font-medium text-orange-600" title={pkg.dgr_class ? `DGR Clase ${pkg.dgr_class}` : "DGR"}>DGR</span>
+                        )}
+                        {pkgPhotoCount > 0 && (
+                          <span className="inline-flex h-4 items-center gap-0.5 text-gray-400" title={`${pkgPhotoCount} foto(s)`}>
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" /></svg>
+                            {pkgPhotoCount}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
                     </svg>
                   </button>
-                ))}
+                  );
+                })}
                 <button
                   type="button"
                   onClick={handleAddPackage}
@@ -898,6 +1061,122 @@ export function WrEditableDocument({
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                   {addingPkg ? "Agregando..." : "Agregar paquete"}
                 </button>
+              </div>
+            )}
+
+            {sidebarTab === "detalles" && (
+              <div className="space-y-5">
+                {/* Fotos */}
+                {(() => {
+                  const allPhotos = wr.wr_photos ?? [];
+                  return allPhotos.length > 0 ? (
+                    <div>
+                      <SectionLabel>Fotos ({allPhotos.length})</SectionLabel>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {allPhotos.map((photo) => {
+                          const pkg = photo.package_id ? packages.find((p) => p.id === photo.package_id) : null;
+                          return (
+                            <div key={photo.id} className="relative aspect-square overflow-hidden rounded-lg border">
+                              {photo.signed_url ? (
+                                <img src={photo.signed_url} alt={photo.file_name} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="flex h-full items-center justify-center bg-gray-50 text-xs text-gray-400">Error</div>
+                              )}
+                              {photo.is_damage_photo && (
+                                <span className="absolute bottom-1 left-1 rounded bg-red-600 px-1 py-0.5 text-[10px] text-white">Dano</span>
+                              )}
+                              {pkg && (
+                                <span className="absolute top-1 left-1 max-w-[calc(100%-8px)] truncate rounded bg-black/60 px-1 py-0.5 font-mono text-[9px] text-white">
+                                  {pkg.tracking_number}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <SectionLabel>Fotos</SectionLabel>
+                      <p className="text-sm text-gray-400">Sin fotos</p>
+                    </div>
+                  );
+                })()}
+
+                {/* Adjuntos */}
+                <div>
+                  <SectionLabel>Adjuntos ({wr.wr_attachments?.length ?? 0})</SectionLabel>
+                  {wr.wr_attachments?.length ? (
+                    <ul className="space-y-1.5">
+                      {wr.wr_attachments.map((att) => (
+                        <li key={att.id} className="text-sm">
+                          {att.signed_url ? (
+                            <a href={att.signed_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
+                              {att.file_name}
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">{att.file_name} (no disponible)</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-400">Sin adjuntos</p>
+                  )}
+                </div>
+
+                {/* Historial de estados */}
+                <div>
+                  <SectionLabel>Historial de estados</SectionLabel>
+                  {wr.wr_status_history?.length ? (
+                    <div className="space-y-2">
+                      {[...wr.wr_status_history]
+                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                        .map((entry) => (
+                          <div key={entry.id} className="flex items-start gap-2 text-sm">
+                            <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-gray-300" />
+                            <div className="flex-1">
+                              <span className="font-medium">
+                                {WR_STATUS_LABELS[entry.new_status as WrStatus] ?? entry.new_status}
+                              </span>
+                              {entry.old_status && (
+                                <span className="text-gray-400">
+                                  {" "}&larr; {WR_STATUS_LABELS[entry.old_status as WrStatus] ?? entry.old_status}
+                                </span>
+                              )}
+                              {entry.reason && <p className="text-xs text-gray-500">{entry.reason}</p>}
+                              <p className="text-xs text-gray-400">
+                                {new Date(entry.created_at).toLocaleString("es")}
+                                {entry.profiles?.full_name && ` — ${entry.profiles.full_name}`}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">Sin historial</p>
+                  )}
+                </div>
+
+                {/* Notas */}
+                <div>
+                  <SectionLabel>Notas del recibo</SectionLabel>
+                  {wr.wr_notes?.length ? (
+                    <div className="space-y-2">
+                      {wr.wr_notes.map((note) => (
+                        <div key={note.id} className="rounded-md border p-2 text-sm">
+                          <p>{note.content}</p>
+                          <p className="mt-1 text-xs text-gray-400">
+                            {new Date(note.created_at).toLocaleString("es")}
+                            {note.profiles?.full_name && ` — ${note.profiles.full_name}`}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">Sin notas adicionales</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -920,35 +1199,42 @@ export function WrEditableDocument({
         {/* ── 1. Header ── */}
         <div className="border-b border-slate-200 pb-4">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              {org?.logo_url ? (
-                <img src={org.logo_url} alt="" className="h-9 w-9 rounded-md object-contain" />
-              ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-900">
-                  <span className="text-sm font-bold text-white">
-                    {(org?.name ?? wr.warehouses?.name ?? "W")[0]}
-                  </span>
-                </div>
-              )}
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{org?.name ?? wr.warehouses?.name ?? "Warehouse"}</p>
-                {wr.warehouses?.full_address && (
-                  <p className="text-[13px] text-slate-400">{wr.warehouses.full_address}</p>
+            <div>
+              <div className="flex items-center gap-3">
+                {org?.logo_url && (
+                  <img src={org.logo_url} alt="" className="h-9 w-9 rounded-md object-contain" />
                 )}
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{org?.name ?? "Warehouse"}</p>
+                  {wr.warehouses?.full_address && (
+                    <p className="text-[13px] text-slate-400">{wr.warehouses.full_address}</p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-2">
+                <svg ref={barcodeRef} />
               </div>
             </div>
-            <div className="text-right">
-              <p className="font-mono text-xl font-bold tracking-tight text-slate-900">
-                <EditableField
-                  value={wrNumber}
-                  onSave={saveWrNumber}
-                  placeholder="WR-0001"
-                  className="font-mono"
-                />
-              </p>
-              <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[13px] font-medium text-slate-500">
-                {statusLabel}
-              </span>
+            <div className="flex items-start gap-3">
+              <div className="text-right">
+                <p className="font-mono text-xl font-bold tracking-tight text-slate-900">
+                  <EditableField
+                    value={wrNumber}
+                    onSave={saveWrNumber}
+                    placeholder="WR-0001"
+                    className="font-mono"
+                  />
+                </p>
+                <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[13px] font-medium text-slate-500">
+                  {statusLabel}
+                </span>
+              </div>
+              <QRCodeSVG
+                value={wrNumber}
+                size={56}
+                level="M"
+                marginSize={0}
+              />
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2">
@@ -959,6 +1245,24 @@ export function WrEditableDocument({
             <div className="h-px flex-1 bg-slate-100" />
           </div>
         </div>
+
+        {/* ── Damage / DGR alerts ── */}
+        {(wr.has_damaged_package || wr.has_dgr_package) && (
+          <div className="flex gap-2 border-b border-slate-200 px-4 py-2 print:px-0">
+            {wr.has_damaged_package && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+                Contiene paquete(s) danado(s)
+              </span>
+            )}
+            {wr.has_dgr_package && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1 text-xs font-medium text-orange-700">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+                Mercancia peligrosa (DGR)
+              </span>
+            )}
+          </div>
+        )}
 
         {/* ── 2. Receipt details strip ── */}
         <div className="grid grid-cols-4 gap-4 border-b border-slate-200 bg-slate-50/60 px-4 py-3 text-[13px] print:bg-slate-50">
@@ -1129,12 +1433,20 @@ export function WrEditableDocument({
                     <tr key={pkg.id} className="text-slate-700">
                       <td className="px-2 py-1.5 text-slate-400">{i + 1}</td>
                       <td className="px-2 py-1.5 font-mono font-medium">
-                        <EditableField
-                          value={pkg.tracking_number}
-                          onSave={savePkgField(pkg.id, "tracking_number")}
-                          placeholder="Tracking"
-                          className="font-mono"
-                        />
+                        <div className="flex items-center gap-1">
+                          <EditableField
+                            value={pkg.tracking_number}
+                            onSave={savePkgField(pkg.id, "tracking_number")}
+                            placeholder="Tracking"
+                            className="font-mono"
+                          />
+                          {pkg.is_damaged && (
+                            <span className="shrink-0 rounded bg-red-50 px-1 text-[9px] font-semibold text-red-600 print:bg-red-100" title={pkg.damage_description ?? "Danado"}>DMG</span>
+                          )}
+                          {pkg.is_dgr && (
+                            <span className="shrink-0 rounded bg-orange-50 px-1 text-[9px] font-semibold text-orange-600 print:bg-orange-100" title={pkg.dgr_class ? `DGR Clase ${pkg.dgr_class}` : "DGR"}>DGR</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-2 py-1.5">
                         <EditableField
@@ -1243,11 +1555,7 @@ export function WrEditableDocument({
 
         {/* ── 7. Footer ── */}
         <div className="flex items-end justify-between border-t border-slate-200 pt-3">
-          <div>
-            <svg ref={barcodeRef} />
-            <p className="mt-1 font-mono text-[13px] font-medium text-slate-500">{wr.wr_number}</p>
-          </div>
-          <div className="text-right text-[11px] text-slate-400">
+          <div className="text-[11px] text-slate-400">
             <p>UCC Article 7 &middot; FL Stat. Ch. 677</p>
             <p>{new Date().toISOString().slice(0, 19).replace("T", " ")} UTC</p>
           </div>
@@ -1258,12 +1566,21 @@ export function WrEditableDocument({
 
       {/* ── Compact controls for narrow screens ── */}
       <div className="fixed bottom-5 right-5 z-10 flex gap-2 lg:hidden print:hidden">
-        <Link
-          href={`/${locale}/warehouse-receipts/${wr.id}`}
-          className="rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-lg ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+        {backHref && (
+          <Link
+            href={backHref}
+            className="rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-lg ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+          >
+            &larr; Volver
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={() => setSidebarTab("detalles")}
+          className="rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-lg ring-1 ring-gray-200 transition-colors hover:bg-gray-50 lg:hidden"
         >
-          &larr; Volver
-        </Link>
+          Detalles
+        </button>
         <button
           type="button"
           onClick={handlePrint}

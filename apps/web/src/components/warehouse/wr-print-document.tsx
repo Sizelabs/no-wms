@@ -9,6 +9,7 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import JsBarcode from "jsbarcode";
 import { useSearchParams } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef } from "react";
 
 interface PrintPackage {
@@ -156,33 +157,40 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
       {/* ── 1. Header ── */}
       <div className="border-b border-slate-200 pb-4">
         <div className="flex items-start justify-between">
-          {/* Left: Branding */}
-          <div className="flex items-center gap-3">
-            {org?.logo_url ? (
-              <img src={org.logo_url} alt="" className="h-9 w-9 rounded-md object-contain" />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-900">
-                <span className="text-sm font-bold text-white">
-                  {(org?.name ?? "W")[0]}
-                </span>
-              </div>
-            )}
-            <div>
-              <p className="text-sm font-semibold text-slate-900">{org?.name ?? "Warehouse"}</p>
-              {wr.warehouses?.full_address && (
-                <p className="text-[10px] text-slate-400">{wr.warehouses.full_address}</p>
+          {/* Left: Branding + Barcode */}
+          <div>
+            <div className="flex items-center gap-3">
+              {org?.logo_url && (
+                <img src={org.logo_url} alt="" className="h-9 w-9 rounded-md object-contain" />
               )}
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{org?.name ?? "Warehouse"}</p>
+                {wr.warehouses?.full_address && (
+                  <p className="text-[10px] text-slate-400">{wr.warehouses.full_address}</p>
+                )}
+              </div>
+            </div>
+            <div className="mt-2">
+              <svg ref={barcodeRef} />
             </div>
           </div>
 
-          {/* Right: WR Number hero */}
-          <div className="text-right">
-            <p className="font-mono text-xl font-bold tracking-tight text-slate-900">
-              {wr.wr_number}
-            </p>
-            <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-              {statusLabel}
-            </span>
+          {/* Right: WR Number + QR */}
+          <div className="flex items-start gap-3">
+            <div className="text-right">
+              <p className="font-mono text-xl font-bold tracking-tight text-slate-900">
+                {wr.wr_number}
+              </p>
+              <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                {statusLabel}
+              </span>
+            </div>
+            <QRCodeSVG
+              value={wr.wr_number}
+              size={56}
+              level="M"
+              marginSize={0}
+            />
           </div>
         </div>
 
@@ -384,11 +392,7 @@ export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocum
 
       {/* ── 7. Footer ── */}
       <div className="flex items-end justify-between border-t border-slate-200 pt-3">
-        <div>
-          <svg ref={barcodeRef} />
-          <p className="mt-1 font-mono text-[10px] font-medium text-slate-500">{wr.wr_number}</p>
-        </div>
-        <div className="text-right text-[8px] text-slate-400">
+        <div className="text-[8px] text-slate-400">
           <p>UCC Article 7 &middot; FL Stat. Ch. 677</p>
           <p>{new Date().toISOString().slice(0, 19).replace("T", " ")} UTC</p>
         </div>
