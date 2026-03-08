@@ -95,6 +95,85 @@ export function getFilteredNavConfig(perms: RolePermissionMap): NavConfig {
   return { groups, bottomItems };
 }
 
+/* ------------------------------------------------------------------ */
+/*  Settings sub-navigation                                           */
+/* ------------------------------------------------------------------ */
+
+export interface SettingsNavItem {
+  label: string; // i18n key under "settingsNav"
+  href: string;
+  resource?: string; // permission resource needed (read)
+  superAdminOnly?: boolean;
+}
+
+export interface SettingsNavGroup {
+  id: string; // i18n key under "settingsNav" (e.g. "groupOrganization")
+  items: SettingsNavItem[];
+}
+
+export const SETTINGS_GROUPS: SettingsNavGroup[] = [
+  {
+    id: "groupOrganization",
+    items: [
+      { label: "general", href: "/settings" },
+    ],
+  },
+  {
+    id: "groupNetwork",
+    items: [
+      { label: "forwarders", href: "/settings/forwarders", resource: "forwarders" },
+      { label: "warehouses", href: "/settings/warehouses", resource: "warehouses" },
+      { label: "couriers", href: "/settings/couriers", resource: "couriers" },
+    ],
+  },
+  {
+    id: "groupAccess",
+    items: [
+      { label: "users", href: "/settings/users", resource: "users" },
+      { label: "permissions", href: "/settings/permissions", superAdminOnly: true },
+    ],
+  },
+  {
+    id: "groupCatalog",
+    items: [
+      { label: "destinations", href: "/settings/destinations", resource: "destinations" },
+      { label: "modalities", href: "/settings/modalities", resource: "modalities" },
+      { label: "handlingCosts", href: "/settings/handling-costs", resource: "handling_costs" },
+    ],
+  },
+  {
+    id: "groupPlatform",
+    items: [
+      { label: "integrations", href: "/settings/integrations" },
+      { label: "notifications", href: "/settings/notifications" },
+      { label: "billing", href: "/settings/billing" },
+    ],
+  },
+];
+
+/**
+ * Filter settings groups by permissions + super_admin flag.
+ * Used by both the sidebar flyout (server-side) and the settings sidebar (client-side).
+ */
+export function getFilteredSettingsGroups(
+  perms: RolePermissionMap,
+  isSuperAdmin: boolean,
+): SettingsNavGroup[] {
+  return SETTINGS_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (item.superAdminOnly && !isSuperAdmin) return false;
+        if (item.resource) {
+          const perm = perms[item.resource as keyof RolePermissionMap];
+          if (!perm?.read) return false;
+        }
+        return true;
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
 // Keep old function for backwards compat during migration (used by require-permission.ts)
 export function getNavForPermissions(perms: RolePermissionMap): NavItem[] {
   const config = getFilteredNavConfig(perms);

@@ -9,7 +9,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { getRolePermissions } from "@/lib/actions/permissions";
 import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds, getUserRoleAssignments } from "@/lib/auth/roles";
-import { getFilteredNavConfig, getPrimaryRole } from "@/lib/navigation";
+import { getFilteredNavConfig, getFilteredSettingsGroups, getPrimaryRole } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -38,6 +38,8 @@ export default async function DashboardLayout({
   const primaryRole = getPrimaryRole(roles);
   const permissions = await getRolePermissions(primaryRole);
   const navConfig = getFilteredNavConfig(permissions);
+  const isSuperAdmin = roles.includes("super_admin");
+  const settingsGroups = getFilteredSettingsGroups(permissions, isSuperAdmin);
   const userName =
     user.user_metadata?.full_name ??
     user.email ??
@@ -63,6 +65,7 @@ export default async function DashboardLayout({
       <div className="print:hidden">
         <Sidebar
           navConfig={navConfig}
+          settingsGroups={settingsGroups}
           locale={locale}
           defaultCollapsed={defaultCollapsed}
         />
