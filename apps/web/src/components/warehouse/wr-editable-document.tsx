@@ -19,6 +19,7 @@ import { ConditionFlagsInlineEdit } from "@/components/warehouse/condition-flags
 import { ConsigneeInlineEdit } from "@/components/warehouse/consignee-inline-edit";
 import { searchConsignees } from "@/lib/actions/consignees";
 import {
+  addPackageToWarehouseReceipt,
   updatePackageField,
   updateWarehouseReceiptField,
 } from "@/lib/actions/warehouse-receipts";
@@ -457,6 +458,7 @@ export function WrEditableDocument({
   locale,
 }: WrEditableDocumentProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
+  const documentRef = useRef<HTMLDivElement>(null);
   const { notify } = useNotification();
 
   /* ── Lifted state (shared between panel + document) ── */
@@ -494,7 +496,7 @@ export function WrEditableDocument({
   const courierName = courier
     ? Array.isArray(courier) ? courier[0]?.name : courier.name
     : null;
-  const packages = wr.packages ?? [];
+  const [packages, setPackages] = useState<PrintPackage[]>(wr.packages ?? []);
   const destLabel = destination ? `${destination.city}, ${destination.country_code}` : null;
   const statusLabel = WR_STATUS_LABELS[wr.status as WrStatus] ?? wr.status;
   const statusColors: Record<string, string> = {
@@ -599,6 +601,56 @@ export function WrEditableDocument({
     document.title = originalTitle;
   }, [wrNumber, receivedAt]);
 
+  const handleDownload = useCallback(async () => {
+    const el = documentRef.current;
+    if (!el) return;
+    const html2pdf = (await import("html2pdf.js")).default;
+    const date = new Date(receivedAt).toISOString().slice(0, 10);
+    const filename = `[NOWMS] ${wrNumber} - ${date}.pdf`;
+    html2pdf()
+      .set({
+        margin: [0.4, 0.5, 0.4, 0.5],
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+      })
+      .from(el)
+      .save();
+  }, [wrNumber, receivedAt]);
+
+  const [addingPkg, startAddPkg] = useTransition();
+  const handleAddPackage = useCallback(() => {
+    const tracking = prompt("Tracking number del nuevo paquete:");
+    if (!tracking?.trim()) return;
+    startAddPkg(async () => {
+      const result = await addPackageToWarehouseReceipt(wr.id, tracking);
+      if (result.error) {
+        notify(result.error, "error");
+        return;
+      }
+      if (result.data) {
+        setPackages((prev) => [
+          ...prev,
+          {
+            id: result.data!.id,
+            tracking_number: result.data!.tracking_number,
+            carrier: null,
+            actual_weight_lb: null,
+            billable_weight_lb: null,
+            length_in: null,
+            width_in: null,
+            height_in: null,
+            pieces_count: 1,
+            package_type: null,
+            declared_value_usd: null,
+          },
+        ]);
+        setSidebarTab("paquetes");
+      }
+    });
+  }, [wr.id, notify]);
+
   const packageTypeOptions = PACKAGE_TYPES.map((pt) => ({
     value: pt,
     label: pt,
@@ -633,7 +685,7 @@ export function WrEditableDocument({
               </button>
               <button
                 type="button"
-                onClick={handlePrint}
+                onClick={handleDownload}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -813,34 +865,39 @@ export function WrEditableDocument({
 
             {sidebarTab === "paquetes" && (
               <div className="space-y-1.5">
-                {packages.length > 0 ? (
-                  packages.map((pkg, i) => (
-                    <button
-                      key={pkg.id}
-                      type="button"
-                      onClick={() => setEditPkgIndex(i)}
-                      className="flex w-full items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 text-left transition-colors hover:border-gray-200 hover:bg-gray-50"
-                    >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs font-medium text-gray-500">
-                        {i + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-mono text-sm font-medium text-gray-900">
-                          {pkg.tracking_number}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {pkg.actual_weight_lb != null ? `${pkg.actual_weight_lb} lb` : "Sin peso"}
-                          {pkg.package_type && ` · ${pkg.package_type}`}
-                        </p>
-                      </div>
-                      <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-                      </svg>
-                    </button>
-                  ))
-                ) : (
-                  <p className="py-4 text-center text-sm text-gray-400">Sin paquetes</p>
-                )}
+                {packages.map((pkg, i) => (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => setEditPkgIndex(i)}
+                    className="flex w-full items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 text-left transition-colors hover:border-gray-200 hover:bg-gray-50"
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs font-medium text-gray-500">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-sm font-medium text-gray-900">
+                        {pkg.tracking_number}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {pkg.actual_weight_lb != null ? `${pkg.actual_weight_lb} lb` : "Sin peso"}
+                        {pkg.package_type && ` · ${pkg.package_type}`}
+                      </p>
+                    </div>
+                    <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                    </svg>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={handleAddPackage}
+                  disabled={addingPkg}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                  {addingPkg ? "Agregando..." : "Agregar paquete"}
+                </button>
               </div>
             )}
           </div>
@@ -858,7 +915,7 @@ export function WrEditableDocument({
           DOCUMENT — Live preview with inline editing
           ══════════════════════════════════════════════════ */}
       <div className="flex-1 overflow-y-auto p-6 lg:pl-3 print:overflow-visible print:p-0">
-      <div className="mx-auto max-w-[7.5in] overflow-hidden rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
+      <div ref={documentRef} className="mx-auto max-w-[7.5in] overflow-hidden rounded-sm bg-white text-slate-900 shadow-xl ring-1 ring-slate-200/60 print:max-w-none print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
       <div className="px-8 py-6 print:px-[0.5in] print:py-[0.4in]">
         {/* ── 1. Header ── */}
         <div className="border-b border-slate-200 pb-4">
@@ -1145,6 +1202,15 @@ export function WrEditableDocument({
               </table>
             </div>
           )}
+          <button
+            type="button"
+            onClick={handleAddPackage}
+            disabled={addingPkg}
+            className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 transition-colors hover:text-blue-800 disabled:opacity-50 print:hidden"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            {addingPkg ? "Agregando..." : "Agregar paquete"}
+          </button>
         </div>
 
         {/* ── 5. Condition ── */}
