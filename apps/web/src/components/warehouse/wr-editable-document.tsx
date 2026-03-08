@@ -854,17 +854,19 @@ export function WrEditableDocument({
           scale: 2,
           useCORS: true,
           onclone: (_doc: Document, clonedEl: HTMLElement) => {
-            // html2canvas can't parse oklch() colors from Tailwind v4.
-            // Convert them to rgb via canvas pixel readback.
+            // html2canvas can't parse oklch/oklab/lch/lab color functions
+            // from Tailwind v4. Convert them to rgb via canvas pixel readback.
             const cvs = document.createElement("canvas");
             cvs.width = 1;
             cvs.height = 1;
             const ctx = cvs.getContext("2d")!;
             const cache = new Map<string, string>();
-            function resolve(color: string): string {
+
+            function resolveColor(color: string): string {
               const cached = cache.get(color);
               if (cached) return cached;
               ctx.clearRect(0, 0, 1, 1);
+              ctx.fillStyle = "#000";
               ctx.fillStyle = color;
               ctx.fillRect(0, 0, 1, 1);
               const d = ctx.getImageData(0, 0, 1, 1).data;
@@ -876,6 +878,19 @@ export function WrEditableDocument({
               cache.set(color, rgb);
               return rgb;
             }
+
+            // Matches oklch(...), oklab(...), lch(...), lab(...)
+            const modernColorRe = /(?:ok)?(?:lch|lab)\([^)]+\)/g;
+
+            function hasModernColor(val: string): boolean {
+              return val.includes("lch(") || val.includes("lab(");
+            }
+
+            function convertColors(val: string): string {
+              return val.replace(modernColorRe, resolveColor);
+            }
+
+            // Simple color properties (value is a single color)
             const colorProps = [
               "color",
               "backgroundColor",
@@ -884,13 +899,27 @@ export function WrEditableDocument({
               "borderRightColor",
               "borderBottomColor",
               "borderLeftColor",
+              "outlineColor",
+              "textDecorationColor",
+              "caretColor",
             ] as const;
+
+            // Complex properties that may embed colors (e.g. box-shadow)
+            const complexProps = ["boxShadow"] as const;
+
             for (const node of [clonedEl, ...clonedEl.querySelectorAll("*")]) {
-              const cs = getComputedStyle(node);
+              const el = node as HTMLElement;
+              const cs = getComputedStyle(el);
               for (const prop of colorProps) {
                 const val = cs[prop];
-                if (typeof val === "string" && val.includes("oklch")) {
-                  (node as HTMLElement).style[prop] = resolve(val);
+                if (typeof val === "string" && hasModernColor(val)) {
+                  el.style[prop] = resolveColor(val);
+                }
+              }
+              for (const prop of complexProps) {
+                const val = cs[prop];
+                if (typeof val === "string" && hasModernColor(val)) {
+                  el.style[prop] = convertColors(val);
                 }
               }
             }

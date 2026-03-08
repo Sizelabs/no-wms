@@ -596,7 +596,7 @@ export function WrReceiptForm({
     const anyDamaged = packages.some((p) => p.is_damaged);
     if (anyDamaged) {
       const totalPhotos = packages.reduce((sum, p) => sum + p.photos.length, 0);
-      if (totalPhotos < 1) {
+      if (totalPhotos === 0) {
         notify("Se requiere al menos 1 foto cuando hay daño", "error");
         return;
       }
@@ -1799,7 +1799,7 @@ function PackageCard({
           <PhotoUpload
             bucket="wr-photos"
             folder={photoFolder}
-            minPhotos={pkg.is_damaged ? 3 : 1}
+            minPhotos={pkg.is_damaged ? 1 : 0}
             maxPhotos={10}
             isDamageMode={pkg.is_damaged}
             onPhotosChange={(photos) => onUpdate("photos", photos)}
