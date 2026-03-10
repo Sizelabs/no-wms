@@ -177,7 +177,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     consignees: FULL,
     warehouse_receipts: READ,
     inventory: READ,
-    work_orders: READ,
+    work_orders: crud(true, true, false, false),
     shipping: crud(false, true, true, false),
     manifests: crud(false, true, true, false),
     tariffs: crud(false, true, true, false),
