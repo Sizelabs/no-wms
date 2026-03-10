@@ -83,7 +83,8 @@
     "groupNetwork": "Red",
     "groupAccess": "Acceso",
     "groupCatalog": "Catálogo",
-    "groupPlatform": "Plataforma"
+    "groupPlatform": "Plataforma",
+    "locations": "Ubicaciones"
   },
   "couriers": {
     "title": "Couriers",

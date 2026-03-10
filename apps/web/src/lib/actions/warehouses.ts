@@ -1,5 +1,6 @@
 "use server";
 
+import { DEFAULT_WAREHOUSE_ZONES } from "@no-wms/shared/constants/locations";
 import { revalidatePath } from "next/cache";
 
 import { getUserWarehouseScope } from "@/lib/auth/scope";
@@ -62,17 +63,56 @@ export async function createWarehouse(formData: FormData): Promise<void> {
     throw new Error(`Ya existe una bodega con el código "${code}"`);
   }
 
-  const { error } = await supabase.from("warehouses").insert({
-    organization_id: formData.get("organization_id") as string,
-    name: formData.get("name") as string,
-    code,
-    city: (formData.get("city") as string) || null,
-    country: (formData.get("country") as string) || null,
-    timezone: (formData.get("timezone") as string) || "America/New_York",
-  });
+  const orgId = formData.get("organization_id") as string;
+
+  const { data: newWarehouse, error } = await supabase
+    .from("warehouses")
+    .insert({
+      organization_id: orgId,
+      name: formData.get("name") as string,
+      code,
+      city: (formData.get("city") as string) || null,
+      country: (formData.get("country") as string) || null,
+      timezone: (formData.get("timezone") as string) || "America/New_York",
+    })
+    .select("id")
+    .single();
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  // Create default zones for the new warehouse
+  if (newWarehouse) {
+    const zones = DEFAULT_WAREHOUSE_ZONES.map((z) => ({
+      organization_id: orgId,
+      warehouse_id: newWarehouse.id,
+      name: z.name,
+      code: z.code,
+      zone_type: z.zone_type,
+      sort_order: z.sort_order,
+    }));
+    await supabase.from("warehouse_zones").insert(zones);
+
+    // Create virtual DISPATCH location in the staging zone
+    const { data: stagingZone } = await supabase
+      .from("warehouse_zones")
+      .select("id")
+      .eq("warehouse_id", newWarehouse.id)
+      .eq("zone_type", "staging")
+      .single();
+
+    if (stagingZone) {
+      await supabase.from("warehouse_locations").insert({
+        organization_id: orgId,
+        zone_id: stagingZone.id,
+        warehouse_id: newWarehouse.id,
+        name: "Despacho Virtual",
+        code: "DISPATCH",
+        barcode: `${code}-DES-DISPATCH`,
+        sort_order: 9999,
+      });
+    }
   }
 
   revalidatePath("/settings");

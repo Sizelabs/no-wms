@@ -3,20 +3,22 @@
 
 -- =========================================================================
 -- 1. Drop triggers (must come before dropping functions they reference)
+--    Use DO blocks for tables that may not exist (original migration may
+--    have been removed before this revert runs on a fresh reset).
 -- =========================================================================
 
 DROP TRIGGER IF EXISTS update_location_counts_trigger ON packages;
 DROP TRIGGER IF EXISTS check_location_warehouse ON warehouse_locations;
 
--- Audit triggers
-DROP TRIGGER IF EXISTS audit_location_templates ON location_templates;
-DROP TRIGGER IF EXISTS audit_package_movements ON package_movements;
-DROP TRIGGER IF EXISTS audit_warehouse_location_levels ON warehouse_location_levels;
+-- Audit triggers (some tables may not exist)
+DO $$ BEGIN DROP TRIGGER IF EXISTS audit_location_templates ON location_templates; EXCEPTION WHEN undefined_table THEN NULL; END $$;
+DO $$ BEGIN DROP TRIGGER IF EXISTS audit_package_movements ON package_movements; EXCEPTION WHEN undefined_table THEN NULL; END $$;
+DO $$ BEGIN DROP TRIGGER IF EXISTS audit_warehouse_location_levels ON warehouse_location_levels; EXCEPTION WHEN undefined_table THEN NULL; END $$;
 DROP TRIGGER IF EXISTS audit_warehouse_locations ON warehouse_locations;
 DROP TRIGGER IF EXISTS audit_warehouse_zones ON warehouse_zones;
 
 -- set_updated_at triggers added by this migration
-DROP TRIGGER IF EXISTS set_updated_at ON location_templates;
+DO $$ BEGIN DROP TRIGGER IF EXISTS set_updated_at ON location_templates; EXCEPTION WHEN undefined_table THEN NULL; END $$;
 DROP TRIGGER IF EXISTS set_updated_at ON warehouse_locations;
 DROP TRIGGER IF EXISTS set_updated_at ON warehouse_zones;
 

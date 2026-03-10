@@ -124,6 +124,7 @@ export const SETTINGS_GROUPS: SettingsNavGroup[] = [
       { label: "forwarders", href: "/settings/forwarders", resource: "forwarders" },
       { label: "warehouses", href: "/settings/warehouses", resource: "warehouses" },
       { label: "couriers", href: "/settings/couriers", resource: "couriers" },
+      { label: "locations", href: "/settings/locations", resource: "locations" },
     ],
   },
   {

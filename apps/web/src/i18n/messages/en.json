@@ -81,7 +81,8 @@
     "groupNetwork": "Network",
     "groupAccess": "Access",
     "groupCatalog": "Catalog",
-    "groupPlatform": "Platform"
+    "groupPlatform": "Platform",
+    "locations": "Locations"
   },
   "couriers": {
     "title": "Couriers",

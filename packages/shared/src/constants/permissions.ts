@@ -22,6 +22,7 @@ export const RESOURCES = [
   "handling_costs",
   "modalities",
   "destinations",
+  "locations",
 ] as const;
 
 export type Resource = (typeof RESOURCES)[number];
@@ -59,6 +60,7 @@ export const RESOURCE_LABELS: Record<Resource, string> = {
   handling_costs: "Costos de Manejo",
   modalities: "Modalidades de Envío",
   destinations: "Destinos",
+  locations: "Ubicaciones",
 };
 
 /** Maps nav item labels (i18n keys) to resource names for nav filtering */
@@ -81,6 +83,7 @@ export const NAV_RESOURCE_MAP: Record<string, Resource> = {
   unknownWrs: "unknown_wrs",
   settings: "settings",
   history: "history",
+  locations: "locations",
 };
 
 function crud(c: boolean, r: boolean, u: boolean, d: boolean): ResourcePermissions {
@@ -126,6 +129,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     handling_costs: FULL,
     modalities: FULL,
     destinations: FULL,
+    locations: FULL,
   }),
 
   warehouse_admin: makePermMap({
@@ -143,6 +147,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     settings: crud(false, true, true, false),
     consignees: FULL,
     history: READ,
+    locations: crud(true, true, true, false),
   }),
 
   warehouse_operator: makePermMap({
@@ -154,6 +159,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, RolePermissionMap> = {
     unknown_wrs: crud(false, true, true, false),
     consignees: READ,
     history: READ,
+    locations: crud(false, true, true, false),
   }),
 
   shipping_clerk: makePermMap({
