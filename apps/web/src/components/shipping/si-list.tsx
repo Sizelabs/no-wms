@@ -2,6 +2,7 @@
 
 import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
@@ -24,11 +25,12 @@ interface ShippingInstruction {
   agencies: { name: string; code: string } | null;
   consignees: { full_name: string } | null;
   hawbs: { hawb_number: string }[];
-  shipping_instruction_items: { warehouse_receipt_id: string }[];
+  shipping_instruction_items: { warehouse_receipt_id: string; warehouse_receipts: { total_billable_weight_lb: number | null } | null }[];
 }
 
 interface SiListProps {
   data: ShippingInstruction[];
+  locale: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -40,7 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-500",
 };
 
-export function SiList({ data }: SiListProps) {
+export function SiList({ data, locale }: SiListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
@@ -163,7 +165,11 @@ export function SiList({ data }: SiListProps) {
             emptyMessage="No hay instrucciones de embarque"
             renderRow={(si) => (
               <tr key={si.id}>
-                <td className="px-4 py-3 font-mono text-xs">{si.si_number}</td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  <Link href={`/${locale}/shipping/${si.id}`} className="text-blue-600 hover:underline">
+                    {si.si_number}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-xs">
                   {MODALITY_LABELS[si.modality as keyof typeof MODALITY_LABELS] ?? si.modality}
                 </td>
@@ -173,7 +179,11 @@ export function SiList({ data }: SiListProps) {
                 <td className="px-4 py-3 text-xs">{si.consignees?.full_name ?? "—"}</td>
                 <td className="px-4 py-3 text-xs">{si.shipping_instruction_items.length}</td>
                 <td className="px-4 py-3 text-xs">
-                  {si.total_billable_weight_lb ? `${si.total_billable_weight_lb} lb` : "—"}
+                  {(() => {
+                    const w = si.total_billable_weight_lb
+                      ?? (si.shipping_instruction_items.reduce((s, i) => s + Number(i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0) || null);
+                    return w ? `${Number(w).toFixed(1)} lb` : "—";
+                  })()}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">
                   {si.hawbs.length ? si.hawbs.map((h) => h.hawb_number).join(", ") : "—"}

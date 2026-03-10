@@ -42,6 +42,18 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
 
   if (!siNumber) return { error: "No se pudo generar número de SI" };
 
+  // Fetch WR totals to populate SI summary at creation
+  const { data: wrs } = await supabase
+    .from("warehouse_receipts")
+    .select("total_billable_weight_lb, total_actual_weight_lb, total_volumetric_weight_lb, total_declared_value_usd, total_pieces")
+    .in("id", wrIds);
+
+  const totalPieces = (wrs ?? []).reduce((s, w) => s + (w.total_pieces ?? 0), 0);
+  const totalActual = (wrs ?? []).reduce((s, w) => s + Number(w.total_actual_weight_lb ?? 0), 0);
+  const totalVolumetric = (wrs ?? []).reduce((s, w) => s + Number(w.total_volumetric_weight_lb ?? 0), 0);
+  const totalBillable = (wrs ?? []).reduce((s, w) => s + Number(w.total_billable_weight_lb ?? 0), 0);
+  const totalDeclared = (wrs ?? []).reduce((s, w) => s + Number(w.total_declared_value_usd ?? 0), 0);
+
   const { data: si, error } = await supabase
     .from("shipping_instructions")
     .insert({
@@ -62,34 +74,34 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
       sed_validation_data: formData.get("sed_validation_data")
         ? JSON.parse(formData.get("sed_validation_data") as string)
         : null,
+      total_pieces: totalPieces,
+      total_actual_weight_lb: totalActual,
+      total_volumetric_weight_lb: totalVolumetric,
+      total_billable_weight_lb: totalBillable,
+      total_declared_value_usd: totalDeclared,
     })
     .select("id")
     .single();
 
   if (error) return { error: error.message };
 
-  // Insert SI items
+  // Insert SI items, update WR statuses, and record history in parallel
   const items = wrIds.map((wrId) => ({
     shipping_instruction_id: si.id,
     warehouse_receipt_id: wrId,
   }));
 
-  await supabase.from("shipping_instruction_items").insert(items);
-
-  // Update WR statuses to in_dispatch
-  await supabase
-    .from("warehouse_receipts")
-    .update({ status: "in_dispatch" })
-    .in("id", wrIds);
-
-  // Record status history
-  await supabase.from("shipping_instruction_status_history").insert({
-    organization_id: profile.organization_id,
-    shipping_instruction_id: si.id,
-    old_status: null,
-    new_status: "requested",
-    changed_by: user.id,
-  });
+  await Promise.all([
+    supabase.from("shipping_instruction_items").insert(items),
+    supabase.from("warehouse_receipts").update({ status: "in_dispatch" }).in("id", wrIds),
+    supabase.from("shipping_instruction_status_history").insert({
+      organization_id: profile.organization_id,
+      shipping_instruction_id: si.id,
+      old_status: null,
+      new_status: "requested",
+      changed_by: user.id,
+    }),
+  ]);
 
   revalidatePath("/shipping");
   revalidatePath("/inventory");
@@ -117,7 +129,7 @@ export async function getShippingInstructions(filters?: {
 
   let query = supabase
     .from("shipping_instructions")
-    .select("*, agencies(name, code), consignees(full_name), hawbs(hawb_number), shipping_instruction_items(warehouse_receipt_id)")
+    .select("*, agencies(name, code), consignees(full_name), hawbs(hawb_number), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
     .order("created_at", { ascending: false });
 
   if (warehouseScope !== null) {

@@ -23,7 +23,7 @@ export default async function ShippingPage({
       <PageHeader title={t("shipping")}>
         {canCreate && <CreateShipmentButton />}
       </PageHeader>
-      <SiList data={data ?? []} />
+      <SiList data={data ?? []} locale={locale} />
     </div>
   );
 }

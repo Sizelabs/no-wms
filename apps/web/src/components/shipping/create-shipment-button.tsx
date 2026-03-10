@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -89,7 +89,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
     });
   }, []);
 
-  const selectedWrs = availableWrs.filter((wr) => selected.has(wr.id));
+  const selectedWrs = useMemo(() => availableWrs.filter((wr) => selected.has(wr.id)), [availableWrs, selected]);
   const firstSelected = selectedWrs[0];
   const agencyId = firstSelected?.agency_id ?? "";
   const warehouseId = firstSelected?.warehouse_id ?? "";
@@ -106,8 +106,12 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
     getCourierCategories(destinationId).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); });
   }, [destinationId]);
 
-  // Pre-fill consignee when all selected WRs share the same one
+  // Pre-fill consignee when all selected WRs share the same one (only if user hasn't manually chosen)
+  const prevSelectedRef = useRef(selected);
   useEffect(() => {
+    // Only run when selection actually changed (not on other re-renders)
+    if (prevSelectedRef.current === selected) return;
+    prevSelectedRef.current = selected;
     if (selected.size === 0) return;
     const first = selectedWrs[0];
     if (!first?.consignee_id || !first.consignees) return;
@@ -115,7 +119,10 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
     if (!allSame) return;
     setSelectedConsignee({ id: first.consignee_id, full_name: first.consignees.full_name, casillero: first.consignees.casillero, cedula_ruc: null, city: null });
     setConsigneeQuery(first.consignees.full_name + (first.consignees.casillero ? ` (${first.consignees.casillero})` : ""));
-  }, [selected, availableWrs]);
+  }, [selected, selectedWrs]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
   const toggleWr = (id: string) => {
     setSelected((prev) => {
@@ -125,11 +132,11 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
     });
   };
 
-  const totalWeight = selectedWrs.reduce((sum, wr) => sum + (Number(wr.total_billable_weight_lb) || 0), 0);
-  const totalPackages = selectedWrs.reduce((sum, wr) => sum + (wr.total_packages || 0), 0);
+  const totalWeight = useMemo(() => selectedWrs.reduce((sum, wr) => sum + (Number(wr.total_billable_weight_lb) || 0), 0), [selectedWrs]);
+  const totalPackages = useMemo(() => selectedWrs.reduce((sum, wr) => sum + (wr.total_packages || 0), 0), [selectedWrs]);
 
   // Group WRs by consignee for display
-  const groupedWrs = (() => {
+  const groupedWrs = useMemo(() => {
     const groups = new Map<string, { label: string; wrs: AvailableWr[] }>();
     for (const wr of availableWrs) {
       const key = wr.consignee_id ?? "_none";
@@ -140,7 +147,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
       groups.get(key)!.wrs.push(wr);
     }
     return Array.from(groups.entries()).map(([key, group]) => ({ key, ...group }));
-  })();
+  }, [availableWrs]);
 
   const handleConsigneeSearch = useCallback((query: string) => {
     setConsigneeQuery(query);

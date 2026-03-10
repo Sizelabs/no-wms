@@ -52,6 +52,9 @@ export function GroupFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
   useEffect(() => {
     if (!autoShip) return;
     getAgencyDestinations(agencyId).then((res) => { if (res.data) setDestinations(res.data); });

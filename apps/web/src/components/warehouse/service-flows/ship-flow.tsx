@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import type { WrSummaryItem } from "./service-flow-wrapper";
 import { ServiceFlowWrapper } from "./service-flow-wrapper";
@@ -35,13 +35,13 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
   const [categoryCode, setCategoryCode] = useState("");
 
   // Pre-fill consignee if all selected WRs share the same one
-  const sharedConsignee = (() => {
+  const sharedConsignee = useMemo(() => {
     const first = wrs[0];
     if (!first?.consignee_id || !first.consignees) return null;
     const allSame = wrs.every((wr) => wr.consignee_id === first.consignee_id);
     if (!allSame) return null;
     return { id: first.consignee_id, full_name: first.consignees.full_name, casillero: first.consignees.casillero };
-  })();
+  }, [wrs]);
 
   const [consigneeQuery, setConsigneeQuery] = useState(
     () => sharedConsignee ? sharedConsignee.full_name + (sharedConsignee.casillero ? ` (${sharedConsignee.casillero})` : "") : "",
@@ -54,6 +54,9 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
   const [creatingConsignee, setCreatingConsignee] = useState(false);
   const [newConsigneeName, setNewConsigneeName] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
   const [insureCargo, setInsureCargo] = useState(false);
   const [isDgr, setIsDgr] = useState(() => wrs.some((wr) => wr.has_dgr_package));
