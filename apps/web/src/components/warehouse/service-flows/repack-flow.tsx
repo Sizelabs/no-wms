@@ -11,12 +11,13 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface RepackFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
 }
 
-export function RepackFlow({ open, onClose, wrs, warehouseId, agencyId }: RepackFlowProps) {
+export function RepackFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: RepackFlowProps) {
   const [instructions, setInstructions] = useState("");
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
@@ -35,7 +36,7 @@ export function RepackFlow({ open, onClose, wrs, warehouseId, agencyId }: Repack
         notify(result.error, "error");
       } else {
         notify("Solicitud de reempaque creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }

@@ -11,6 +11,7 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface InventoryFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
@@ -21,7 +22,7 @@ const DETAIL_LEVELS = [
   { value: "detailed", label: "Detallado", desc: "Codigos, colores, descripciones, especificaciones" },
 ] as const;
 
-export function InventoryFlow({ open, onClose, wrs, warehouseId, agencyId }: InventoryFlowProps) {
+export function InventoryFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: InventoryFlowProps) {
   const [detailLevel, setDetailLevel] = useState<string>("");
   const [instructions, setInstructions] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -44,7 +45,7 @@ export function InventoryFlow({ open, onClose, wrs, warehouseId, agencyId }: Inv
         notify(result.error, "error");
       } else {
         notify("Solicitud de inventario creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }

@@ -66,7 +66,7 @@ export default async function NewShippingInstructionPage({
     await Promise.all([
       isEmpty ? emptyResult : agenciesQuery,
       isEmpty ? emptyResult : warehousesQuery,
-      supabase.from("consignees").select("id, name").order("name").limit(1000),
+      supabase.from("consignees").select("id, full_name").order("full_name").limit(1000),
       supabase.from("destinations").select("id, city, country_code").order("city"),
       isEmpty ? emptyResult : wrsQuery,
     ]);

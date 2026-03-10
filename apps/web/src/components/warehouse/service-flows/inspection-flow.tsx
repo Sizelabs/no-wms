@@ -11,12 +11,13 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface InspectionFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
 }
 
-export function InspectionFlow({ open, onClose, wrs, warehouseId, agencyId }: InspectionFlowProps) {
+export function InspectionFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: InspectionFlowProps) {
   const [inspectionFocus, setInspectionFocus] = useState("");
   const [checkDgr, setCheckDgr] = useState(false);
   const [instructions, setInstructions] = useState("");
@@ -41,7 +42,7 @@ export function InspectionFlow({ open, onClose, wrs, warehouseId, agencyId }: In
         notify(result.error, "error");
       } else {
         notify("Solicitud de inspeccion creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }

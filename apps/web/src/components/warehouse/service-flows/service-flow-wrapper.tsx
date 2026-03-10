@@ -22,6 +22,7 @@ interface WrSummaryItem {
   has_dgr_package: boolean;
   has_damaged_package: boolean;
   packages: WrPackageSummary[];
+  consignee_id: string | null;
   consignees: { full_name: string; casillero: string | null } | null;
 }
 

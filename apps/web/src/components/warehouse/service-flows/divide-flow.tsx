@@ -11,12 +11,13 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface DivideFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
 }
 
-export function DivideFlow({ open, onClose, wrs, warehouseId, agencyId }: DivideFlowProps) {
+export function DivideFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: DivideFlowProps) {
   const [splitCount, setSplitCount] = useState(2);
   const [splitInstructions, setSplitInstructions] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -43,7 +44,7 @@ export function DivideFlow({ open, onClose, wrs, warehouseId, agencyId }: Divide
         notify(result.error, "error");
       } else {
         notify("Solicitud de division creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }

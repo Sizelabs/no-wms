@@ -37,12 +37,10 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
 
   if (!profile) return { error: "Perfil no encontrado" };
 
-  // Generate SI number
-  const { count } = await supabase
-    .from("shipping_instructions")
-    .select("*", { count: "exact", head: true });
+  // Generate SI number via SECURITY DEFINER function (bypasses RLS)
+  const { data: siNumber } = await supabase.rpc("next_si_number", { p_org_id: profile.organization_id });
 
-  const siNumber = `SI${String((count ?? 0) + 1).padStart(5, "0")}`;
+  if (!siNumber) return { error: "No se pudo generar número de SI" };
 
   const { data: si, error } = await supabase
     .from("shipping_instructions")
@@ -119,7 +117,7 @@ export async function getShippingInstructions(filters?: {
 
   let query = supabase
     .from("shipping_instructions")
-    .select("*, agencies(name, code), consignees(name), hawbs(hawb_number), shipping_instruction_items(warehouse_receipt_id)")
+    .select("*, agencies(name, code), consignees(full_name), hawbs(hawb_number), shipping_instruction_items(warehouse_receipt_id)")
     .order("created_at", { ascending: false });
 
   if (warehouseScope !== null) {
@@ -144,7 +142,7 @@ export async function getShippingInstruction(id: string) {
 
   const { data, error } = await supabase
     .from("shipping_instructions")
-    .select("*, agencies(name, code), consignees(name), hawbs(*), shipping_instruction_items(*, warehouse_receipts(wr_number, total_billable_weight_lb, packages(tracking_number, carrier)))")
+    .select("*, agencies(name, code), consignees(full_name), hawbs(*), shipping_instruction_items(*, warehouse_receipts(wr_number, total_billable_weight_lb, packages(tracking_number, carrier)))")
     .eq("id", id)
     .single();
 
@@ -238,12 +236,10 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
   if (!si) return { error: "SI no encontrada" };
   if (si.status !== "approved") return { error: "Solo se pueden finalizar SIs aprobadas" };
 
-  // Generate HAWB number
-  const { count } = await supabase
-    .from("hawbs")
-    .select("*", { count: "exact", head: true });
+  // Generate HAWB number via SECURITY DEFINER function (bypasses RLS)
+  const { data: hawbNumber } = await supabase.rpc("next_hawb_number", { p_org_id: si.organization_id });
 
-  const hawbNumber = `GLP${String((count ?? 0) + 1).padStart(5, "0")}`;
+  if (!hawbNumber) return { error: "No se pudo generar número HAWB" };
 
   // Calculate totals from items
   const items = si.shipping_instruction_items ?? [];
@@ -347,6 +343,32 @@ export async function getCourierCategories(countryId: string) {
 
   if (error) return { data: null, error: error.message };
   return { data, error: null };
+}
+
+export async function getAvailableWrsForShipping() {
+  const supabase = await createClient();
+  const [warehouseScope, agencyScope] = await Promise.all([
+    getUserWarehouseScope(),
+    getUserAgencyScope(),
+  ]);
+
+  if ((warehouseScope !== null && warehouseScope.length === 0) ||
+      (agencyScope !== null && agencyScope.length === 0)) {
+    return { data: [] };
+  }
+
+  let query = supabase
+    .from("warehouse_receipts")
+    .select("id, wr_number, warehouse_id, agency_id, consignee_id, status, total_billable_weight_lb, total_declared_value_usd, total_packages, total_pieces, has_dgr_package, has_damaged_package, consignees(full_name, casillero)")
+    .in("status", ["received", "in_warehouse"])
+    .order("received_at", { ascending: false })
+    .limit(500);
+
+  if (warehouseScope !== null) query = query.in("warehouse_id", warehouseScope);
+  if (agencyScope !== null) query = query.in("agency_id", agencyScope);
+
+  const { data } = await query;
+  return { data: data ?? [] };
 }
 
 export async function addAdditionalCharges(

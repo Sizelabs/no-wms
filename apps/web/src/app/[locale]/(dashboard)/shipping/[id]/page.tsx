@@ -71,7 +71,7 @@ export default async function ShippingDetailPage({
         <div className="space-y-6">
           <Section title="Detalles">
             <dl className="space-y-2 text-sm">
-              <SiDtDd label="Destinatario" value={si.consignees?.name ?? "—"} />
+              <SiDtDd label="Destinatario" value={si.consignees?.full_name ?? "—"} />
               <SiDtDd label="Cédula/RUC" value={si.cedula_ruc ?? "—"} />
               <SiDtDd label="Cupo 4x4" value={si.cupo_4x4_used ? "Sí" : "No"} />
               <SiDtDd label="Creado" value={new Date(si.created_at).toLocaleString("es")} />

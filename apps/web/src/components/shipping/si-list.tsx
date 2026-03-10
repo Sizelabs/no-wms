@@ -22,7 +22,7 @@ interface ShippingInstruction {
   total_billable_weight_lb: number | null;
   created_at: string;
   agencies: { name: string; code: string } | null;
-  consignees: { name: string } | null;
+  consignees: { full_name: string } | null;
   hawbs: { hawb_number: string }[];
   shipping_instruction_items: { warehouse_receipt_id: string }[];
 }
@@ -55,7 +55,7 @@ export function SiList({ data }: SiListProps) {
         si.si_number.toLowerCase().includes(q) ||
         si.agencies?.name?.toLowerCase().includes(q) ||
         si.agencies?.code?.toLowerCase().includes(q) ||
-        si.consignees?.name?.toLowerCase().includes(q) ||
+        si.consignees?.full_name?.toLowerCase().includes(q) ||
         si.hawbs.some((h) => h.hawb_number.toLowerCase().includes(q));
       if (!matches) return false;
     }
@@ -170,7 +170,7 @@ export function SiList({ data }: SiListProps) {
                 <td className="px-4 py-3 text-xs">
                   {si.agencies ? `${si.agencies.name} (${si.agencies.code})` : "—"}
                 </td>
-                <td className="px-4 py-3 text-xs">{si.consignees?.name ?? "—"}</td>
+                <td className="px-4 py-3 text-xs">{si.consignees?.full_name ?? "—"}</td>
                 <td className="px-4 py-3 text-xs">{si.shipping_instruction_items.length}</td>
                 <td className="px-4 py-3 text-xs">
                   {si.total_billable_weight_lb ? `${si.total_billable_weight_lb} lb` : "—"}

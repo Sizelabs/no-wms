@@ -23,7 +23,7 @@ interface Warehouse {
 
 interface Consignee {
   id: string;
-  name: string;
+  full_name: string;
 }
 
 interface Destination {
@@ -168,7 +168,7 @@ export function SiCreateForm({
           <label className="block text-sm font-medium text-gray-700">Consignatario</label>
           <div className="mt-1">
             <Combobox
-              options={consignees.map((c) => ({ value: c.id, label: c.name }))}
+              options={consignees.map((c) => ({ value: c.id, label: c.full_name }))}
               value={consigneeId}
               onChange={setConsigneeId}
               placeholder="Seleccionar consignatario"

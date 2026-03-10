@@ -11,12 +11,13 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface ConsolidateFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
 }
 
-export function ConsolidateFlow({ open, onClose, wrs, warehouseId, agencyId }: ConsolidateFlowProps) {
+export function ConsolidateFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: ConsolidateFlowProps) {
   const [instructions, setInstructions] = useState("");
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
@@ -35,7 +36,7 @@ export function ConsolidateFlow({ open, onClose, wrs, warehouseId, agencyId }: C
         notify(result.error, "error");
       } else {
         notify("Solicitud de consolidacion creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }

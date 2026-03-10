@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { DEFAULT_WR_STATUSES, WrHistoryTable } from "@/components/warehouse/wr-history-table";
+import { WrHistoryTable } from "@/components/warehouse/wr-history-table";
 import { getAgenciesForFilter, getStorageSettings, getWarehouseReceipts, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
 import { requirePermission } from "@/lib/auth/require-permission";
 
@@ -32,7 +32,7 @@ export default async function WarehouseReceiptsPage({
   const [{ data, count }, agencies, warehouses, storageSettings] = await Promise.all([
     getWarehouseReceipts({
       search: filters.search,
-      status: filters.status ?? DEFAULT_WR_STATUSES.join(","),
+      status: filters.status ?? "received,in_warehouse,in_work_order",
       agency_id: filters.agency_id,
       warehouse_id: filters.warehouse_id,
       carrier: filters.carrier,

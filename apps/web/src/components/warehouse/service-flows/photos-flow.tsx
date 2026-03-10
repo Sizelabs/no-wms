@@ -11,6 +11,7 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface PhotosFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
@@ -23,7 +24,7 @@ const PHOTO_TYPES = [
   { value: "damage", label: "Dano", desc: "Documentacion de danos visibles" },
 ] as const;
 
-export function PhotosFlow({ open, onClose, wrs, warehouseId, agencyId }: PhotosFlowProps) {
+export function PhotosFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: PhotosFlowProps) {
   const [photoType, setPhotoType] = useState<string>("");
   const [angleInstructions, setAngleInstructions] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -49,7 +50,7 @@ export function PhotosFlow({ open, onClose, wrs, warehouseId, agencyId }: Photos
         notify(result.error, "error");
       } else {
         notify("Solicitud de fotos creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }

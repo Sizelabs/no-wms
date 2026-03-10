@@ -11,12 +11,13 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface AbandonFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
 }
 
-export function AbandonFlow({ open, onClose, wrs, warehouseId, agencyId }: AbandonFlowProps) {
+export function AbandonFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: AbandonFlowProps) {
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -39,7 +40,7 @@ export function AbandonFlow({ open, onClose, wrs, warehouseId, agencyId }: Aband
         notify(result.error, "error");
       } else {
         notify("Solicitud de abandono creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }

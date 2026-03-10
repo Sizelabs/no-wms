@@ -13,12 +13,13 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface ReturnFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
 }
 
-export function ReturnFlow({ open, onClose, wrs, warehouseId, agencyId }: ReturnFlowProps) {
+export function ReturnFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: ReturnFlowProps) {
   const [instructions, setInstructions] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -47,7 +48,7 @@ export function ReturnFlow({ open, onClose, wrs, warehouseId, agencyId }: Return
         notify(result.error, "error");
       } else {
         notify("Solicitud de devolucion creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }

@@ -11,7 +11,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees";
 import {
   createShippingInstruction,
-  getDestinations,
+  getAgencyDestinations,
   getCourierCategories,
 } from "@/lib/actions/shipping-instructions";
 import { createWorkOrder } from "@/lib/actions/work-orders";
@@ -19,23 +19,23 @@ import { createWorkOrder } from "@/lib/actions/work-orders";
 interface GroupFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
 }
 
-interface Destination { id: string; city: string; country_code: string }
+interface Destination { id: string; city: string; state: string | null; country_code: string }
 interface CourierCategory { id: string; code: string; name: string; max_weight_lb: number | null; max_value_usd: number | null; description: string | null }
 interface ConsigneeResult { id: string; full_name: string; casillero: string | null; cedula_ruc: string | null; city: string | null }
 
-export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFlowProps) {
+export function GroupFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: GroupFlowProps) {
   const [autoShip, setAutoShip] = useState(false);
   const [instructions, setInstructions] = useState("");
 
   // Ship-form state (only when autoShip)
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [destinationId, setDestinationId] = useState("");
-  const [city, setCity] = useState("");
   const [categories, setCategories] = useState<CourierCategory[]>([]);
   const [categoryCode, setCategoryCode] = useState("");
   const [consigneeQuery, setConsigneeQuery] = useState("");
@@ -54,8 +54,8 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
 
   useEffect(() => {
     if (!autoShip) return;
-    getDestinations().then((res) => { if (res.data) setDestinations(res.data); });
-  }, [autoShip]);
+    getAgencyDestinations(agencyId).then((res) => { if (res.data) setDestinations(res.data); });
+  }, [autoShip, agencyId]);
 
   useEffect(() => {
     if (!destinationId) { setCategories([]); setCategoryCode(""); return; }
@@ -96,7 +96,7 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
     }
   }, [agencyId, newConsigneeName, notify]);
 
-  const canSubmit = !autoShip || (destinationId !== "" && city.trim() !== "" && selectedConsignee !== null);
+  const canSubmit = !autoShip || (destinationId !== "" && selectedConsignee !== null);
 
   function handleSubmit() {
     startTransition(async () => {
@@ -116,7 +116,8 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
         siFd.set("warehouse_id", warehouseId);
         siFd.set("agency_id", agencyId);
         siFd.set("destination_id", destinationId);
-        siFd.set("destination_city", city.trim());
+        const dest = destinations.find((d) => d.id === destinationId);
+        siFd.set("destination_city", dest?.city ?? "");
         siFd.set("modality", categoryCode ? `courier_${categoryCode.toLowerCase()}` : "air_cargo");
         if (categoryCode) siFd.set("courier_category", categoryCode);
         siFd.set("consignee_id", selectedConsignee.id);
@@ -128,13 +129,13 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
         const siResult = await createShippingInstruction(siFd);
         if ("error" in siResult) {
           notify(`Agrupacion creada, pero error en envio: ${siResult.error}`, "error");
-          onClose();
+          onSuccess();
           return;
         }
       }
 
       notify(autoShip ? "Agrupacion y envio creados" : "Solicitud de agrupacion creada", "success");
-      onClose();
+      onSuccess();
     });
   }
 
@@ -166,20 +167,18 @@ export function GroupFlow({ open, onClose, wrs, warehouseId, agencyId }: GroupFl
         <div className="space-y-4 rounded-lg border border-gray-100 bg-gray-50/50 p-4">
           <fieldset className="space-y-3">
             <legend className="text-xs font-medium uppercase tracking-wider text-gray-400">Destino</legend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Destino" required>
-                <Combobox
-                  options={destinations.map((d) => ({ value: d.id, label: `${d.city} (${d.country_code})` }))}
-                  value={destinationId}
-                  onChange={setDestinationId}
-                  placeholder="Seleccionar..."
-                  required
-                />
-              </Field>
-              <Field label="Ciudad" required>
-                <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
-              </Field>
-            </div>
+            <Field label="Destino" required>
+              <Combobox
+                options={destinations.map((d) => ({
+                  value: d.id,
+                  label: `${d.city}${d.state ? `, ${d.state}` : ""} (${d.country_code})`,
+                }))}
+                value={destinationId}
+                onChange={setDestinationId}
+                placeholder="Seleccionar..."
+                required
+              />
+            </Field>
             {destinationId && categories.length > 0 && (
               <Field label="Categoria courier">
                 <select value={categoryCode} onChange={(e) => setCategoryCode(e.target.value)} className={selectClass}>

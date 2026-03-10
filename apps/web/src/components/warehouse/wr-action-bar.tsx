@@ -263,37 +263,37 @@ export function WrActionBar({
 
       {/* Service flow modals */}
       {activeFlow === "ship" && (
-        <ShipFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <ShipFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "consolidate" && (
-        <ConsolidateFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <ConsolidateFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "group" && (
-        <GroupFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <GroupFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "photos" && (
-        <PhotosFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <PhotosFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "repack" && (
-        <RepackFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <RepackFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "divide" && (
-        <DivideFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <DivideFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "inspection" && (
-        <InspectionFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <InspectionFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "inventory_count" && (
-        <InventoryFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <InventoryFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "return" && (
-        <ReturnFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <ReturnFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "special_request" && (
-        <SpecialRequestFlow open onClose={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <SpecialRequestFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
       {activeFlow === "abandon" && (
-        <AbandonFlow open onClose={handleDismissFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
+        <AbandonFlow open onClose={handleDismissFlow} onSuccess={handleCloseFlow} wrs={selectedWrs} warehouseId={warehouseId} agencyId={agencyId} />
       )}
     </>
   );
