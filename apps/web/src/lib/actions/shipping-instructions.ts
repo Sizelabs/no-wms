@@ -309,6 +309,32 @@ export async function getDestinations() {
   return { data, error: null };
 }
 
+/** Active destinations served by at least one courier. */
+export async function getAgencyDestinations(_agencyId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("destinations")
+    .select("id, city, state, country_code, courier_destinations!inner(courier_id)")
+    .eq("is_active", true)
+    .eq("courier_destinations.is_active", true)
+    .order("city");
+
+  if (error) return { data: null, error: error.message };
+
+  // Strip join artifacts and deduplicate
+  const seen = new Set<string>();
+  const destinations = (data ?? [])
+    .filter((d) => {
+      if (seen.has(d.id)) return false;
+      seen.add(d.id);
+      return true;
+    })
+    .map(({ id, city, state, country_code }) => ({ id, city, state, country_code }));
+
+  return { data: destinations, error: null };
+}
+
 export async function getCourierCategories(countryId: string) {
   const supabase = await createClient();
 

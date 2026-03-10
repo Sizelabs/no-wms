@@ -11,32 +11,45 @@ import { Combobox } from "@/components/ui/combobox";
 import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees";
 import {
   createShippingInstruction,
-  getDestinations,
+  getAgencyDestinations,
   getCourierCategories,
 } from "@/lib/actions/shipping-instructions";
 
 interface ShipFlowProps {
   open: boolean;
   onClose: () => void;
+  onSuccess: () => void;
   wrs: WrSummaryItem[];
   warehouseId: string;
   agencyId: string;
 }
 
-interface Destination { id: string; city: string; country_code: string }
+interface Destination { id: string; city: string; state: string | null; country_code: string }
 interface CourierCategory { id: string; code: string; name: string; max_weight_lb: number | null; max_value_usd: number | null; description: string | null }
 interface ConsigneeResult { id: string; full_name: string; casillero: string | null; cedula_ruc: string | null; city: string | null }
 
-export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlowProps) {
+export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: ShipFlowProps) {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [destinationId, setDestinationId] = useState("");
-  const [city, setCity] = useState("");
   const [categories, setCategories] = useState<CourierCategory[]>([]);
   const [categoryCode, setCategoryCode] = useState("");
 
-  const [consigneeQuery, setConsigneeQuery] = useState("");
+  // Pre-fill consignee if all selected WRs share the same one
+  const sharedConsignee = (() => {
+    const first = wrs[0];
+    if (!first?.consignee_id || !first.consignees) return null;
+    const allSame = wrs.every((wr) => wr.consignee_id === first.consignee_id);
+    if (!allSame) return null;
+    return { id: first.consignee_id, full_name: first.consignees.full_name, casillero: first.consignees.casillero };
+  })();
+
+  const [consigneeQuery, setConsigneeQuery] = useState(
+    () => sharedConsignee ? sharedConsignee.full_name + (sharedConsignee.casillero ? ` (${sharedConsignee.casillero})` : "") : "",
+  );
   const [consigneeResults, setConsigneeResults] = useState<ConsigneeResult[]>([]);
-  const [selectedConsignee, setSelectedConsignee] = useState<ConsigneeResult | null>(null);
+  const [selectedConsignee, setSelectedConsignee] = useState<ConsigneeResult | null>(
+    () => sharedConsignee ? { id: sharedConsignee.id, full_name: sharedConsignee.full_name, casillero: sharedConsignee.casillero, cedula_ruc: null, city: null } : null,
+  );
   const [showConsigneeDropdown, setShowConsigneeDropdown] = useState(false);
   const [creatingConsignee, setCreatingConsignee] = useState(false);
   const [newConsigneeName, setNewConsigneeName] = useState("");
@@ -50,8 +63,8 @@ export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlow
   const { notify } = useNotification();
 
   useEffect(() => {
-    getDestinations().then((res) => { if (res.data) setDestinations(res.data); });
-  }, []);
+    getAgencyDestinations(agencyId).then((res) => { if (res.data) setDestinations(res.data); });
+  }, [agencyId]);
 
   useEffect(() => {
     if (!destinationId) { setCategories([]); setCategoryCode(""); return; }
@@ -92,16 +105,17 @@ export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlow
     }
   }, [agencyId, newConsigneeName, notify]);
 
-  const canSubmit = destinationId !== "" && city.trim() !== "" && selectedConsignee !== null;
+  const canSubmit = destinationId !== "" && selectedConsignee !== null;
 
   function handleSubmit() {
     if (!selectedConsignee) return;
+    const dest = destinations.find((d) => d.id === destinationId);
     startTransition(async () => {
       const fd = new FormData();
       fd.set("warehouse_id", warehouseId);
       fd.set("agency_id", agencyId);
       fd.set("destination_id", destinationId);
-      fd.set("destination_city", city.trim());
+      fd.set("destination_city", dest?.city ?? "");
       fd.set("modality", categoryCode ? `courier_${categoryCode.toLowerCase()}` : "air_cargo");
       if (categoryCode) fd.set("courier_category", categoryCode);
       fd.set("consignee_id", selectedConsignee.id);
@@ -115,7 +129,7 @@ export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlow
         notify(result.error, "error");
       } else {
         notify("Instruccion de envio creada", "success");
-        onClose();
+        onSuccess();
       }
     });
   }
@@ -135,20 +149,18 @@ export function ShipFlow({ open, onClose, wrs, warehouseId, agencyId }: ShipFlow
       {/* Destination */}
       <fieldset className="space-y-3">
         <legend className="text-xs font-medium uppercase tracking-wider text-gray-400">Destino</legend>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Destino" required>
-            <Combobox
-              options={destinations.map((d) => ({ value: d.id, label: `${d.city} (${d.country_code})` }))}
-              value={destinationId}
-              onChange={setDestinationId}
-              placeholder="Seleccionar..."
-              required
-            />
-          </Field>
-          <Field label="Ciudad" required>
-            <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
-          </Field>
-        </div>
+        <Field label="Destino" required>
+          <Combobox
+            options={destinations.map((d) => ({
+              value: d.id,
+              label: `${d.city}${d.state ? `, ${d.state}` : ""} (${d.country_code})`,
+            }))}
+            value={destinationId}
+            onChange={setDestinationId}
+            placeholder="Seleccionar..."
+            required
+          />
+        </Field>
         {destinationId && categories.length > 0 && (
           <Field label="Categoria courier">
             <select value={categoryCode} onChange={(e) => setCategoryCode(e.target.value)} className={selectClass}>
