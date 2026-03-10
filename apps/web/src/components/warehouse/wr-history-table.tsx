@@ -4,7 +4,7 @@ import type { WrStatus } from "@no-wms/shared/constants/statuses";
 import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { usePermissions } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
@@ -205,6 +205,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
   }, []);
 
   const [isFiltering, startFiltering] = useTransition();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   const updateFilter = useCallback(
     (key: string, value: string) => {
@@ -222,6 +223,22 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
     [pathname, router, searchParams],
   );
 
+  const debouncedSearch = useCallback(
+    (value: string) => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = setTimeout(() => {
+        updateFilter("search", value);
+      }, 300);
+    },
+    [updateFilter],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
+
   const activeFilterCount = ["status", "agency_id", "warehouse_id", "date_from", "date_to"]
     .filter((k) => searchParams.has(k)).length;
 
@@ -229,13 +246,20 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
     <div className="space-y-3">
       {/* Search + primary filter row */}
       <div className="flex flex-wrap gap-2">
-        <input
-          type="text"
-          defaultValue={searchParams.get("search") ?? ""}
-          onChange={(e) => updateFilter("search", e.target.value)}
-          placeholder="Buscar guía, WR#, remitente..."
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
-        />
+        <div className="relative flex-1">
+          <input
+            type="text"
+            defaultValue={searchParams.get("search") ?? ""}
+            onChange={(e) => debouncedSearch(e.target.value)}
+            placeholder="Buscar guía, WR#, remitente, casillero..."
+            className="w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+          />
+          {isFiltering && (
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+            </div>
+          )}
+        </div>
         <MultiSelectFilter
           label="Todos los estados"
           options={Object.entries(WR_STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))}

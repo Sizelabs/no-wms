@@ -566,19 +566,68 @@ export async function getWarehouseReceipts(filters?: {
     getUserAgencyScope(),
   ]);
 
+  const limit = filters?.limit ?? 50;
+  const offset = filters?.offset ?? 0;
+
+  // When searching, use the DB function for efficient cross-table search
+  if (filters?.search) {
+    // Empty scope arrays mean user has no access
+    if (warehouseScope !== null && warehouseScope.length === 0) return { data: [], error: null, count: 0 };
+    if (agencyScope !== null && agencyScope.length === 0) return { data: [], error: null, count: 0 };
+
+    const statuses = filters.status?.split(",").filter(Boolean);
+    // Build scope arrays: explicit filter > user scope > null (no restriction)
+    const warehouseIds = filters.warehouse_id ? [filters.warehouse_id] : warehouseScope;
+    const agencyIds = filters.agency_id ? [filters.agency_id] : agencyScope;
+
+    const { data: hits, error: rpcError } = await supabase.rpc("search_warehouse_receipts", {
+      p_search: filters.search,
+      p_status: statuses?.length ? statuses : null,
+      p_agency_ids: agencyIds,
+      p_warehouse_ids: warehouseIds,
+      p_date_from: filters.date_from ?? null,
+      p_date_to: filters.date_to ? `${filters.date_to}T23:59:59` : null,
+      p_limit: limit,
+      p_offset: offset,
+    });
+
+    if (rpcError) {
+      return { data: null, error: rpcError.message, count: 0 };
+    }
+
+    const ids = (hits as Array<{ id: string; total_count: number }>)?.map((h) => h.id) ?? [];
+    const totalCount = (hits as Array<{ id: string; total_count: number }>)?.[0]?.total_count ?? 0;
+
+    if (ids.length === 0) {
+      return { data: [], error: null, count: 0 };
+    }
+
+    // Fetch full WR data for matched IDs
+    const { data, error } = await supabase
+      .from("warehouse_receipts")
+      .select("*, agencies(name, code, type), consignees(full_name, casillero), packages(*)")
+      .in("id", ids)
+      .order("received_at", { ascending: false });
+
+    if (error) {
+      return { data: null, error: error.message, count: 0 };
+    }
+
+    return { data, error: null, count: Number(totalCount) };
+  }
+
+  // Non-search path: standard filtered query
   let query = supabase
     .from("warehouse_receipts")
     .select("*, agencies(name, code, type), consignees(full_name, casillero), packages(*)", { count: "exact" })
     .order("received_at", { ascending: false });
 
-  // Apply warehouse scope for warehouse-scoped users
   if (warehouseScope !== null && warehouseScope.length > 0) {
     query = query.in("warehouse_id", warehouseScope);
   } else if (warehouseScope !== null && warehouseScope.length === 0) {
     return { data: [], error: null, count: 0 };
   }
 
-  // Apply agency scope for agency users
   if (agencyScope !== null && agencyScope.length > 0) {
     query = query.in("agency_id", agencyScope);
   } else if (agencyScope !== null && agencyScope.length === 0) {
@@ -612,39 +661,12 @@ export async function getWarehouseReceipts(filters?: {
     query = query.lte("received_at", `${filters.date_to}T23:59:59`);
   }
 
-  if (filters?.search) {
-    query = query.or(
-      `wr_number.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`,
-    );
-  }
-
-  const limit = filters?.limit ?? 50;
-  const offset = filters?.offset ?? 0;
   query = query.range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
 
   if (error) {
     return { data: null, error: error.message, count: 0 };
-  }
-
-  // If searching by tracking/carrier/sender, filter via packages client-side
-  // since these fields are now on the packages table
-  if (filters?.search && data) {
-    const search = filters.search.toLowerCase();
-    const filtered = data.filter((wr: Record<string, unknown>) => {
-      const wrNumber = (wr.wr_number as string) || "";
-      const notes = (wr.notes as string) || "";
-      if (wrNumber.toLowerCase().includes(search) || notes.toLowerCase().includes(search)) return true;
-      const pkgs = wr.packages as Array<Record<string, unknown>> | null;
-      return pkgs?.some((p) => {
-        const tn = (p.tracking_number as string) || "";
-        const carrier = (p.carrier as string) || "";
-        const sender = (p.sender_name as string) || "";
-        return tn.toLowerCase().includes(search) || carrier.toLowerCase().includes(search) || sender.toLowerCase().includes(search);
-      });
-    });
-    return { data: filtered, error: null, count: filtered.length };
   }
 
   return { data, error: null, count: count ?? 0 };
@@ -1336,6 +1358,56 @@ export async function getWarehouseReceiptsForHistory(filters?: {
     getUserAgencyScope(),
   ]);
 
+  const limit = filters?.limit ?? 50;
+  const offset = filters?.offset ?? 0;
+
+  // When searching, use the DB function for efficient cross-table search
+  if (filters?.search) {
+    if (warehouseScope !== null && warehouseScope.length === 0) return { data: [], error: null, count: 0 };
+    if (agencyScope !== null && agencyScope.length === 0) return { data: [], error: null, count: 0 };
+
+    const statuses = filters.status?.split(",").filter(Boolean);
+    const warehouseIds = filters.warehouse_id ? [filters.warehouse_id] : warehouseScope;
+    const agencyIds = filters.agency_id ? [filters.agency_id] : agencyScope;
+
+    const { data: hits, error: rpcError } = await supabase.rpc("search_warehouse_receipts", {
+      p_search: filters.search,
+      p_status: statuses?.length ? statuses : null,
+      p_agency_ids: agencyIds,
+      p_warehouse_ids: warehouseIds,
+      p_date_from: filters.date_from ?? null,
+      p_date_to: filters.date_to ? `${filters.date_to}T23:59:59` : null,
+      p_limit: limit,
+      p_offset: offset,
+    });
+
+    if (rpcError) {
+      return { data: null, error: rpcError.message, count: 0 };
+    }
+
+    const ids = (hits as Array<{ id: string; total_count: number }>)?.map((h) => h.id) ?? [];
+    const totalCount = (hits as Array<{ id: string; total_count: number }>)?.[0]?.total_count ?? 0;
+
+    if (ids.length === 0) {
+      return { data: [], error: null, count: 0 };
+    }
+
+    const { data, error } = await supabase
+      .from("warehouse_receipts")
+      .select(
+        "*, agencies(name, code, type), consignees(full_name, casillero), packages(*), wr_status_history(id, old_status, new_status, created_at, reason, profiles:changed_by(full_name))",
+      )
+      .in("id", ids)
+      .order("received_at", { ascending: false });
+
+    if (error) {
+      return { data: null, error: error.message, count: 0 };
+    }
+
+    return { data, error: null, count: Number(totalCount) };
+  }
+
+  // Non-search path: standard filtered query
   let query = supabase
     .from("warehouse_receipts")
     .select(
@@ -1344,14 +1416,12 @@ export async function getWarehouseReceiptsForHistory(filters?: {
     )
     .order("received_at", { ascending: false });
 
-  // Apply warehouse scope
   if (warehouseScope !== null && warehouseScope.length > 0) {
     query = query.in("warehouse_id", warehouseScope);
   } else if (warehouseScope !== null && warehouseScope.length === 0) {
     return { data: [], error: null, count: 0 };
   }
 
-  // Apply agency scope
   if (agencyScope !== null && agencyScope.length > 0) {
     query = query.in("agency_id", agencyScope);
   } else if (agencyScope !== null && agencyScope.length === 0) {
@@ -1381,38 +1451,12 @@ export async function getWarehouseReceiptsForHistory(filters?: {
     query = query.lte("received_at", `${filters.date_to}T23:59:59`);
   }
 
-  if (filters?.search) {
-    query = query.or(
-      `wr_number.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`,
-    );
-  }
-
-  const limit = filters?.limit ?? 50;
-  const offset = filters?.offset ?? 0;
   query = query.range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
 
   if (error) {
     return { data: null, error: error.message, count: 0 };
-  }
-
-  // Client-side search through packages (tracking, carrier, sender)
-  if (filters?.search && data) {
-    const search = filters.search.toLowerCase();
-    const filtered = data.filter((wr: Record<string, unknown>) => {
-      const wrNumber = (wr.wr_number as string) || "";
-      const notes = (wr.notes as string) || "";
-      if (wrNumber.toLowerCase().includes(search) || notes.toLowerCase().includes(search)) return true;
-      const pkgs = wr.packages as Array<Record<string, unknown>> | null;
-      return pkgs?.some((p) => {
-        const tn = (p.tracking_number as string) || "";
-        const carrier = (p.carrier as string) || "";
-        const sender = (p.sender_name as string) || "";
-        return tn.toLowerCase().includes(search) || carrier.toLowerCase().includes(search) || sender.toLowerCase().includes(search);
-      });
-    });
-    return { data: filtered, error: null, count: filtered.length };
   }
 
   return { data, error: null, count: count ?? 0 };
