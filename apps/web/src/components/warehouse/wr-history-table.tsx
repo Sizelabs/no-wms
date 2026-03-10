@@ -27,6 +27,7 @@ interface WarehouseReceipt {
   wr_number: string;
   warehouse_id: string;
   agency_id: string | null;
+  consignee_id: string | null;
   packages: WrPackage[];
   total_billable_weight_lb: number | null;
   total_declared_value_usd: number | null;
@@ -51,6 +52,8 @@ interface WrHistoryTableProps {
   freeStorageDays: number;
   storageDailyRate: number;
 }
+
+export const DEFAULT_WR_STATUSES = ["received", "in_warehouse", "in_work_order"];
 
 const STATUS_COLORS: Record<string, string> = {
   received: "bg-blue-50 text-blue-700",
@@ -236,7 +239,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
         <MultiSelectFilter
           label="Todos los estados"
           options={Object.entries(WR_STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-          selected={searchParams.get("status")?.split(",").filter(Boolean) ?? []}
+          selected={searchParams.get("status")?.split(",").filter(Boolean) ?? DEFAULT_WR_STATUSES}
           onChange={(v) => updateFilter("status", v.join(","))}
         />
         <button
