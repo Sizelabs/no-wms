@@ -193,7 +193,7 @@ export function EditableField({
   return (
     <span
       tabIndex={0}
-      onClick={enterEditing}
+      role="button"
       onFocus={enterEditing}
       className={`cursor-pointer border-b border-dashed border-blue-300 transition-all print:border-0 print:cursor-default ${
         flash

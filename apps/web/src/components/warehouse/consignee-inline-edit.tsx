@@ -48,6 +48,7 @@ export function ConsigneeInlineEdit({
   const containerRef = useRef<HTMLDivElement>(null);
   const { notify } = useNotification();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     setDisplayName(consigneeName);
@@ -211,9 +212,16 @@ export function ConsigneeInlineEdit({
     setIsCreating(false);
   }, [query, agencyId, wrId, consigneeName, casillero, notify, onSelect, variant]);
 
+  useEffect(() => {
+    return () => {
+      if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+    };
+  }, []);
+
   const handleInputBlur = useCallback(() => {
     // Delay to allow dropdown clicks to register
-    setTimeout(() => {
+    if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+    blurTimerRef.current = setTimeout(() => {
       if (containerRef.current?.contains(document.activeElement)) return;
       setDropdownOpen(false);
       saveFreetext(query);
@@ -329,13 +337,7 @@ export function ConsigneeInlineEdit({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onBlur={() => {
-            // Delay to allow dropdown clicks to register
-            setTimeout(() => {
-              if (containerRef.current?.contains(document.activeElement)) return;
-              saveFreetext(query);
-            }, 150);
-          }}
+          onBlur={handleInputBlur}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setEditing(false);
@@ -364,9 +366,9 @@ export function ConsigneeInlineEdit({
   return (
     <span
       tabIndex={0}
-      onClick={enterEditing}
+      role="button"
       onFocus={enterEditing}
-      className={`cursor-pointer border-b border-dashed border-transparent transition-all hover:border-blue-300 print:border-0 print:cursor-default ${
+      className={`cursor-pointer border-b border-dashed border-blue-300 transition-all print:border-0 print:cursor-default ${
         flash
           ? "text-emerald-600"
           : isEmpty
