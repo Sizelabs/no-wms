@@ -151,6 +151,9 @@ export function EditableField({
               if (e.key === "Escape") {
                 setLocalValue(String(displayValue ?? ""));
                 setEditing(false);
+              } else if (e.key === "Tab") {
+                // Let Tab navigate instead of inserting a tab character
+                (e.target as HTMLTextAreaElement).blur();
               }
             }}
             rows={3}
@@ -182,12 +185,16 @@ export function EditableField({
   const text = formatDisplay ? formatDisplay(displayValue) : String(displayValue ?? "");
   const isEmpty = !text;
 
+  const enterEditing = () => {
+    setLocalValue(String(displayValue ?? ""));
+    setEditing(true);
+  };
+
   return (
     <span
-      onClick={() => {
-        setLocalValue(String(displayValue ?? ""));
-        setEditing(true);
-      }}
+      tabIndex={0}
+      onClick={enterEditing}
+      onFocus={enterEditing}
       className={`cursor-pointer border-b border-dashed border-blue-300 transition-all print:border-0 print:cursor-default ${
         flash
           ? "text-emerald-600"

@@ -42,6 +42,12 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-500",
 };
 
+function formatWeight(si: ShippingInstruction): string {
+  const w = si.total_billable_weight_lb
+    ?? (si.shipping_instruction_items.reduce((s, i) => s + Number(i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0) || null);
+  return w ? `${Number(w).toFixed(1)} lb` : "—";
+}
+
 export function SiList({ data, locale }: SiListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -178,13 +184,7 @@ export function SiList({ data, locale }: SiListProps) {
                 </td>
                 <td className="px-4 py-3 text-xs">{si.consignees?.full_name ?? "—"}</td>
                 <td className="px-4 py-3 text-xs">{si.shipping_instruction_items.length}</td>
-                <td className="px-4 py-3 text-xs">
-                  {(() => {
-                    const w = si.total_billable_weight_lb
-                      ?? (si.shipping_instruction_items.reduce((s, i) => s + Number(i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0) || null);
-                    return w ? `${Number(w).toFixed(1)} lb` : "—";
-                  })()}
-                </td>
+                <td className="px-4 py-3 text-xs">{formatWeight(si)}</td>
                 <td className="px-4 py-3 font-mono text-xs">
                   {si.hawbs.length ? si.hawbs.map((h) => h.hawb_number).join(", ") : "—"}
                 </td>

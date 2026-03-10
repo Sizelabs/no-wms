@@ -18,35 +18,35 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
 
   if (!wrIds.length) return { error: "Seleccione al menos un WR" };
 
-  // Block WRs with active WOs
-  const { data: activeWoItems } = await supabase
-    .from("work_order_items")
-    .select("warehouse_receipt_id, work_orders!inner(status)")
-    .in("warehouse_receipt_id", wrIds)
-    .in("work_orders.status", ["requested", "approved", "in_progress"]);
+  // Fetch profile and check for active WOs in parallel
+  const [{ data: activeWoItems }, { data: profile }] = await Promise.all([
+    supabase
+      .from("work_order_items")
+      .select("warehouse_receipt_id, work_orders!inner(status)")
+      .in("warehouse_receipt_id", wrIds)
+      .in("work_orders.status", ["requested", "approved", "in_progress"]),
+    supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single(),
+  ]);
 
   if (activeWoItems?.length) {
     return { error: "Uno o más WRs tienen órdenes de trabajo activas. Cancele las OT primero." };
   }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
   if (!profile) return { error: "Perfil no encontrado" };
 
-  // Generate SI number via SECURITY DEFINER function (bypasses RLS)
-  const { data: siNumber } = await supabase.rpc("next_si_number", { p_org_id: profile.organization_id });
+  // Generate SI number and fetch WR totals in parallel
+  const [{ data: siNumber }, { data: wrs }] = await Promise.all([
+    supabase.rpc("next_si_number", { p_org_id: profile.organization_id }),
+    supabase
+      .from("warehouse_receipts")
+      .select("total_billable_weight_lb, total_actual_weight_lb, total_volumetric_weight_lb, total_declared_value_usd, total_pieces")
+      .in("id", wrIds),
+  ]);
 
   if (!siNumber) return { error: "No se pudo generar número de SI" };
-
-  // Fetch WR totals to populate SI summary at creation
-  const { data: wrs } = await supabase
-    .from("warehouse_receipts")
-    .select("total_billable_weight_lb, total_actual_weight_lb, total_volumetric_weight_lb, total_declared_value_usd, total_pieces")
-    .in("id", wrIds);
 
   const totalPieces = (wrs ?? []).reduce((s, w) => s + (w.total_pieces ?? 0), 0);
   const totalActual = (wrs ?? []).reduce((s, w) => s + Number(w.total_actual_weight_lb ?? 0), 0);

@@ -1,9 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { checkboxClass, Field, inputClass, selectClass, textareaClass } from "@/components/ui/form-section";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Combobox } from "@/components/ui/combobox";
 import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees";
@@ -64,7 +64,6 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
   const [consigneeQuery, setConsigneeQuery] = useState("");
   const [consigneeResults, setConsigneeResults] = useState<ConsigneeResult[]>([]);
   const [selectedConsignee, setSelectedConsignee] = useState<ConsigneeResult | null>(null);
-  const [showConsigneeDropdown, setShowConsigneeDropdown] = useState(false);
   const [creatingConsignee, setCreatingConsignee] = useState(false);
   const [newConsigneeName, setNewConsigneeName] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -149,22 +148,23 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
     return Array.from(groups.entries()).map(([key, group]) => ({ key, ...group }));
   }, [availableWrs]);
 
+  const consigneeDropdownOpen = !selectedConsignee && consigneeQuery.trim().length >= 2;
+
   const handleConsigneeSearch = useCallback((query: string) => {
     setConsigneeQuery(query);
     setSelectedConsignee(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) { setConsigneeResults([]); setShowConsigneeDropdown(false); return; }
+    if (query.trim().length < 2) { setConsigneeResults([]); return; }
     debounceRef.current = setTimeout(async () => {
       if (!agencyId) return;
       const res = await searchConsignees(agencyId, query.trim());
-      if (res.data) { setConsigneeResults(res.data); setShowConsigneeDropdown(true); }
+      if (res.data) setConsigneeResults(res.data);
     }, 300);
   }, [agencyId]);
 
   const handleSelectConsignee = useCallback((c: ConsigneeResult) => {
     setSelectedConsignee(c);
     setConsigneeQuery(c.full_name + (c.casillero ? ` (${c.casillero})` : ""));
-    setShowConsigneeDropdown(false);
   }, []);
 
   const handleQuickCreate = useCallback(async () => {
@@ -249,7 +249,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
                             type="checkbox"
                             checked={selected.has(wr.id)}
                             onChange={() => toggleWr(wr.id)}
-                            className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+                            className={checkboxClass}
                           />
                           <span className="font-mono text-xs font-medium text-gray-900">{wr.wr_number}</span>
                           <span className="ml-auto shrink-0 text-xs text-gray-500">
@@ -301,12 +301,11 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
                   type="text"
                   value={consigneeQuery}
                   onChange={(e) => handleConsigneeSearch(e.target.value)}
-                  onFocus={() => { if (consigneeResults.length > 0 && !selectedConsignee) setShowConsigneeDropdown(true); }}
                   placeholder={selected.size === 0 ? "Seleccione recibos primero..." : "Buscar por nombre o casillero..."}
                   disabled={selected.size === 0}
                   className={inputClass}
                 />
-                {showConsigneeDropdown && consigneeResults.length > 0 && (
+                {consigneeDropdownOpen && consigneeResults.length > 0 && (
                   <div className="absolute z-10 mt-1 max-h-44 w-full overflow-auto rounded-lg border bg-white py-1 shadow-lg">
                     {consigneeResults.map((c) => (
                       <button
@@ -321,7 +320,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
                     ))}
                   </div>
                 )}
-                {showConsigneeDropdown && consigneeResults.length === 0 && consigneeQuery.trim().length >= 2 && (
+                {consigneeDropdownOpen && consigneeResults.length === 0 && (
                   <div className="absolute z-10 mt-1 w-full rounded-lg border bg-white px-3 py-2 shadow-lg">
                     <p className="text-xs text-gray-500">Sin resultados</p>
                   </div>
@@ -390,26 +389,6 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* ── Shared primitives ─────────────────────────────────────────────────── */
-
-const baseClass =
-  "w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 focus:outline-none transition-colors disabled:bg-gray-50 disabled:text-gray-400";
-const inputClass = `h-10 ${baseClass}`;
-const selectClass = `h-10 ${baseClass}`;
-const textareaClass = `py-2 ${baseClass}`;
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-sm text-gray-600">
-        {label}
-        {required && <span className="ml-0.5 text-red-400">*</span>}
-      </span>
-      {children}
-    </label>
-  );
-}
-
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <label className="flex items-center gap-2 text-sm text-gray-700 select-none cursor-pointer">
@@ -417,7 +396,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400"
+        className={checkboxClass}
       />
       {label}
     </label>

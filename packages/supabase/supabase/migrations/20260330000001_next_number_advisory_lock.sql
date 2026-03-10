@@ -1,5 +1,4 @@
--- Generates the next SI number for an organization, bypassing RLS.
--- Uses advisory lock to prevent race conditions on concurrent inserts.
+-- Add advisory locks to prevent race conditions on concurrent number generation.
 create or replace function next_si_number(p_org_id uuid)
 returns text
 language plpgsql
@@ -20,7 +19,6 @@ begin
 end;
 $$;
 
--- Same pattern for HAWB numbers.
 create or replace function next_hawb_number(p_org_id uuid)
 returns text
 language plpgsql
