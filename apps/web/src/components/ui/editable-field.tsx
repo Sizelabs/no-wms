@@ -45,7 +45,9 @@ export function EditableField({
   useEffect(() => {
     if (editing && inputRef.current) {
       inputRef.current.focus();
-      if (inputRef.current instanceof HTMLInputElement || inputRef.current instanceof HTMLTextAreaElement) {
+      if (inputRef.current instanceof HTMLSelectElement) {
+        try { inputRef.current.showPicker(); } catch {}
+      } else if (inputRef.current instanceof HTMLInputElement || inputRef.current instanceof HTMLTextAreaElement) {
         inputRef.current.select();
       }
     }

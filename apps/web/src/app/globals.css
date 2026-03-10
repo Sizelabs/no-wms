@@ -41,6 +41,25 @@ input[type="radio"] {
   animation: toast-out 0.2s ease-in forwards;
 }
 
+/* Paper-like inputs inside the WR document preview */
+.wr-document input,
+.wr-document textarea,
+.wr-document select {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding-inline: 0 !important;
+  border-bottom: 1px solid transparent !important;
+}
+
+.wr-document input:focus,
+.wr-document textarea:focus,
+.wr-document select:focus {
+  border-bottom-color: #334155 !important; /* slate-700 */
+}
+
 @media print {
   @page { size: letter portrait; margin: 0.3in 0.5in; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
