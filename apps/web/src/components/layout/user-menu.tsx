@@ -14,7 +14,7 @@ interface UserMenuProps {
   locale: string;
 }
 
-export function UserMenu({ userName, userRole, userEmail, locale }: UserMenuProps) {
+export function UserMenu({ userName, userRole: _userRole, userEmail, locale }: UserMenuProps) {
   const t = useTranslations("userMenu");
   const initials = userName
     .split(" ")

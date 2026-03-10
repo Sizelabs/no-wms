@@ -4,7 +4,6 @@ import { detectCarrier } from "@no-wms/shared/constants/carrier-detection";
 import { CARRIERS } from "@no-wms/shared/constants/carriers";
 import type { ConditionFlag } from "@no-wms/shared/constants/condition-flags";
 import {
-  CONDITION_FLAG_COLORS,
   CONDITION_FLAG_LABELS_ES,
   CONDITION_FLAGS,
 } from "@no-wms/shared/constants/condition-flags";
@@ -27,6 +26,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
+import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
 import type { UploadedFile } from "@/components/ui/file-upload";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -34,15 +34,14 @@ import { FormCard, FormSection } from "@/components/ui/form-section";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import type { UploadedPhoto } from "@/components/ui/photo-upload";
 import { PhotoUpload } from "@/components/ui/photo-upload";
-import { useNotification } from "@/components/layout/notification";
 import { checkCasilleroUnique, generateCasillero, quickCreateConsignee, searchConsignees } from "@/lib/actions/consignees";
-import { createClient } from "@/lib/supabase/client";
 import {
   checkDuplicateTracking,
   checkWrNumberUnique,
   createWarehouseReceipt,
   generateWrNumberForWarehouse,
 } from "@/lib/actions/warehouse-receipts";
+import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -397,7 +396,7 @@ export function WrReceiptForm({
         setConsignees([]);
       }
     }
-  }, [filteredAgencies]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filteredAgencies]);
 
   useEffect(() => {
     if (!wrNumber.trim()) {

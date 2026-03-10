@@ -1,11 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import {
   DEFAULT_MODALITY_CODES,
   DEFAULT_MODALITY_LABELS,
 } from "@no-wms/shared/constants/modalities";
+import { revalidatePath } from "next/cache";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";

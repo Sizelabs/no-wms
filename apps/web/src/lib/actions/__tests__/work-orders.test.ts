@@ -103,8 +103,8 @@ describe("createWorkOrder", () => {
     // Override the first from().select()...in() to return empty (no active WOs)
     // This is tricky with a single mock, so we'll use mockReturnValueOnce chain
     // For simplicity, make the chain thenable return empty array first
-    const results: any[] = [];
-    let callIndex = 0;
+    const _results: any[] = [];
+    let _callIndex = 0;
 
     // We can't easily sequence different results with this mock approach,
     // so we'll just verify the calls were made
@@ -124,7 +124,7 @@ describe("createWorkOrder", () => {
     // An object {id: "wo-1"...} is not an array, so ?.length will be undefined → falsy
     // This means our mock will actually pass the check!
 
-    const result = await createWorkOrder(fd);
+    const _result = await createWorkOrder(fd);
     // The mock returns {id: "wo-1"} which is an object not an array,
     // so existingWoItems?.length is undefined (falsy) — passes the check
     // Then agency query returns {type: "corporativo"} — priority becomes "high"

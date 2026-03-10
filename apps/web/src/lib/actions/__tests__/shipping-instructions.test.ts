@@ -96,7 +96,7 @@ describe("createShippingInstruction", () => {
     fd.set("consignee_id", "con-1");
     fd.set("warehouse_receipt_ids", '["wr-1"]');
 
-    const result = await createShippingInstruction(fd);
+    const _result = await createShippingInstruction(fd);
     // Should have called from for multiple tables
     expect(mockSupabase.from).toHaveBeenCalledWith("shipping_instructions");
   });

@@ -23,8 +23,7 @@ export function MultiSelectFilter({ label, options, selected, onChange }: MultiS
   const selectedKey = selected.join(",");
   useEffect(() => {
     setLocal(selected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedKey]);
+  }, [selectedKey]); // selected identity changes often; key is stable
 
   useEffect(() => {
     if (!open) return;

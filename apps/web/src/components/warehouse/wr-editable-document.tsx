@@ -645,12 +645,12 @@ function NewPackageModal({
 
 export function WrEditableDocument({
   wr,
-  settings,
+  settings: _settings,
   destination,
   org,
   warehouseLocations,
   orgMembers,
-  locale,
+  locale: _locale,
   backHref,
   canEdit = true,
 }: WrEditableDocumentProps) {

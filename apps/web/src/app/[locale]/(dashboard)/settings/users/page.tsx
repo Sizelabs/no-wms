@@ -2,8 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { AllUsersList } from "@/components/users/all-users-list";
 import { PageHeader } from "@/components/layout/page-header";
+import { AllUsersList } from "@/components/users/all-users-list";
 import { UserList } from "@/components/users/user-list";
 import { getOrganizationUsers } from "@/lib/actions/organizations";
 import { getAllUsersGrouped } from "@/lib/actions/users";

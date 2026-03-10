@@ -91,7 +91,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-export function WrPrintDocument({ wr, settings, destination, org }: WrPrintDocumentProps) {
+export function WrPrintDocument({ wr, settings: _settings, destination, org }: WrPrintDocumentProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
   const searchParams = useSearchParams();
 
