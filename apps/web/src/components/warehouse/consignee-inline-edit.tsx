@@ -329,6 +329,13 @@ export function ConsigneeInlineEdit({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onBlur={() => {
+            // Delay to allow dropdown clicks to register
+            setTimeout(() => {
+              if (containerRef.current?.contains(document.activeElement)) return;
+              saveFreetext(query);
+            }, 150);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setEditing(false);
@@ -349,12 +356,16 @@ export function ConsigneeInlineEdit({
     );
   }
 
+  const enterEditing = () => {
+    setQuery(displayName ?? "");
+    setEditing(true);
+  };
+
   return (
     <span
-      onClick={() => {
-        setQuery(displayName ?? "");
-        setEditing(true);
-      }}
+      tabIndex={0}
+      onClick={enterEditing}
+      onFocus={enterEditing}
       className={`cursor-pointer border-b border-dashed border-transparent transition-all hover:border-blue-300 print:border-0 print:cursor-default ${
         flash
           ? "text-emerald-600"
