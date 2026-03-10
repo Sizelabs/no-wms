@@ -24,7 +24,7 @@ export function SettingsSidebar({ locale }: SettingsSidebarProps) {
     : [];
 
   return (
-    <nav className="w-48 shrink-0">
+    <nav className="sticky top-0 w-48 shrink-0 self-start">
       {/* Header with back arrow */}
       <Link
         href={`/${locale}`}
