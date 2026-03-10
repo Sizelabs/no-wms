@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
@@ -45,6 +45,15 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
+
+  // Optimistic state for courier destinations: key is "courierId:destinationId"
+  const [optimisticToggles, setOptimisticToggle] = useOptimistic(
+    {} as Record<string, boolean>,
+    (state: Record<string, boolean>, update: { key: string; value: boolean }) => ({
+      ...state,
+      [update.key]: update.value,
+    }),
+  );
 
   const filtered = data.filter((d) => {
     if (search) {
@@ -128,19 +137,21 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
                   </span>
                 </td>
                 {couriers.map((c) => {
+                  const toggleKey = `${c.id}:${d.id}`;
                   const cd = c.courier_destinations.find(
                     (cd) => cd.destination_id === d.id,
                   );
-                  const isEnabled = cd?.is_active ?? false;
+                  const serverValue = cd?.is_active ?? false;
+                  const isEnabled = toggleKey in optimisticToggles ? optimisticToggles[toggleKey]! : serverValue;
                   return (
                     <td key={c.id} className="px-4 py-3 text-center">
                       <button
                         type="button"
                         role="switch"
                         aria-checked={isEnabled}
-                        disabled={isPending}
                         onClick={() => {
                           startTransition(async () => {
+                            setOptimisticToggle({ key: toggleKey, value: !isEnabled });
                             await upsertCourierDestination(
                               c.id,
                               d.id,
