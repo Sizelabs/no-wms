@@ -17,6 +17,7 @@ packages/supabase/.temp/
 .env.*.local
 .env.staging
 .env.production
+.env.sentry-build-plugin
 
 # IDE
 .vscode/

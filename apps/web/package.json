@@ -17,6 +17,7 @@
     "@no-wms/supabase": "workspace:*",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@sentry/nextjs": "^10.43.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.49.8",
     "@tanstack/react-virtual": "^3.13.19",
