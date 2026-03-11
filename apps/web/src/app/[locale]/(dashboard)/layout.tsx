@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { RoleProvider } from "@/components/auth/role-provider";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { NotificationProvider } from "@/components/layout/notification";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
@@ -49,6 +50,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 print:block print:h-auto print:overflow-visible">
+      <NavigationProgress />
       <div className="print:hidden">
         <Sidebar
           navConfig={navConfig}
