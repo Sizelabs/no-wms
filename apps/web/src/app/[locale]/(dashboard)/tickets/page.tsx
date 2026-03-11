@@ -1,25 +1,41 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { TicketList } from "@/components/tickets/ticket-list";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { getTickets } from "@/lib/actions/tickets";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserAgencyScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function TicketsPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await params;
+async function TicketHeader({ locale }: { locale: string }) {
   const { permissions } = await requirePermission(locale, "tickets", "read");
   const t = await getTranslations("tickets");
-  const { data: tickets } = await getTickets();
-  const agencyScope = await getUserAgencyScope();
+  const canCreate = permissions.tickets.create;
 
-  // Load agencies for filter (non-agency users)
+  return (
+    <PageHeader title={t("title")}>
+      {canCreate && (
+        <Link
+          href="/tickets/new"
+          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          + {t("new")}
+        </Link>
+      )}
+    </PageHeader>
+  );
+}
+
+async function TicketTableSection({ locale }: { locale: string }) {
+  await requirePermission(locale, "tickets", "read");
+  const [{ data: tickets }, agencyScope] = await Promise.all([
+    getTickets(),
+    getUserAgencyScope(),
+  ]);
+
   let agencies: Array<{ id: string; name: string }> = [];
   if (agencyScope === null) {
     const supabase = await createClient();
@@ -27,21 +43,24 @@ export default async function TicketsPage({
     agencies = data ?? [];
   }
 
-  const canCreate = permissions.tickets.create;
+  return <TicketList data={tickets as never[]} agencies={agencies} />;
+}
+
+export default async function TicketsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("title")}>
-        {canCreate && (
-          <Link
-            href="/tickets/new"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + {t("new")}
-          </Link>
-        )}
-      </PageHeader>
-      <TicketList data={tickets as never[]} agencies={agencies} />
+      <Suspense>
+        <TicketHeader locale={locale} />
+      </Suspense>
+      <Suspense fallback={<TableSkeleton />}>
+        <TicketTableSection locale={locale} />
+      </Suspense>
     </div>
   );
 }

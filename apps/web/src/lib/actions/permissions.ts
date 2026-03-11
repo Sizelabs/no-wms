@@ -3,7 +3,7 @@
 import type { Resource, RolePermissionMap } from "@no-wms/shared/constants/permissions";
 import { DEFAULT_PERMISSIONS, RESOURCES } from "@no-wms/shared/constants/permissions";
 import type { Role } from "@no-wms/shared/constants/roles";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -40,20 +40,26 @@ function mergeWithDefaults(role: Role, rows: DbRow[]): RolePermissionMap {
   return map;
 }
 
+// Cached version — role permissions rarely change, revalidated on save/reset
+const getCachedRolePermissions = unstable_cache(
+  async (role: Role) => {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("role_permissions")
+      .select("role, resource, can_create, can_read, can_update, can_delete")
+      .eq("role", role);
+
+    return mergeWithDefaults(role, (data as DbRow[] | null) ?? []);
+  },
+  ["role-permissions"],
+  { revalidate: 300, tags: ["role-permissions"] },
+);
+
 export async function getRolePermissions(role: Role): Promise<RolePermissionMap> {
   if (role === "super_admin") {
     return DEFAULT_PERMISSIONS.super_admin;
   }
-
-  // Use admin client to bypass RLS — role_permissions is global config
-  // that all users need to read for nav/permission checks.
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("role_permissions")
-    .select("role, resource, can_create, can_read, can_update, can_delete")
-    .eq("role", role);
-
-  return mergeWithDefaults(role, (data as DbRow[] | null) ?? []);
+  return getCachedRolePermissions(role);
 }
 
 export async function getAllRolePermissions(): Promise<Record<Role, RolePermissionMap>> {
@@ -110,6 +116,7 @@ export async function saveRolePermission(
 
   if (error) return { error: error.message };
 
+  revalidateTag("role-permissions");
   revalidatePath("/settings");
   return {};
 }
@@ -128,6 +135,7 @@ export async function resetRolePermissions(role: Role): Promise<{ error?: string
 
   if (error) return { error: error.message };
 
+  revalidateTag("role-permissions");
   revalidatePath("/settings");
   return {};
 }

@@ -1,31 +1,32 @@
 import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { InventoryTable } from "@/components/warehouse/inventory-table";
 import { getAgenciesForFilter, getPackages, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
 import { requirePermission } from "@/lib/auth/require-permission";
 
-export default async function InventoryPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{
-    search?: string;
-    status?: string;
-    agency_id?: string;
-    warehouse_id?: string;
-    carrier?: string;
-    is_damaged?: string;
-    date_from?: string;
-    date_to?: string;
-    offset?: string;
-  }>;
-}) {
-  const { locale } = await params;
+interface Filters {
+  search?: string;
+  status?: string;
+  agency_id?: string;
+  warehouse_id?: string;
+  carrier?: string;
+  is_damaged?: string;
+  date_from?: string;
+  date_to?: string;
+  offset?: string;
+}
+
+async function InventoryHeader({ locale }: { locale: string }) {
   await requirePermission(locale, "inventory", "read");
-  const filters = await searchParams;
   const t = await getTranslations("nav");
+  return <PageHeader title={t("inventory")} />;
+}
+
+async function InventoryTableSection({ filters, locale }: { filters: Filters; locale: string }) {
+  await requirePermission(locale, "inventory", "read");
 
   const [{ data, count }, agencies, warehouses] = await Promise.all([
     getPackages({
@@ -44,15 +45,33 @@ export default async function InventoryPage({
   ]);
 
   return (
+    <InventoryTable
+      data={data ?? []}
+      count={count}
+      locale={locale}
+      agencies={agencies}
+      warehouses={warehouses}
+    />
+  );
+}
+
+export default async function InventoryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<Filters>;
+}) {
+  const [{ locale }, filters] = await Promise.all([params, searchParams]);
+
+  return (
     <div className="space-y-6">
-      <PageHeader title={t("inventory")} />
-      <InventoryTable
-        data={data ?? []}
-        count={count}
-        locale={locale}
-        agencies={agencies}
-        warehouses={warehouses}
-      />
+      <Suspense>
+        <InventoryHeader locale={locale} />
+      </Suspense>
+      <Suspense fallback={<TableSkeleton />}>
+        <InventoryTableSection filters={filters} locale={locale} />
+      </Suspense>
     </div>
   );
 }

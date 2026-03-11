@@ -34,10 +34,18 @@ export default async function middleware(request: NextRequest) {
   // 1. Run intl middleware first (handles locale routing)
   const intlResponse = intlMiddleware(request);
 
-  // 2. Run Supabase session refresh
+  // 2. Skip auth for prefetch requests — they don't need session validation,
+  //    and skipping saves a network round-trip per visible link.
+  const isPrefetch = request.headers.get("next-router-prefetch") === "1"
+    || request.headers.get("purpose") === "prefetch";
+  if (isPrefetch) {
+    return intlResponse;
+  }
+
+  // 3. Run Supabase session refresh
   const { user, response } = await updateSession(request, intlResponse);
 
-  // 3. Check auth for protected routes
+  // 4. Check auth for protected routes
   const { pathname } = request.nextUrl;
 
   if (!user && !isPublicPath(pathname)) {

@@ -1,6 +1,6 @@
 "use server";
 
-import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
+import { getUserAgencyScope, getUserFullScope, getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 // ---------------------------------------------------------------------------
@@ -8,110 +8,84 @@ import { createClient } from "@/lib/supabase/server";
 // ---------------------------------------------------------------------------
 export async function getDashboardStats() {
   const supabase = await createClient();
-  const warehouseScope = await getUserWarehouseScope();
-  const agencyScope = await getUserAgencyScope();
+  const { warehouseIds: warehouseScope, agencyIds: agencyScope } = await getUserFullScope();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayIso = today.toISOString();
 
-  // Boxes received today
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  // Build all queries (don't await yet)
   let receivedQuery = supabase
     .from("warehouse_receipts")
     .select("*", { count: "exact", head: true })
     .gte("created_at", todayIso);
-  if (warehouseScope !== null && warehouseScope.length) {
-    receivedQuery = receivedQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    receivedQuery = receivedQuery.in("agency_id", agencyScope);
-  }
-  const { count: boxesReceivedToday } = await receivedQuery;
+  if (warehouseScope !== null && warehouseScope.length) receivedQuery = receivedQuery.in("warehouse_id", warehouseScope);
+  if (agencyScope !== null && agencyScope.length) receivedQuery = receivedQuery.in("agency_id", agencyScope);
 
-  // Total in warehouse
   let inWarehouseQuery = supabase
     .from("warehouse_receipts")
     .select("*", { count: "exact", head: true })
     .in("status", ["in_warehouse", "in_work_order", "in_dispatch"]);
-  if (warehouseScope !== null && warehouseScope.length) {
-    inWarehouseQuery = inWarehouseQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    inWarehouseQuery = inWarehouseQuery.in("agency_id", agencyScope);
-  }
-  const { count: totalInWarehouse } = await inWarehouseQuery;
+  if (warehouseScope !== null && warehouseScope.length) inWarehouseQuery = inWarehouseQuery.in("warehouse_id", warehouseScope);
+  if (agencyScope !== null && agencyScope.length) inWarehouseQuery = inWarehouseQuery.in("agency_id", agencyScope);
 
-  // Pending work orders
   let woQuery = supabase
     .from("work_orders")
     .select("*", { count: "exact", head: true })
     .in("status", ["requested", "approved", "in_progress"]);
-  if (warehouseScope !== null && warehouseScope.length) {
-    woQuery = woQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    woQuery = woQuery.in("agency_id", agencyScope);
-  }
-  const { count: pendingWorkOrders } = await woQuery;
+  if (warehouseScope !== null && warehouseScope.length) woQuery = woQuery.in("warehouse_id", warehouseScope);
+  if (agencyScope !== null && agencyScope.length) woQuery = woQuery.in("agency_id", agencyScope);
 
-  // Pending dispatches (SIs awaiting action)
   let siQuery = supabase
     .from("shipping_instructions")
     .select("*", { count: "exact", head: true })
     .in("status", ["requested", "approved"]);
-  if (agencyScope !== null && agencyScope.length) {
-    siQuery = siQuery.in("agency_id", agencyScope);
-  }
-  const { count: pendingDispatches } = await siQuery;
+  if (agencyScope !== null && agencyScope.length) siQuery = siQuery.in("agency_id", agencyScope);
 
-  // Open tickets
   let ticketQuery = supabase
     .from("tickets")
     .select("*", { count: "exact", head: true })
     .eq("status", "open");
-  if (agencyScope !== null && agencyScope.length) {
-    ticketQuery = ticketQuery.in("agency_id", agencyScope);
-  }
-  const { count: openTickets } = await ticketQuery;
+  if (agencyScope !== null && agencyScope.length) ticketQuery = ticketQuery.in("agency_id", agencyScope);
 
-  // Storage alerts (WRs in warehouse > 30 days — simplified check)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   let storageQuery = supabase
     .from("warehouse_receipts")
     .select("*", { count: "exact", head: true })
     .in("status", ["in_warehouse", "in_work_order", "in_dispatch"])
     .lte("received_at", thirtyDaysAgo.toISOString());
-  if (warehouseScope !== null && warehouseScope.length) {
-    storageQuery = storageQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    storageQuery = storageQuery.in("agency_id", agencyScope);
-  }
-  const { count: storageAlerts } = await storageQuery;
+  if (warehouseScope !== null && warehouseScope.length) storageQuery = storageQuery.in("warehouse_id", warehouseScope);
+  if (agencyScope !== null && agencyScope.length) storageQuery = storageQuery.in("agency_id", agencyScope);
 
-  // Recent WRs (last 5)
   let recentWrQuery = supabase
     .from("warehouse_receipts")
     .select("id, wr_number, status, created_at, agencies:agency_id(name), packages(tracking_number)")
     .order("created_at", { ascending: false })
     .limit(5);
-  if (warehouseScope !== null && warehouseScope.length) {
-    recentWrQuery = recentWrQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    recentWrQuery = recentWrQuery.in("agency_id", agencyScope);
-  }
-  const { data: recentWrs } = await recentWrQuery;
+  if (warehouseScope !== null && warehouseScope.length) recentWrQuery = recentWrQuery.in("warehouse_id", warehouseScope);
+  if (agencyScope !== null && agencyScope.length) recentWrQuery = recentWrQuery.in("agency_id", agencyScope);
+
+  // Execute all 7 queries in parallel
+  const [received, inWarehouse, wo, si, tickets, storage, recentWrs] = await Promise.all([
+    receivedQuery,
+    inWarehouseQuery,
+    woQuery,
+    siQuery,
+    ticketQuery,
+    storageQuery,
+    recentWrQuery,
+  ]);
 
   return {
-    boxesReceivedToday: boxesReceivedToday ?? 0,
-    totalInWarehouse: totalInWarehouse ?? 0,
-    pendingWorkOrders: pendingWorkOrders ?? 0,
-    pendingDispatches: pendingDispatches ?? 0,
-    openTickets: openTickets ?? 0,
-    storageAlerts: storageAlerts ?? 0,
-    recentWrs: recentWrs ?? [],
+    boxesReceivedToday: received.count ?? 0,
+    totalInWarehouse: inWarehouse.count ?? 0,
+    pendingWorkOrders: wo.count ?? 0,
+    pendingDispatches: si.count ?? 0,
+    openTickets: tickets.count ?? 0,
+    storageAlerts: storage.count ?? 0,
+    recentWrs: recentWrs.data ?? [],
   };
 }
 

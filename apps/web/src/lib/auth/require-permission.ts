@@ -2,29 +2,19 @@ import type { Permission, Resource, RolePermissionMap } from "@no-wms/shared/con
 import type { Role } from "@no-wms/shared/constants/roles";
 import { redirect } from "next/navigation";
 
-import { getRolePermissions } from "@/lib/actions/permissions";
-import { getUserRoles } from "@/lib/auth/roles";
-import { getPrimaryRole } from "@/lib/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/context";
 
 export async function requirePermission(
   locale: string,
   resource: Resource,
   permission: Permission,
 ): Promise<{ userId: string; roles: Role[]; permissions: RolePermissionMap }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/${locale}/login`);
+  const ctx = await getAuthContext();
+  if (!ctx) redirect(`/${locale}/login`);
 
-  const roles = await getUserRoles(supabase, user.id);
-  const primaryRole = getPrimaryRole(roles);
-  const permissions = await getRolePermissions(primaryRole);
-
-  if (!permissions[resource][permission]) {
+  if (!ctx.permissions[resource][permission]) {
     redirect(`/${locale}`);
   }
 
-  return { userId: user.id, roles, permissions };
+  return { userId: ctx.user.id, roles: ctx.roles, permissions: ctx.permissions };
 }

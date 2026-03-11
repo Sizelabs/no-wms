@@ -23,10 +23,13 @@ export async function updateSession(
     },
   );
 
-  // Refresh the session — important for Server Components
+  // Use getSession() instead of getUser() for fast middleware.
+  // getSession() reads from the JWT cookie locally (~0ms) and only makes a
+  // network call when the token needs refresh (rare during active sessions).
+  // The real token validation happens in getAuthContext() via getUser().
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  return { user, response };
+  return { user: session?.user ?? null, response };
 }

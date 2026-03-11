@@ -1,29 +1,10 @@
-import type { UserRoleAssignment } from "@/lib/auth/roles";
-import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds, getUserRoleAssignments } from "@/lib/auth/roles";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/context";
+import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds } from "@/lib/auth/roles";
 
 interface UserScope {
   warehouseIds: string[] | null;
   courierIds: string[] | null;
   agencyIds: string[] | null;
-}
-
-/**
- * Server-side helper: fetches role assignments once and derives both scopes.
- */
-async function getUserScopes(): Promise<{ assignments: UserRoleAssignment[] | null }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { assignments: null };
-  }
-
-  const assignments = await getUserRoleAssignments(supabase, user.id);
-  return { assignments };
 }
 
 /**
@@ -33,9 +14,9 @@ async function getUserScopes(): Promise<{ assignments: UserRoleAssignment[] | nu
  * - Returns [] (empty array) if user is not authenticated, which effectively shows nothing.
  */
 export async function getUserWarehouseScope(): Promise<string[] | null> {
-  const { assignments } = await getUserScopes();
-  if (!assignments) return [];
-  return getScopedWarehouseIds(assignments);
+  const ctx = await getAuthContext();
+  if (!ctx) return [];
+  return getScopedWarehouseIds(ctx.assignments);
 }
 
 /**
@@ -45,9 +26,9 @@ export async function getUserWarehouseScope(): Promise<string[] | null> {
  * - Returns [] if user is not authenticated.
  */
 export async function getUserCourierScope(): Promise<string[] | null> {
-  const { assignments } = await getUserScopes();
-  if (!assignments) return [];
-  return getScopedCourierIds(assignments);
+  const ctx = await getAuthContext();
+  if (!ctx) return [];
+  return getScopedCourierIds(ctx.assignments);
 }
 
 /**
@@ -57,21 +38,21 @@ export async function getUserCourierScope(): Promise<string[] | null> {
  * - Returns [] if user is not authenticated.
  */
 export async function getUserAgencyScope(): Promise<string[] | null> {
-  const { assignments } = await getUserScopes();
-  if (!assignments) return [];
-  return getScopedAgencyIds(assignments);
+  const ctx = await getAuthContext();
+  if (!ctx) return [];
+  return getScopedAgencyIds(ctx.assignments);
 }
 
 /**
  * Returns warehouse, courier, and agency scopes in a single call (avoids duplicate DB queries).
  */
 export async function getUserFullScope(): Promise<UserScope> {
-  const { assignments } = await getUserScopes();
-  if (!assignments) return { warehouseIds: [], courierIds: [], agencyIds: [] };
+  const ctx = await getAuthContext();
+  if (!ctx) return { warehouseIds: [], courierIds: [], agencyIds: [] };
   return {
-    warehouseIds: getScopedWarehouseIds(assignments),
-    courierIds: getScopedCourierIds(assignments),
-    agencyIds: getScopedAgencyIds(assignments),
+    warehouseIds: ctx.warehouseIds,
+    courierIds: ctx.courierIds,
+    agencyIds: ctx.agencyIds,
   };
 }
 
@@ -96,10 +77,10 @@ const COURIER_SIDE_ROLES = new Set([
  * - A specific side for scoped roles
  */
 export async function getUserAllowedTariffSide(): Promise<string | null> {
-  const { assignments } = await getUserScopes();
-  if (!assignments || assignments.length === 0) return null; // super_admin
+  const ctx = await getAuthContext();
+  if (!ctx || ctx.assignments.length === 0) return null; // super_admin
 
-  const roles = assignments.map((a) => a.role);
+  const roles = ctx.roles;
 
   if (roles.some((r) => r === "super_admin")) return null;
   if (roles.some((r) => FORWARDER_SIDE_ROLES.has(r))) return "forwarder_to_courier";

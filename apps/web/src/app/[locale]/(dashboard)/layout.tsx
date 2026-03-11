@@ -7,10 +7,8 @@ import { RoleProvider } from "@/components/auth/role-provider";
 import { NotificationProvider } from "@/components/layout/notification";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { getRolePermissions } from "@/lib/actions/permissions";
-import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds, getUserRoleAssignments } from "@/lib/auth/roles";
-import { getFilteredNavConfig, getFilteredSettingsGroups, getPrimaryRole } from "@/lib/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/context";
+import { getFilteredNavConfig, getFilteredSettingsGroups } from "@/lib/navigation";
 
 export default async function DashboardLayout({
   children,
@@ -20,23 +18,20 @@ export default async function DashboardLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const supabase = await createClient();
+  const ctx = await getAuthContext();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!ctx) {
     redirect(`/${locale}/login`);
   }
 
-  const assignments = await getUserRoleAssignments(supabase, user.id);
-  const roles = assignments.map((a) => a.role);
-  const warehouseIds = getScopedWarehouseIds(assignments);
-  const courierIds = getScopedCourierIds(assignments);
-  const agencyIds = getScopedAgencyIds(assignments);
-  const primaryRole = getPrimaryRole(roles);
-  const permissions = await getRolePermissions(primaryRole);
+  const { user, roles, primaryRole, permissions, warehouseIds, courierIds, agencyIds, supabase } = ctx;
+
+  // These can run in parallel — they're independent of each other
+  const [profile, cookieStore] = await Promise.all([
+    supabase.from("profiles").select("organizations(name)").eq("id", user.id).single(),
+    cookies(),
+  ]);
+
   const navConfig = getFilteredNavConfig(permissions);
   const isSuperAdmin = roles.includes("super_admin");
   const settingsGroups = getFilteredSettingsGroups(permissions, isSuperAdmin);
@@ -47,17 +42,9 @@ export default async function DashboardLayout({
   const userRole = ROLE_LABELS[primaryRole];
   const userEmail = user.email ?? "";
 
-  // Fetch the user's organization name
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organizations(name)")
-    .eq("id", user.id)
-    .single();
-  const orgs = profile?.organizations as unknown as { name: string } | { name: string }[] | null;
+  const orgs = profile.data?.organizations as unknown as { name: string } | { name: string }[] | null;
   const orgName = Array.isArray(orgs) ? (orgs[0]?.name ?? "") : (orgs?.name ?? "");
 
-  // Read sidebar collapse cookie for SSR (avoid layout shift)
-  const cookieStore = await cookies();
   const defaultCollapsed = cookieStore.get("sidebar-collapsed")?.value === "true";
 
   return (
@@ -73,7 +60,7 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="print:hidden">
           <Topbar
-            userName={userName}
+            userName={userName as string}
             userRole={userRole}
             userEmail={userEmail}
             orgName={orgName}
