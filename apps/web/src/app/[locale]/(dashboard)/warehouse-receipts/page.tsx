@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { TableSkeleton } from "@/components/ui/skeletons";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { WrHistoryTable } from "@/components/warehouse/wr-history-table";
 import { getAgenciesForFilter, getStorageSettings, getWarehouseReceipts, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
 import { requirePermission } from "@/lib/auth/require-permission";
@@ -90,7 +90,7 @@ export default async function WarehouseReceiptsPage({
 
   return (
     <div className="space-y-6">
-      <Suspense>
+      <Suspense fallback={<PageHeaderSkeleton hasButtons />}>
         <WrHeader locale={locale} />
       </Suspense>
       <Suspense fallback={<TableSkeleton />}>

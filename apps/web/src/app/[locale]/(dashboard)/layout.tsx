@@ -60,7 +60,7 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="print:hidden">
           <Topbar
-            userName={userName as string}
+            userName={String(userName)}
             userRole={userRole}
             userEmail={userEmail}
             orgName={orgName}

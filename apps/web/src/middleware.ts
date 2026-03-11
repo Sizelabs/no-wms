@@ -36,8 +36,7 @@ export default async function middleware(request: NextRequest) {
 
   // 2. Skip auth for prefetch requests — they don't need session validation,
   //    and skipping saves a network round-trip per visible link.
-  const isPrefetch = request.headers.get("next-router-prefetch") === "1"
-    || request.headers.get("purpose") === "prefetch";
+  const isPrefetch = request.headers.get("next-router-prefetch") === "1";
   if (isPrefetch) {
     return intlResponse;
   }

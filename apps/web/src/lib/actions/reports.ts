@@ -7,8 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 // Dashboard stats (live counts)
 // ---------------------------------------------------------------------------
 export async function getDashboardStats() {
-  const supabase = await createClient();
   const { warehouseIds: warehouseScope, agencyIds: agencyScope } = await getUserFullScope();
+  const supabase = await createClient();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

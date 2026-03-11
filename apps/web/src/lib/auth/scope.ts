@@ -1,5 +1,4 @@
 import { getAuthContext } from "@/lib/auth/context";
-import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds } from "@/lib/auth/roles";
 
 interface UserScope {
   warehouseIds: string[] | null;
@@ -16,7 +15,7 @@ interface UserScope {
 export async function getUserWarehouseScope(): Promise<string[] | null> {
   const ctx = await getAuthContext();
   if (!ctx) return [];
-  return getScopedWarehouseIds(ctx.assignments);
+  return ctx.warehouseIds;
 }
 
 /**
@@ -28,7 +27,7 @@ export async function getUserWarehouseScope(): Promise<string[] | null> {
 export async function getUserCourierScope(): Promise<string[] | null> {
   const ctx = await getAuthContext();
   if (!ctx) return [];
-  return getScopedCourierIds(ctx.assignments);
+  return ctx.courierIds;
 }
 
 /**
@@ -40,7 +39,7 @@ export async function getUserCourierScope(): Promise<string[] | null> {
 export async function getUserAgencyScope(): Promise<string[] | null> {
   const ctx = await getAuthContext();
   if (!ctx) return [];
-  return getScopedAgencyIds(ctx.assignments);
+  return ctx.agencyIds;
 }
 
 /**

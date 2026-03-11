@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { TableSkeleton } from "@/components/ui/skeletons";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { InventoryTable } from "@/components/warehouse/inventory-table";
 import { getAgenciesForFilter, getPackages, getWarehousesForFilter } from "@/lib/actions/warehouse-receipts";
 import { requirePermission } from "@/lib/auth/require-permission";
@@ -66,7 +66,7 @@ export default async function InventoryPage({
 
   return (
     <div className="space-y-6">
-      <Suspense>
+      <Suspense fallback={<PageHeaderSkeleton />}>
         <InventoryHeader locale={locale} />
       </Suspense>
       <Suspense fallback={<TableSkeleton />}>

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { CreateShipmentButton } from "@/components/shipping/create-shipment-button";
 import { SiList } from "@/components/shipping/si-list";
-import { TableSkeleton } from "@/components/ui/skeletons";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { getShippingInstructions } from "@/lib/actions/shipping-instructions";
 import { requirePermission } from "@/lib/auth/require-permission";
 
@@ -35,7 +35,7 @@ export default async function ShippingPage({
 
   return (
     <div className="space-y-6">
-      <Suspense>
+      <Suspense fallback={<PageHeaderSkeleton hasButtons />}>
         <ShippingHeader locale={locale} />
       </Suspense>
       <Suspense fallback={<TableSkeleton />}>

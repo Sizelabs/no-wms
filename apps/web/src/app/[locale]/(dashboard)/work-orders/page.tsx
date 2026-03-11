@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { TableSkeleton } from "@/components/ui/skeletons";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { WoList } from "@/components/work-orders/wo-list";
 import { getWorkOrders } from "@/lib/actions/work-orders";
 import { requirePermission } from "@/lib/auth/require-permission";
@@ -42,7 +42,7 @@ export default async function WorkOrdersPage({
 
   return (
     <div className="space-y-6">
-      <Suspense>
+      <Suspense fallback={<PageHeaderSkeleton hasButtons />}>
         <WoHeader locale={locale} />
       </Suspense>
       <Suspense fallback={<TableSkeleton />}>

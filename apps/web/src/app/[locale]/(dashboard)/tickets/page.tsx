@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { TicketList } from "@/components/tickets/ticket-list";
-import { TableSkeleton } from "@/components/ui/skeletons";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { getTickets } from "@/lib/actions/tickets";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserAgencyScope } from "@/lib/auth/scope";
@@ -55,7 +55,7 @@ export default async function TicketsPage({
 
   return (
     <div className="space-y-6">
-      <Suspense>
+      <Suspense fallback={<PageHeaderSkeleton hasButtons />}>
         <TicketHeader locale={locale} />
       </Suspense>
       <Suspense fallback={<TableSkeleton />}>

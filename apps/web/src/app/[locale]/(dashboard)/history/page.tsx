@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { HistoryTabs } from "@/components/history/history-tabs";
 import { PageHeader } from "@/components/layout/page-header";
-import { TableSkeleton } from "@/components/ui/skeletons";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import {
   getAgenciesForFilter,
   getPackages,
@@ -81,7 +81,7 @@ export default async function HistoryPage({
 
   return (
     <div className="space-y-6">
-      <Suspense>
+      <Suspense fallback={<PageHeaderSkeleton />}>
         <HistoryHeader locale={locale} />
       </Suspense>
       <Suspense fallback={<TableSkeleton />}>

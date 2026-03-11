@@ -1,6 +1,6 @@
 import type { RolePermissionMap } from "@no-wms/shared/constants/permissions";
 import type { Role } from "@no-wms/shared/constants/roles";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { cache } from "react";
 
 import { getRolePermissions } from "@/lib/actions/permissions";
@@ -10,7 +10,7 @@ import { getPrimaryRole } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export interface AuthContext {
-  user: { id: string; email?: string; user_metadata: Record<string, unknown> };
+  user: User;
   supabase: SupabaseClient;
   assignments: UserRoleAssignment[];
   roles: Role[];
