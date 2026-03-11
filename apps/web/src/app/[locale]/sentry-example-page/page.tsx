@@ -78,7 +78,7 @@ export default function Page() {
                 op: "test",
               },
               async () => {
-                const res = await fetch("/api/sentry-example-api");
+                const res = await fetch("/api/sentry-example-api", { cache: "no-store" });
                 if (!res.ok) {
                   setHasSentError(true);
                 }
