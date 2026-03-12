@@ -7,10 +7,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { usePermissions } from "@/components/auth/role-provider";
-import { useNotification } from "@/components/layout/notification";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { WrActionBar } from "@/components/warehouse/wr-action-bar";
-import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
 
 interface WrPackage {
   tracking_number: string;
@@ -121,10 +119,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const permissions = usePermissions();
-  const { notify } = useNotification();
   const [showFilters, setShowFilters] = useState(false);
-  const [isPending, startTransition] = useTransition();
-
   const grouped = groupByConsignee(data);
 
   // Selection state — tracks WR IDs
@@ -178,21 +173,6 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
       return next;
     });
   }, []);
-
-  const handleBulkStatus = useCallback(
-    (status: string) => {
-      startTransition(async () => {
-        try {
-          await bulkUpdateStatus(Array.from(selected), status);
-          notify(`${selected.size} recibo(s) actualizado(s)`, "success");
-          setSelected(new Set());
-        } catch {
-          notify("Error al actualizar estado", "error");
-        }
-      });
-    },
-    [selected, notify],
-  );
 
   // Collapse state
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -320,38 +300,6 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
               Limpiar filtros
             </button>
           )}
-        </div>
-      )}
-
-      {/* Bulk status actions (warehouse staff) */}
-      {selected.size > 0 && permissions?.warehouse_receipts.update && (
-        <div className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm">
-          <span className="font-medium">
-            {selected.size} recibo(s) seleccionado(s)
-          </span>
-          <button
-            type="button"
-            onClick={() => handleBulkStatus("in_warehouse")}
-            disabled={isPending}
-            className="rounded border bg-white px-2 py-1 text-xs hover:bg-gray-50"
-          >
-            En bodega
-          </button>
-          <button
-            type="button"
-            onClick={() => handleBulkStatus("dispatched")}
-            disabled={isPending}
-            className="rounded border bg-white px-2 py-1 text-xs hover:bg-gray-50"
-          >
-            Despachado
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelected(new Set())}
-            className="ml-auto text-xs text-gray-500 hover:text-gray-700"
-          >
-            Deseleccionar
-          </button>
         </div>
       )}
 

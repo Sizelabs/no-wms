@@ -237,20 +237,6 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
         </div>
       )}
 
-      {/* Selection summary bar */}
-      {selected.size > 0 && (
-        <div className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-          <span className="font-medium text-gray-900">{selected.size}</span>
-          <span className="text-gray-500">instrucción(es) seleccionada(s)</span>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="ml-auto text-xs text-gray-500 hover:text-gray-700"
-          >
-            Deseleccionar
-          </button>
-        </div>
-      )}
-
       <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
