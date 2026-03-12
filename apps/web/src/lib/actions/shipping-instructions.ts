@@ -397,6 +397,14 @@ export async function rejectShippingInstruction(id: string, reason: string): Pro
   return {};
 }
 
+/** Derive house bill document_type from SI modality */
+function getDocumentType(modality: string): "hawb" | "hbl" | "hwb" {
+  if (modality === "lcl" || modality === "fcl") return "hbl";
+  if (modality === "terrestre") return "hwb";
+  // courier_a–g, air_cargo, and any other → hawb
+  return "hawb";
+}
+
 export async function finalizeShippingInstruction(id: string): Promise<{ hawb_number?: string; error?: string }> {
   const supabase = await createClient();
 
@@ -405,30 +413,37 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
 
   const { data: si } = await supabase
     .from("shipping_instructions")
-    .select("status, organization_id, shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
+    .select("status, organization_id, modality, shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
     .eq("id", id)
     .single();
 
   if (!si) return { error: "SI no encontrada" };
   if (si.status !== "approved") return { error: "Solo se pueden finalizar SIs aprobadas" };
 
-  // Generate HAWB number via SECURITY DEFINER function (bypasses RLS)
-  const { data: hawbNumber } = await supabase.rpc("next_hawb_number", { p_org_id: si.organization_id });
+  // Derive document type from SI modality
+  const documentType = getDocumentType(si.modality ?? "");
 
-  if (!hawbNumber) return { error: "No se pudo generar número HAWB" };
+  // Generate house bill number via type-aware function
+  const { data: hawbNumber } = await supabase.rpc("next_house_bill_number", {
+    p_org_id: si.organization_id,
+    p_doc_type: documentType,
+  });
+
+  if (!hawbNumber) return { error: "No se pudo generar número de documento" };
 
   // Calculate totals from items
   const items = si.shipping_instruction_items ?? [];
   const totalPieces = items.length;
   const totalWeight = items.reduce((sum: number, i: any) => sum + (i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0);
 
-  // Create HAWB
+  // Create house bill (hawb table handles all document types)
   const { data: hawb } = await supabase
     .from("hawbs")
     .insert({
       organization_id: si.organization_id,
       shipping_instruction_id: id,
       hawb_number: hawbNumber,
+      document_type: documentType,
       pieces: totalPieces,
       weight_lb: totalWeight,
     })
@@ -465,7 +480,7 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
   });
 
   revalidatePath("/shipping");
-  return { hawb_number: hawbNumber };
+  return { hawb_number: hawbNumber as string };
 }
 
 export async function getDestinations() {
@@ -550,6 +565,68 @@ export async function getAvailableWrsForShipping() {
 
   const { data } = await query;
   return { data: data ?? [] };
+}
+
+export async function getShippingDocsForWarehouseReceipt(wrId: string) {
+  const supabase = await createClient();
+
+  // Get WR's hawb_id
+  const { data: wr } = await supabase
+    .from("warehouse_receipts")
+    .select("hawb_id")
+    .eq("id", wrId)
+    .single();
+
+  if (!wr?.hawb_id) {
+    // No HAWB assigned — check if there's an SI via shipping_instruction_items
+    const { data: siItems } = await supabase
+      .from("shipping_instruction_items")
+      .select("shipping_instructions(id, si_number, status)")
+      .eq("warehouse_receipt_id", wrId)
+      .limit(1);
+
+    const raw = siItems?.[0]?.shipping_instructions;
+    const si = (Array.isArray(raw) ? raw[0] : raw) as { id: string; si_number: string; status: string } | undefined ?? null;
+
+    return {
+      hawb: null,
+      shippingInstruction: si ?? null,
+      shipment: null,
+    };
+  }
+
+  // Fetch HAWB with SI and shipment in one query
+  const { data: hawb } = await supabase
+    .from("hawbs")
+    .select("id, hawb_number, document_type, shipping_instruction_id, shipment_id")
+    .eq("id", wr.hawb_id)
+    .single();
+
+  if (!hawb) return { hawb: null, shippingInstruction: null, shipment: null };
+
+  // Fetch SI and Shipment in parallel
+  const [siResult, shipmentResult] = await Promise.all([
+    hawb.shipping_instruction_id
+      ? supabase
+          .from("shipping_instructions")
+          .select("id, si_number, status")
+          .eq("id", hawb.shipping_instruction_id)
+          .single()
+      : Promise.resolve({ data: null }),
+    hawb.shipment_id
+      ? supabase
+          .from("shipments")
+          .select("id, shipment_number, modality, status")
+          .eq("id", hawb.shipment_id)
+          .single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  return {
+    hawb: { id: hawb.id, hawb_number: hawb.hawb_number, document_type: hawb.document_type },
+    shippingInstruction: siResult.data as { id: string; si_number: string; status: string } | null,
+    shipment: shipmentResult.data as { id: string; shipment_number: string; modality: string; status: string } | null,
+  };
 }
 
 export async function addAdditionalCharges(

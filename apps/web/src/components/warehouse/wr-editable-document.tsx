@@ -2,7 +2,10 @@
 
 import { PACKAGE_TYPES } from "@no-wms/shared/constants/package-types";
 import type { WrStatus } from "@no-wms/shared/constants/statuses";
-import { WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import { SI_STATUS_LABELS, WO_STATUS_LABELS, WR_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import type { SiStatus, WoStatus } from "@no-wms/shared/constants/statuses";
+import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-types";
+import type { WorkOrderType } from "@no-wms/shared/constants/work-order-types";
 import JsBarcode from "jsbarcode";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
@@ -131,6 +134,20 @@ interface WrEditableDocumentProps {
   locale: string;
   backHref?: string;
   canEdit?: boolean;
+  workOrders?: {
+    id: string;
+    wo_number: string;
+    type: string;
+    status: string;
+    priority: string;
+    created_at: string;
+    completed_at: string | null;
+  }[];
+  shippingDocs?: {
+    hawb: { id: string; hawb_number: string; document_type: string } | null;
+    shippingInstruction: { id: string; si_number: string; status: string } | null;
+    shipment: { id: string; shipment_number: string; modality: string; status: string } | null;
+  };
 }
 
 /* ── Panel input: save-on-blur with live preview ── */
@@ -653,6 +670,8 @@ export function WrEditableDocument({
   locale: _locale,
   backHref,
   canEdit = true,
+  workOrders = [],
+  shippingDocs,
 }: WrEditableDocumentProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
   const printBarcodeRef = useRef<SVGSVGElement>(null);
@@ -1333,6 +1352,121 @@ export function WrEditableDocument({
                     <p className="text-sm text-gray-400">Sin notas adicionales</p>
                   )}
                 </div>
+
+                {/* Ordenes de trabajo */}
+                <div>
+                  <SectionLabel>Ordenes de trabajo</SectionLabel>
+                  {workOrders.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {workOrders.map((wo) => {
+                        const woStatusColors: Record<string, string> = {
+                          requested: "bg-blue-50 text-blue-700",
+                          approved: "bg-green-50 text-green-700",
+                          in_progress: "bg-yellow-50 text-yellow-700",
+                          completed: "bg-gray-100 text-gray-600",
+                          cancelled: "bg-red-50 text-red-700",
+                          pending: "bg-orange-50 text-orange-700",
+                        };
+                        return (
+                          <Link
+                            key={wo.id}
+                            href={`/work-orders/${wo.id}`}
+                            className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 transition-colors hover:border-gray-200 hover:bg-gray-50"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm font-medium text-gray-900">{wo.wo_number}</span>
+                                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${woStatusColors[wo.status] ?? "bg-gray-100 text-gray-600"}`}>
+                                  {WO_STATUS_LABELS[wo.status as WoStatus] ?? wo.status}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-400">
+                                {WORK_ORDER_TYPE_LABELS[wo.type as WorkOrderType] ?? wo.type}
+                                {" · "}
+                                {new Date(wo.created_at).toLocaleDateString("es", { month: "short", day: "numeric" })}
+                              </p>
+                            </div>
+                            <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                            </svg>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">Sin ordenes de trabajo</p>
+                  )}
+                </div>
+
+                {/* Documentos de embarque */}
+                {shippingDocs && (shippingDocs.hawb || shippingDocs.shippingInstruction || shippingDocs.shipment) && (
+                  <div>
+                    <SectionLabel>Documentos de embarque</SectionLabel>
+                    <div className="space-y-1.5">
+                      {shippingDocs.shippingInstruction && (
+                        <Link
+                          href={`/shipping/${shippingDocs.shippingInstruction.id}`}
+                          className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 transition-colors hover:border-gray-200 hover:bg-gray-50"
+                        >
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-purple-50 text-[10px] font-bold text-purple-600">SI</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm font-medium text-gray-900">{shippingDocs.shippingInstruction.si_number}</span>
+                              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                                {
+                                  requested: "bg-blue-50 text-blue-700",
+                                  approved: "bg-green-50 text-green-700",
+                                  finalized: "bg-purple-50 text-purple-700",
+                                  manifested: "bg-gray-100 text-gray-600",
+                                  rejected: "bg-red-50 text-red-700",
+                                  cancelled: "bg-red-50 text-red-700",
+                                }[shippingDocs.shippingInstruction.status] ?? "bg-gray-100 text-gray-600"
+                              }`}>
+                                {SI_STATUS_LABELS[shippingDocs.shippingInstruction.status as SiStatus] ?? shippingDocs.shippingInstruction.status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400">Instruccion de embarque</p>
+                          </div>
+                          <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </Link>
+                      )}
+                      {shippingDocs.hawb && (
+                        <div className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2">
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-[10px] font-bold text-blue-600">
+                            {shippingDocs.hawb.document_type === "hbl" ? "HBL" : shippingDocs.hawb.document_type === "hwb" ? "HWB" : "AWB"}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-mono text-sm font-medium text-gray-900">{shippingDocs.hawb.hawb_number}</span>
+                            <p className="text-xs text-gray-400">
+                              {shippingDocs.hawb.document_type === "hbl" ? "House Bill of Lading" : shippingDocs.hawb.document_type === "hwb" ? "House Waybill" : "House Airway Bill"}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {shippingDocs.shipment && (
+                        <Link
+                          href={`/shipments/${shippingDocs.shipment.id}`}
+                          className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 transition-colors hover:border-gray-200 hover:bg-gray-50"
+                        >
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-[10px] font-bold text-emerald-600">
+                            {shippingDocs.shipment.modality === "air" ? "AIR" : shippingDocs.shipment.modality === "ocean" ? "OCN" : "GND"}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-mono text-sm font-medium text-gray-900">{shippingDocs.shipment.shipment_number}</span>
+                            <p className="text-xs text-gray-400">
+                              {shippingDocs.shipment.modality === "air" ? "Embarque aereo" : shippingDocs.shipment.modality === "ocean" ? "Embarque maritimo" : "Embarque terrestre"}
+                            </p>
+                          </div>
+                          <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 
 import { WrEditableDocument } from "@/components/warehouse/wr-editable-document";
+import { getShippingDocsForWarehouseReceipt } from "@/lib/actions/shipping-instructions";
 import {
   getAgencyHomeDestination,
   getOrgMembers,
   getWarehouseLocationsForWarehouse,
   getWarehouseReceiptForPrint,
 } from "@/lib/actions/warehouse-receipts";
+import { getWorkOrdersForWarehouseReceipt } from "@/lib/actions/work-orders";
 import { requirePermission } from "@/lib/auth/require-permission";
 
 export default async function WrEditPage({
@@ -27,10 +29,12 @@ export default async function WrEditPage({
     notFound();
   }
 
-  const [destination, warehouseLocations, orgMembers] = await Promise.all([
+  const [destination, warehouseLocations, orgMembers, workOrders, shippingDocs] = await Promise.all([
     wr.agency_id ? getAgencyHomeDestination(wr.agency_id) : Promise.resolve(null),
     canEdit && wr.warehouse_id ? getWarehouseLocationsForWarehouse(wr.warehouse_id) : Promise.resolve([]),
     getOrgMembers(),
+    getWorkOrdersForWarehouseReceipt(id),
+    getShippingDocsForWarehouseReceipt(id),
   ]);
 
   const backHref = from === "history"
@@ -51,6 +55,8 @@ export default async function WrEditPage({
         locale={locale}
         backHref={backHref}
         canEdit={canEdit}
+        workOrders={workOrders}
+        shippingDocs={shippingDocs}
       />
     </div>
   );

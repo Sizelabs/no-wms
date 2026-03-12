@@ -182,6 +182,39 @@ export async function getWorkOrder(id: string) {
   return { data, error: null };
 }
 
+export async function getWorkOrdersForWarehouseReceipt(wrId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("work_order_items")
+    .select("work_orders(id, wo_number, type, status, priority, created_at, completed_at)")
+    .eq("warehouse_receipt_id", wrId);
+
+  if (error) return [];
+
+  type WoRow = {
+    id: string;
+    wo_number: string;
+    type: string;
+    status: string;
+    priority: string;
+    created_at: string;
+    completed_at: string | null;
+  };
+
+  // Supabase returns work_orders as an array when accessed through a junction table
+  const results: WoRow[] = [];
+  for (const item of data ?? []) {
+    const wos = item.work_orders as unknown as WoRow | WoRow[];
+    if (Array.isArray(wos)) {
+      results.push(...wos);
+    } else if (wos) {
+      results.push(wos);
+    }
+  }
+  return results;
+}
+
 export async function updateWorkOrderStatus(
   id: string,
   newStatus: string,
