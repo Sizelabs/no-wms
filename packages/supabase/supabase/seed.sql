@@ -2576,6 +2576,7 @@ INSERT INTO role_permissions (role, resource, can_create, can_read, can_update, 
 
 -- agency
 ('agency', 'consignees',          true,  true,  true,  false),
+('agency', 'warehouse_receipts',  false, true,  false, false),
 ('agency', 'inventory',           false, true,  false, false),
 ('agency', 'work_orders',         true,  true,  false, false),
 ('agency', 'shipping',            true,  true,  false, false),
