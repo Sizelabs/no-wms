@@ -140,6 +140,7 @@ export const SETTINGS_GROUPS: SettingsNavGroup[] = [
       { label: "destinations", href: "/settings/destinations", resource: "destinations" },
       { label: "modalities", href: "/settings/modalities", resource: "modalities" },
       { label: "handlingCosts", href: "/settings/handling-costs", resource: "handling_costs" },
+      { label: "shippingCategories", href: "/settings/shipping-categories", resource: "shipping" },
     ],
   },
   {

@@ -12,7 +12,7 @@ import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees
 import {
   createShippingInstruction,
   getAgencyDestinations,
-  getCourierCategories,
+  getShippingCategories,
 } from "@/lib/actions/shipping-instructions";
 import { createWorkOrder } from "@/lib/actions/work-orders";
 
@@ -26,7 +26,14 @@ interface GroupFlowProps {
 }
 
 interface Destination { id: string; city: string; state: string | null; country_code: string }
-interface CourierCategory { id: string; code: string; name: string; max_weight_lb: number | null; max_value_usd: number | null; description: string | null }
+interface ShippingCategory {
+  id: string;
+  code: string;
+  name: string;
+  max_weight_kg: number | null;
+  max_declared_value_usd: number | null;
+  description: string | null;
+}
 interface ConsigneeResult { id: string; full_name: string; casillero: string | null; cedula_ruc: string | null; city: string | null }
 
 export function GroupFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: GroupFlowProps) {
@@ -36,8 +43,9 @@ export function GroupFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId
   // Ship-form state (only when autoShip)
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [destinationId, setDestinationId] = useState("");
-  const [categories, setCategories] = useState<CourierCategory[]>([]);
+  const [categories, setCategories] = useState<ShippingCategory[]>([]);
   const [categoryCode, setCategoryCode] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [consigneeQuery, setConsigneeQuery] = useState("");
   const [consigneeResults, setConsigneeResults] = useState<ConsigneeResult[]>([]);
   const [selectedConsignee, setSelectedConsignee] = useState<ConsigneeResult | null>(null);
@@ -61,9 +69,11 @@ export function GroupFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId
   }, [autoShip, agencyId]);
 
   useEffect(() => {
-    if (!destinationId) { setCategories([]); setCategoryCode(""); return; }
-    getCourierCategories(destinationId).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); });
-  }, [destinationId]);
+    if (!destinationId) { setCategories([]); setCategoryCode(""); setSelectedCategoryId(""); return; }
+    const dest = destinations.find((d) => d.id === destinationId);
+    if (!dest) return;
+    getShippingCategories(dest.country_code).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); setSelectedCategoryId(""); });
+  }, [destinationId, destinations]);
 
   const handleConsigneeSearch = useCallback((query: string) => {
     setConsigneeQuery(query);
@@ -99,7 +109,7 @@ export function GroupFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId
     }
   }, [agencyId, newConsigneeName, notify]);
 
-  const canSubmit = !autoShip || (destinationId !== "" && selectedConsignee !== null);
+  const canSubmit = !autoShip || (destinationId !== "" && selectedConsignee !== null && selectedCategoryId !== "");
 
   function handleSubmit() {
     startTransition(async () => {
@@ -123,6 +133,7 @@ export function GroupFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId
         siFd.set("destination_city", dest?.city ?? "");
         siFd.set("modality", categoryCode ? `courier_${categoryCode.toLowerCase()}` : "air_cargo");
         if (categoryCode) siFd.set("courier_category", categoryCode);
+        if (selectedCategoryId) siFd.set("shipping_category_id", selectedCategoryId);
         siFd.set("consignee_id", selectedConsignee.id);
         siFd.set("warehouse_receipt_ids", JSON.stringify(wrs.map((w) => w.id)));
         siFd.set("insure_cargo", String(insureCargo));
@@ -183,11 +194,19 @@ export function GroupFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId
               />
             </Field>
             {destinationId && categories.length > 0 && (
-              <Field label="Categoria courier">
-                <select value={categoryCode} onChange={(e) => setCategoryCode(e.target.value)} className={selectClass}>
-                  <option value="">Carga aerea (sin categoria)</option>
+              <Field label="Categoría de envío" required>
+                <select
+                  value={selectedCategoryId}
+                  onChange={(e) => {
+                    setSelectedCategoryId(e.target.value);
+                    const cat = categories.find((c) => c.id === e.target.value);
+                    setCategoryCode(cat?.code ?? "");
+                  }}
+                  className={selectClass}
+                >
+                  <option value="">Seleccionar categoría...</option>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.code}>{cat.code} — {cat.name}{cat.max_weight_lb ? ` (max ${cat.max_weight_lb} lb)` : ""}</option>
+                    <option key={cat.id} value={cat.id}>{cat.code} — {cat.name}{cat.max_weight_kg ? ` (max ${cat.max_weight_kg} kg)` : ""}</option>
                   ))}
                 </select>
               </Field>

@@ -6,6 +6,14 @@ const cedulaRucSchema = z.string().refine(
   "Cédula (10 dígitos) o RUC (13 dígitos) inválido",
 );
 
+export const siDocumentSchema = z.object({
+  document_type: z.string().min(1),
+  storage_path: z.string().min(1),
+  file_name: z.string().min(1),
+  content_type: z.string().min(1),
+  file_size: z.number().optional(),
+});
+
 export const createShippingInstructionSchema = z.object({
   warehouse_id: z.string().uuid(),
   agency_id: z.string().uuid(),
@@ -15,6 +23,7 @@ export const createShippingInstructionSchema = z.object({
     "courier_e", "courier_f", "courier_g", "air_cargo",
   ]),
   courier_category: z.string().optional(),
+  shipping_category_id: z.string().uuid(),
   consignee_id: z.string().uuid(),
   warehouse_receipt_ids: z.array(z.string().uuid()).min(1, "Seleccione al menos un WR"),
   destination_city: z.string().min(1, "Ciudad de destino requerida"),
@@ -27,6 +36,8 @@ export const createShippingInstructionSchema = z.object({
   sed_validation_data: z.any().optional(),
   // Additional
   special_instructions: z.string().optional(),
+  // Documents
+  documents: z.array(siDocumentSchema).default([]),
 });
 
 export const additionalChargeSchema = z.object({

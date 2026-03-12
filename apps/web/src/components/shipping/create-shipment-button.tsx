@@ -11,7 +11,7 @@ import {
   createShippingInstruction,
   getAvailableWrsForShipping,
   getAgencyDestinations,
-  getCourierCategories,
+  getShippingCategories,
 } from "@/lib/actions/shipping-instructions";
 
 interface AvailableWr {
@@ -30,7 +30,14 @@ interface AvailableWr {
 }
 
 interface Destination { id: string; city: string; state: string | null; country_code: string }
-interface CourierCategory { id: string; code: string; name: string; max_weight_lb: number | null; max_value_usd: number | null; description: string | null }
+interface ShippingCategory {
+  id: string;
+  code: string;
+  name: string;
+  max_weight_kg: number | null;
+  max_declared_value_usd: number | null;
+  description: string | null;
+}
 interface ConsigneeResult { id: string; full_name: string; casillero: string | null; cedula_ruc: string | null; city: string | null }
 
 export function CreateShipmentButton() {
@@ -58,8 +65,9 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
   // Ship form state
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [destinationId, setDestinationId] = useState("");
-  const [categories, setCategories] = useState<CourierCategory[]>([]);
+  const [categories, setCategories] = useState<ShippingCategory[]>([]);
   const [categoryCode, setCategoryCode] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
   const [consigneeQuery, setConsigneeQuery] = useState("");
   const [consigneeResults, setConsigneeResults] = useState<ConsigneeResult[]>([]);
@@ -99,11 +107,13 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
     getAgencyDestinations(agencyId).then((res) => { if (res.data) setDestinations(res.data); });
   }, [agencyId]);
 
-  // Fetch courier categories when destination changes
+  // Fetch shipping categories when destination changes
   useEffect(() => {
-    if (!destinationId) { setCategories([]); setCategoryCode(""); return; }
-    getCourierCategories(destinationId).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); });
-  }, [destinationId]);
+    if (!destinationId) { setCategories([]); setCategoryCode(""); setSelectedCategoryId(""); return; }
+    const dest = destinations.find((d) => d.id === destinationId);
+    if (!dest) return;
+    getShippingCategories(dest.country_code).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); setSelectedCategoryId(""); });
+  }, [destinationId, destinations]);
 
   // Pre-fill consignee when all selected WRs share the same one (only if user hasn't manually chosen)
   const prevSelectedRef = useRef(selected);
@@ -184,7 +194,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
     }
   }, [agencyId, newConsigneeName, notify]);
 
-  const canSubmit = selected.size > 0 && destinationId !== "" && selectedConsignee !== null;
+  const canSubmit = selected.size > 0 && destinationId !== "" && selectedConsignee !== null && selectedCategoryId !== "";
 
   function handleSubmit() {
     if (!selectedConsignee) return;
@@ -197,6 +207,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
       fd.set("destination_city", dest?.city ?? "");
       fd.set("modality", categoryCode ? `courier_${categoryCode.toLowerCase()}` : "air_cargo");
       if (categoryCode) fd.set("courier_category", categoryCode);
+      if (selectedCategoryId) fd.set("shipping_category_id", selectedCategoryId);
       fd.set("consignee_id", selectedConsignee.id);
       fd.set("warehouse_receipt_ids", JSON.stringify(selectedWrs.map((w) => w.id)));
       fd.set("insure_cargo", String(insureCargo));
@@ -280,16 +291,29 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
                 />
               </Field>
               {destinationId && categories.length > 0 && (
-                <Field label="Categoria courier">
-                  <select value={categoryCode} onChange={(e) => setCategoryCode(e.target.value)} className={selectClass}>
-                    <option value="">Carga aerea (sin categoria)</option>
+                <Field label="Categoría de envío" required>
+                  <select
+                    value={selectedCategoryId}
+                    onChange={(e) => {
+                      setSelectedCategoryId(e.target.value);
+                      const cat = categories.find((c) => c.id === e.target.value);
+                      setCategoryCode(cat?.code ?? "");
+                    }}
+                    className={selectClass}
+                  >
+                    <option value="">Seleccionar categoría...</option>
                     {categories.map((cat) => (
-                      <option key={cat.id} value={cat.code}>
-                        {cat.code} — {cat.name}{cat.max_weight_lb ? ` (max ${cat.max_weight_lb} lb)` : ""}
+                      <option key={cat.id} value={cat.id}>
+                        {cat.code} — {cat.name}{cat.max_weight_kg ? ` (max ${cat.max_weight_kg} kg)` : ""}
                       </option>
                     ))}
                   </select>
                 </Field>
+              )}
+              {destinationId && categories.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  No hay categorías de envío configuradas para este destino. Configúralas en Ajustes → Categorías de Envío.
+                </p>
               )}
             </fieldset>
 

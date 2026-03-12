@@ -42,7 +42,7 @@ export default async function NewShippingInstructionPage({
 
   let wrsQuery = supabase
     .from("warehouse_receipts")
-    .select("id, wr_number, status, total_billable_weight_lb, packages(tracking_number, carrier)")
+    .select("id, wr_number, status, total_billable_weight_lb, total_declared_value_usd, has_dgr_package, packages(tracking_number, carrier)")
     .in("status", ["received", "in_warehouse"])
     .order("received_at", { ascending: false })
     .limit(500);

@@ -217,6 +217,39 @@ INSERT INTO modalities (id, organization_id, name, code, display_order, is_activ
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
+-- 7c. SHIPPING CATEGORIES (Ecuador defaults, ACME org)
+-- ============================================================================
+
+INSERT INTO shipping_categories (id, organization_id, country_code, code, name, description, display_order, max_weight_kg, min_declared_value_usd, max_declared_value_usd, cargo_type, allows_dgr, requires_cedula, requires_ruc, customs_declaration_type, country_specific_rules, is_active, created_at, updated_at) VALUES
+  ('f1200000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'EC', 'A',  'Documentos / Correspondencia',     'Solo documentos y correspondencia sin valor comercial',                     1, NULL,  NULL,   NULL, 'documents_only',  false, false, false, 'none',       '{}',                              true, '2025-11-25T10:30:00Z', '2025-11-25T10:30:00Z'),
+  ('f1200000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'EC', 'B',  'Paquetes hasta 4kg/$400 (4x4)',    'Regimen simplificado — consume cupo 4x4',                                   2, 4,     NULL,   400,  'general',         false, true,  false, 'simplified', '{"consumes_cupo_4x4": true}',     true, '2025-11-25T10:31:00Z', '2025-11-25T10:31:00Z'),
+  ('f1200000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'EC', 'B+', 'Paquetes 4-50kg o $400-$2000',     'Regimen simplificado extendido — requiere documentos comerciales',           3, 50,    400.01, 2000, 'general',         false, true,  false, 'simplified', '{}',                              true, '2025-11-25T10:32:00Z', '2025-11-25T10:32:00Z'),
+  ('f1200000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'EC', 'C',  'Mercancia formal (DAI)',            'Declaracion aduanera de importacion — requiere RUC y agente de aduanas',    4, NULL,  2000.01,NULL, 'general',         false, false, true,  'formal',     '{}',                              true, '2025-11-25T10:33:00Z', '2025-11-25T10:33:00Z'),
+  ('f1200000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'EC', 'D',  'Mercancia peligrosa/restringida',  'Requiere permisos especiales INEN y manejo DGR',                            5, NULL,  NULL,   NULL, 'dangerous_goods', true,  false, true,  'formal',     '{}',                              true, '2025-11-25T10:34:00Z', '2025-11-25T10:34:00Z')
+ON CONFLICT (id) DO NOTHING;
+
+-- Required documents for Cat B+
+INSERT INTO shipping_category_required_documents (id, shipping_category_id, document_type, label, is_required) VALUES
+  ('f1210000-0000-0000-0000-000000000001', 'f1200000-0000-0000-0000-000000000003', 'commercial_invoice', 'Factura Comercial', true),
+  ('f1210000-0000-0000-0000-000000000002', 'f1200000-0000-0000-0000-000000000003', 'packing_list',       'Lista de Empaque',  true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Required documents for Cat C
+INSERT INTO shipping_category_required_documents (id, shipping_category_id, document_type, label, is_required) VALUES
+  ('f1210000-0000-0000-0000-000000000003', 'f1200000-0000-0000-0000-000000000004', 'commercial_invoice', 'Factura Comercial',     true),
+  ('f1210000-0000-0000-0000-000000000004', 'f1200000-0000-0000-0000-000000000004', 'packing_list',       'Lista de Empaque',      true),
+  ('f1210000-0000-0000-0000-000000000005', 'f1200000-0000-0000-0000-000000000004', 'power_of_attorney',  'Poder de Autorizacion', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Required documents for Cat D
+INSERT INTO shipping_category_required_documents (id, shipping_category_id, document_type, label, is_required) VALUES
+  ('f1210000-0000-0000-0000-000000000006', 'f1200000-0000-0000-0000-000000000005', 'commercial_invoice', 'Factura Comercial',  true),
+  ('f1210000-0000-0000-0000-000000000007', 'f1200000-0000-0000-0000-000000000005', 'packing_list',       'Lista de Empaque',   true),
+  ('f1210000-0000-0000-0000-000000000008', 'f1200000-0000-0000-0000-000000000005', 'inen_certificate',   'Certificado INEN',   true),
+  ('f1210000-0000-0000-0000-000000000009', 'f1200000-0000-0000-0000-000000000005', 'special_permit',     'Permiso Especial',   true)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
 -- 8. COURIERS (5)
 -- ============================================================================
 

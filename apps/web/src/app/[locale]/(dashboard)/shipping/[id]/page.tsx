@@ -55,8 +55,9 @@ export default async function ShippingDetailPage({
             {SI_STATUS_LABELS[si.status as SiStatus] ?? si.status}
           </span>
         </InfoCard>
-        <InfoCard label="Modalidad">
-          {si.modality}{si.courier_category ? ` — Cat ${si.courier_category}` : ""}
+        <InfoCard label="Modalidad / Categoría">
+          {si.modality}
+          {si.category_snapshot ? ` — Cat ${(si.category_snapshot as { code: string }).code}: ${(si.category_snapshot as { name: string }).name}` : si.courier_category ? ` — Cat ${si.courier_category}` : ""}
         </InfoCard>
         <InfoCard label="Agencia">
           {si.agencies ? `${si.agencies.name} (${si.agencies.code})` : "—"}
@@ -74,6 +75,12 @@ export default async function ShippingDetailPage({
               <SiDtDd label="Destinatario" value={si.consignees?.full_name ?? "—"} />
               <SiDtDd label="Cédula/RUC" value={si.cedula_ruc ?? "—"} />
               <SiDtDd label="Cupo 4x4" value={si.cupo_4x4_used ? "Sí" : "No"} />
+              {si.category_snapshot && (
+                <>
+                  <SiDtDd label="Tipo de carga" value={(si.category_snapshot as { cargo_type: string }).cargo_type} />
+                  <SiDtDd label="Declaración aduanera" value={(si.category_snapshot as { customs_declaration_type: string }).customs_declaration_type} />
+                </>
+              )}
               <SiDtDd label="Creado" value={new Date(si.created_at).toLocaleString("es")} />
               {si.approved_at && <SiDtDd label="Aprobado" value={new Date(si.approved_at).toLocaleString("es")} />}
               {si.special_instructions && (
@@ -99,6 +106,22 @@ export default async function ShippingDetailPage({
                   <div key={i} className="flex justify-between">
                     <span className="text-gray-600">{c.description}</span>
                     <span className="font-mono">${c.amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* SI Documents */}
+          {si.shipping_instruction_documents && (si.shipping_instruction_documents as Array<{ id: string; document_type: string; file_name: string }>).length > 0 && (
+            <Section title="Documentos">
+              <div className="space-y-1 text-sm">
+                {(si.shipping_instruction_documents as Array<{ id: string; document_type: string; file_name: string }>).map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between rounded-md border p-2">
+                    <div>
+                      <span className="text-xs font-medium text-gray-600">{doc.document_type}</span>
+                      <span className="ml-2 text-xs text-gray-500">{doc.file_name}</span>
+                    </div>
                   </div>
                 ))}
               </div>
