@@ -93,7 +93,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
   const t = useTranslations("shipping");
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState({ status: [] as string[], modality: [] as string[] });
+  const [filter, setFilter] = useState({ status: ["requested", "approved", "finalized"] as string[], modality: [] as string[] });
   const [showFilters, setShowFilters] = useState(false);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
