@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getRolePermissions } from "@/lib/actions/permissions";
+import { getCachedRoleAssignments } from "@/lib/auth/cached";
 import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getPrimaryRole } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createWorkOrder(formData: FormData): Promise<{ id: string } | { error: string }> {
@@ -25,49 +27,43 @@ export async function createWorkOrder(formData: FormData): Promise<{ id: string 
 
   if (!wrIds.length) return { error: "Seleccione al menos un WR" };
 
-  // Check WRs don't have active WOs
-  const { data: existingWoItems } = await supabase
-    .from("work_order_items")
-    .select("warehouse_receipt_id, work_orders!inner(status)")
-    .in("warehouse_receipt_id", wrIds)
-    .in("work_orders.status", ["requested", "approved", "in_progress"]);
+  // Run independent reads in parallel
+  const [{ data: existingWoItems }, { data: agency }, { data: profile }] =
+    await Promise.all([
+      supabase
+        .from("work_order_items")
+        .select("warehouse_receipt_id, work_orders!inner(status)")
+        .in("warehouse_receipt_id", wrIds)
+        .in("work_orders.status", ["requested", "approved", "in_progress"]),
+      supabase
+        .from("agencies")
+        .select("type")
+        .eq("id", agencyId)
+        .single(),
+      supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", user.id)
+        .single(),
+    ]);
 
   if (existingWoItems?.length) {
     return { error: "Uno o más WRs tienen órdenes de trabajo activas" };
   }
 
-  // Auto-priority from agency type
-  const { data: agency } = await supabase
-    .from("agencies")
-    .select("type")
-    .eq("id", agencyId)
-    .single();
-
   const priority = agency?.type === "corporativo" ? "high" : "normal";
-
-  // Get org_id from profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
 
   if (!profile) return { error: "Perfil no encontrado" };
 
-  // Generate WO number using admin client to bypass RLS
-  const admin = createAdminClient();
-  const { data: maxWo } = await admin
-    .from("work_orders")
-    .select("wo_number")
-    .eq("organization_id", profile.organization_id)
-    .order("wo_number", { ascending: false })
-    .limit(1)
-    .single();
+  // Generate WO number atomically via DB function (bypasses RLS, uses advisory lock)
+  const { data: woNumber, error: woNumError } = await supabase.rpc(
+    "next_wo_number",
+    { p_org_id: profile.organization_id },
+  );
 
-  const lastNum = maxWo?.wo_number
-    ? parseInt(maxWo.wo_number.replace("WO", ""), 10)
-    : 0;
-  const woNumber = `WO${String(lastNum + 1).padStart(5, "0")}`;
+  if (woNumError || !woNumber) {
+    return { error: "Error generando número de OT" };
+  }
 
   const insertData: Record<string, unknown> = {
     organization_id: profile.organization_id,
@@ -103,28 +99,26 @@ export async function createWorkOrder(formData: FormData): Promise<{ id: string 
 
   if (error) return { error: error.message };
 
-  // Insert WO items
+  // Run independent post-insert writes in parallel
   const items = wrIds.map((wrId) => ({
     work_order_id: wo.id,
     warehouse_receipt_id: wrId,
   }));
 
-  await supabase.from("work_order_items").insert(items);
-
-  // Update WR statuses to in_work_order
-  await supabase
-    .from("warehouse_receipts")
-    .update({ status: "in_work_order" })
-    .in("id", wrIds);
-
-  // Record status history
-  await supabase.from("work_order_status_history").insert({
-    organization_id: profile.organization_id,
-    work_order_id: wo.id,
-    old_status: null,
-    new_status: insertData.status ?? "requested",
-    changed_by: user.id,
-  });
+  await Promise.all([
+    supabase.from("work_order_items").insert(items),
+    supabase
+      .from("warehouse_receipts")
+      .update({ status: "in_work_order" })
+      .in("id", wrIds),
+    supabase.from("work_order_status_history").insert({
+      organization_id: profile.organization_id,
+      work_order_id: wo.id,
+      old_status: null,
+      new_status: insertData.status ?? "requested",
+      changed_by: user.id,
+    }),
+  ]);
 
   revalidatePath("/work-orders");
   revalidatePath("/warehouse-receipts");
@@ -200,6 +194,14 @@ export async function updateWorkOrderStatus(
   } = await supabase.auth.getUser();
 
   if (!user) return { error: "No autenticado" };
+
+  // Only roles with work_orders.update can change status
+  const assignments = await getCachedRoleAssignments();
+  const primaryRole = getPrimaryRole(assignments.map((a) => a.role));
+  const permissions = await getRolePermissions(primaryRole);
+  if (!permissions.work_orders.update) {
+    return { error: "No tiene permisos para modificar órdenes de trabajo" };
+  }
 
   const { data: wo } = await supabase
     .from("work_orders")
