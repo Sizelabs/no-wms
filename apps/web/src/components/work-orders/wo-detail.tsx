@@ -43,6 +43,7 @@ interface WoDetailProps {
     }>;
   };
   locale: string;
+  canUpdate?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -54,7 +55,7 @@ const STATUS_COLORS: Record<string, string> = {
   pending: "bg-orange-100 text-orange-800",
 };
 
-export function WoDetail({ wo, locale }: WoDetailProps) {
+export function WoDetail({ wo, locale, canUpdate = false }: WoDetailProps) {
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -206,7 +207,7 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
           </Section>
 
           {/* Actions */}
-          {isActive && (
+          {isActive && canUpdate && (
             <Section title="Acciones">
               <div className="space-y-3">
                 {wo.status === "requested" && (
@@ -258,7 +259,7 @@ export function WoDetail({ wo, locale }: WoDetailProps) {
           )}
 
           {/* Execution form */}
-          {showExecution && wo.status === "in_progress" && (
+          {canUpdate && showExecution && wo.status === "in_progress" && (
             <Section title="Completar orden de trabajo">
               <div className="space-y-4">
                 <div>

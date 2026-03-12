@@ -30,7 +30,7 @@ export default async function WorkOrdersPage({
           </Link>
         )}
       </PageHeader>
-      <WoList data={data ?? []} locale={locale} />
+      <WoList data={data ?? []} locale={locale} canUpdate={permissions.work_orders.update} />
     </div>
   );
 }

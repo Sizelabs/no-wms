@@ -11,17 +11,19 @@ export default async function WorkOrderDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-  await requirePermission(locale, "work_orders", "read");
+  const { permissions } = await requirePermission(locale, "work_orders", "read");
   const { data: wo, error } = await getWorkOrder(id);
 
   if (error || !wo) {
     notFound();
   }
 
+  const canUpdate = permissions.work_orders.update;
+
   return (
     <div className="space-y-6">
       <PageHeader title={`Orden de Trabajo ${wo.wo_number}`} />
-      <WoDetail wo={wo} locale={locale} />
+      <WoDetail wo={wo} locale={locale} canUpdate={canUpdate} />
     </div>
   );
 }

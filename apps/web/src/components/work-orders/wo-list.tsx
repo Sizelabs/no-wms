@@ -26,6 +26,7 @@ interface WorkOrder {
 interface WoListProps {
   data: WorkOrder[];
   locale: string;
+  canUpdate?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -43,7 +44,7 @@ const PRIORITY_BADGE: Record<string, string> = {
   low: "bg-gray-100 text-gray-500",
 };
 
-export function WoList({ data, locale }: WoListProps) {
+export function WoList({ data, locale, canUpdate = false }: WoListProps) {
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
   const [search, setSearch] = useState("");
@@ -66,7 +67,7 @@ export function WoList({ data, locale }: WoListProps) {
     return true;
   });
 
-  const hasActions = data.some((wo) => !["completed", "cancelled"].includes(wo.status));
+  const hasActions = canUpdate && data.some((wo) => !["completed", "cancelled"].includes(wo.status));
 
   const activeFilterCount = [filter.type.length > 0].filter(Boolean).length;
 
