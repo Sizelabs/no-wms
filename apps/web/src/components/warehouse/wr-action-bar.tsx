@@ -144,7 +144,7 @@ export function WrActionBar({
     <>
       {/* Warning for WRs with active WO */}
       {wrsWithActiveWo > 0 && (
-        <div className="fixed bottom-[68px] left-60 right-0 z-40 flex justify-center px-6">
+        <div className="fixed bottom-[52px] left-60 right-0 z-40 flex justify-center px-6">
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
             {wrsWithActiveWo} recibo(s) con OT activa seran excluidos
           </div>
@@ -158,7 +158,7 @@ export function WrActionBar({
         }`}
       >
         <div className="border-t bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-          <div className="flex items-center gap-3 px-6 py-3">
+          <div className="flex h-[52px] items-center gap-3 px-6">
             {/* Left: Selection count */}
             <div className="flex shrink-0 items-center gap-1.5">
               <span className="text-sm font-bold text-gray-900">{count}</span>

@@ -150,8 +150,8 @@ export function Sidebar({ navConfig, settingsGroups, locale, defaultCollapsed }:
         </nav>
 
         {/* Bottom */}
-        <div className="border-t px-2 py-2">
-          <ul className="mb-2 space-y-0.5">
+        <div className="border-t px-2 py-3">
+          <ul className="space-y-0.5">
             {navConfig.bottomItems.map((item) =>
               item.href === "/settings" ? (
                 <SettingsNavLink
