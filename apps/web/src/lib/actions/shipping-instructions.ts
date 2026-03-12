@@ -567,69 +567,6 @@ export async function getAvailableWrsForShipping() {
   return { data: data ?? [] };
 }
 
-export async function getAvailableHouseBillsForShipping() {
-  const supabase = await createClient();
-  const [warehouseScope, agencyScope] = await Promise.all([
-    getUserWarehouseScope(),
-    getUserAgencyScope(),
-  ]);
-
-  if ((warehouseScope !== null && warehouseScope.length === 0) ||
-      (agencyScope !== null && agencyScope.length === 0)) {
-    return { data: [] };
-  }
-
-  // Fetch house bills that have WRs ready for shipping (not yet in dispatch)
-  // and are not yet assigned to a shipment
-  let query = supabase
-    .from("hawbs")
-    .select(`
-      id, hawb_number, document_type, shipment_id,
-      warehouse_receipts!hawb_id(
-        id, wr_number, warehouse_id, agency_id, consignee_id, status,
-        total_billable_weight_lb, total_declared_value_usd, total_packages, total_pieces,
-        has_dgr_package, has_damaged_package,
-        consignees(full_name, casillero)
-      )
-    `)
-    .is("shipment_id", null)
-    .order("created_at", { ascending: false })
-    .limit(200);
-
-  const { data } = await query;
-  if (!data) return { data: [] };
-
-  // Filter to only house bills that have WRs in shippable statuses and within scope
-  const filtered = data
-    .map((hb: Record<string, unknown>) => {
-      const wrs = (Array.isArray(hb.warehouse_receipts) ? hb.warehouse_receipts : []) as Array<{
-        id: string;
-        wr_number: string;
-        warehouse_id: string;
-        agency_id: string | null;
-        consignee_id: string | null;
-        status: string;
-        total_billable_weight_lb: number | null;
-        total_declared_value_usd: number | null;
-        total_packages: number;
-        total_pieces: number;
-        has_dgr_package: boolean;
-        has_damaged_package: boolean;
-        consignees: { full_name: string; casillero: string | null } | null;
-      }>;
-      const shippable = wrs.filter((wr) => {
-        if (!["received", "in_warehouse"].includes(wr.status)) return false;
-        if (warehouseScope !== null && !warehouseScope.includes(wr.warehouse_id)) return false;
-        if (agencyScope !== null && wr.agency_id && !agencyScope.includes(wr.agency_id)) return false;
-        return true;
-      });
-      return { ...hb, warehouse_receipts: shippable };
-    })
-    .filter((hb: { warehouse_receipts: unknown[] }) => hb.warehouse_receipts.length > 0);
-
-  return { data: filtered };
-}
-
 export async function getShippingDocsForWarehouseReceipt(wrId: string) {
   const supabase = await createClient();
 
