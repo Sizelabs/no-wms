@@ -1,21 +1,9 @@
 import { Suspense } from "react";
 
-import { DashboardStatCards, DashboardWidgets } from "@/components/layout/dashboard-grid";
 import { StatCardsSkeleton, WidgetsSkeleton } from "@/components/ui/skeletons";
-import { getDashboardStatCounts, getDashboardWidgetData } from "@/lib/actions/reports";
-import { getAuthContext } from "@/lib/auth/context";
 
-async function StatsSection() {
-  const counts = await getDashboardStatCounts();
-  return <DashboardStatCards counts={counts} />;
-}
-
-async function WidgetsSection() {
-  const ctx = await getAuthContext();
-  if (!ctx) return null;
-  const widgets = await getDashboardWidgetData();
-  return <DashboardWidgets role={ctx.primaryRole} widgets={widgets as never} />;
-}
+import { StatsSection } from "./stats-section";
+import { WidgetsSection } from "./widgets-section";
 
 export default function DashboardPage() {
   return (
