@@ -39,3 +39,11 @@ export const DESTINATION_ROLES: Role[] = [
   ROLES.DESTINATION_ADMIN,
   ROLES.DESTINATION_OPERATOR,
 ];
+
+/** Roles on the forwarder side that can finalize shipping instructions */
+export const FORWARDER_SIDE_ROLES: Role[] = [
+  ROLES.SUPER_ADMIN,
+  ROLES.FORWARDER_ADMIN,
+  ROLES.WAREHOUSE_ADMIN,
+  ROLES.SHIPPING_CLERK,
+];

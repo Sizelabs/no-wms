@@ -1,6 +1,7 @@
 "use client";
 
 import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
+import { FORWARDER_SIDE_ROLES, ROLES } from "@no-wms/shared/constants/roles";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -45,8 +46,6 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-500",
 };
 
-const FORWARDER_ROLES = new Set(["super_admin", "forwarder_admin", "warehouse_admin", "shipping_clerk"]);
-
 function formatWeight(si: ShippingInstruction): string {
   const w = si.total_billable_weight_lb
     ?? (si.shipping_instruction_items.reduce((s, i) => s + Number(i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0) || null);
@@ -64,8 +63,8 @@ export function SiList({ data, locale }: SiListProps) {
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
 
   const roles = useUserRoles();
-  const isDestinationAdmin = roles.includes("destination_admin");
-  const isForwarderSide = roles.some((r) => FORWARDER_ROLES.has(r));
+  const isDestinationAdmin = roles.includes(ROLES.DESTINATION_ADMIN);
+  const isForwarderSide = roles.some((r) => (FORWARDER_SIDE_ROLES as readonly string[]).includes(r));
 
   const hasActions = data.some((si) =>
     si.status === "requested" || (si.status === "approved" && isForwarderSide)

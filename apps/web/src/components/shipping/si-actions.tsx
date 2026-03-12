@@ -1,5 +1,6 @@
 "use client";
 
+import { FORWARDER_SIDE_ROLES, ROLES } from "@no-wms/shared/constants/roles";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -12,8 +13,6 @@ import {
   finalizeShippingInstruction,
   rejectShippingInstruction,
 } from "@/lib/actions/shipping-instructions";
-
-const FORWARDER_ROLES = new Set(["super_admin", "forwarder_admin", "warehouse_admin", "shipping_clerk"]);
 
 interface SiActionsProps {
   siId: string;
@@ -29,8 +28,8 @@ export function SiActions({ siId, status }: SiActionsProps) {
   const [rejectOpen, setRejectOpen] = useState(false);
   const roles = useUserRoles();
 
-  const isDestinationAdmin = roles.includes("destination_admin");
-  const isForwarderSide = roles.some((r) => FORWARDER_ROLES.has(r));
+  const isDestinationAdmin = roles.includes(ROLES.DESTINATION_ADMIN);
+  const isForwarderSide = roles.some((r) => (FORWARDER_SIDE_ROLES as readonly string[]).includes(r));
 
   if (["finalized", "manifested", "rejected", "cancelled"].includes(status)) {
     return null;
