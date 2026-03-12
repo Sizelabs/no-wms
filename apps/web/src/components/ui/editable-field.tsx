@@ -177,7 +177,6 @@ export function EditableField({
           placeholder={placeholder}
           className={inputBase}
         />
-        {isPending && <Spinner />}
       </span>
     );
   }
@@ -196,21 +195,16 @@ export function EditableField({
       role="button"
       onFocus={enterEditing}
       className={`cursor-pointer border-b border-dashed border-blue-300 transition-all print:border-0 print:cursor-default ${
-        flash
-          ? "text-emerald-600"
-          : isEmpty
-            ? "italic text-slate-400"
-            : ""
+        isPending
+          ? "animate-pulse text-blue-400"
+          : flash
+            ? "text-emerald-600"
+            : isEmpty
+              ? "italic text-slate-400"
+              : ""
       } ${className}`}
     >
       {isEmpty ? emptyText : text}
-      {isPending && <Spinner />}
     </span>
-  );
-}
-
-function Spinner() {
-  return (
-    <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
   );
 }

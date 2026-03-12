@@ -94,7 +94,7 @@ export function ConditionFlagsInlineEdit({ wrId, flags, onFlagsChange, disabled 
       <div
         onClick={() => !disabled && setEditing(!editing)}
         className={`${disabled ? "" : "cursor-pointer hover:border-blue-300"} border-b border-dashed border-transparent transition-colors print:border-0 print:cursor-default ${
-          flash ? "text-green-600" : ""
+          isPending ? "animate-pulse" : flash ? "text-green-600" : ""
         }`}
       >
         {localFlags.length === 0 ? (
@@ -121,9 +121,6 @@ export function ConditionFlagsInlineEdit({ wrId, flags, onFlagsChange, disabled 
               );
             })}
           </div>
-        )}
-        {isPending && (
-          <span className="ml-1.5 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
         )}
       </div>
 

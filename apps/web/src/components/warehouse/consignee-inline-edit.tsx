@@ -351,9 +351,6 @@ export function ConsigneeInlineEdit({
           className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] shadow-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-300 focus:outline-none"
         />
         {dropdown(results.length > 0)}
-        {isPending && (
-          <span className="absolute right-2 top-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
-        )}
       </div>
     );
   }
@@ -369,11 +366,13 @@ export function ConsigneeInlineEdit({
       role="button"
       onFocus={enterEditing}
       className={`cursor-pointer border-b border-dashed border-blue-300 transition-all print:border-0 print:cursor-default ${
-        flash
-          ? "text-emerald-600"
-          : isEmpty
-            ? "italic text-slate-400"
-            : "font-semibold text-slate-900"
+        isPending
+          ? "animate-pulse text-blue-400"
+          : flash
+            ? "text-emerald-600"
+            : isEmpty
+              ? "italic text-slate-400"
+              : "font-semibold text-slate-900"
       }`}
     >
       {displayName ?? "Sin asignar"}
@@ -381,9 +380,6 @@ export function ConsigneeInlineEdit({
         <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-400">
           {displayCasillero}
         </span>
-      )}
-      {isPending && (
-        <span className="ml-1.5 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
       )}
     </span>
   );
