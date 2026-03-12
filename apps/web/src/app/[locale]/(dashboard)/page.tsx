@@ -2,22 +2,19 @@ import { redirect } from "next/navigation";
 
 import { DashboardGrid } from "@/components/layout/dashboard-grid";
 import { getDashboardStats } from "@/lib/actions/reports";
-import { getUserRoles } from "@/lib/auth/roles";
+import { getAuthUser, getCachedRoleAssignments } from "@/lib/auth/cached";
 import { getPrimaryRole } from "@/lib/navigation";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     redirect("/es/login");
   }
 
-  const roles = await getUserRoles(supabase, user.id);
+  // Role assignments are cached from the layout — no extra DB call
+  const assignments = await getCachedRoleAssignments();
+  const roles = assignments.map((a) => a.role);
   const primaryRole = getPrimaryRole(roles);
   const stats = await getDashboardStats();
 

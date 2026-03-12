@@ -1,6 +1,7 @@
 import type { UserRoleAssignment } from "@/lib/auth/roles";
-import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds, getUserRoleAssignments } from "@/lib/auth/roles";
-import { createClient } from "@/lib/supabase/server";
+import { getScopedAgencyIds, getScopedCourierIds, getScopedWarehouseIds } from "@/lib/auth/roles";
+
+import { getAuthUser, getCachedRoleAssignments } from "./cached";
 
 interface UserScope {
   warehouseIds: string[] | null;
@@ -10,19 +11,13 @@ interface UserScope {
 
 /**
  * Server-side helper: fetches role assignments once and derives both scopes.
+ * Uses per-request cached helpers to avoid redundant DB calls.
  */
 async function getUserScopes(): Promise<{ assignments: UserRoleAssignment[] | null }> {
-  const supabase = await createClient();
+  const user = await getAuthUser();
+  if (!user) return { assignments: null };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { assignments: null };
-  }
-
-  const assignments = await getUserRoleAssignments(supabase, user.id);
+  const assignments = await getCachedRoleAssignments();
   return { assignments };
 }
 
