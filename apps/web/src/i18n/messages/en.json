@@ -278,6 +278,25 @@
     "next": "Next",
     "backToHistory": "Back to history"
   },
+  "shipping": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "finalize": "Finalize",
+    "generateHawb": "Generate HAWB",
+    "pendingCourierApproval": "Pending courier approval",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "finalized": "Finalized",
+    "rejectTitle": "Reject instruction",
+    "rejectReasonLabel": "Rejection reason",
+    "rejectReasonPlaceholder": "Enter the rejection reason...",
+    "rejectReasonRequired": "Reason is required",
+    "rejectionReason": "Rejection reason",
+    "approvedSuccess": "Instruction approved",
+    "rejectedSuccess": "Instruction rejected",
+    "finalizedSuccess": "Instruction finalized — HAWB generated",
+    "actions": "Actions"
+  },
   "reports": {
     "title": "Reports",
     "inventory": "Inventory",

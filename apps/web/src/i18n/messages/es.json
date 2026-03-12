@@ -285,6 +285,25 @@
     "next": "Siguiente",
     "backToHistory": "Volver al historial"
   },
+  "shipping": {
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "finalize": "Finalizar",
+    "generateHawb": "Generar HAWB",
+    "pendingCourierApproval": "Pendiente aprobación courier",
+    "approved": "Aprobada",
+    "rejected": "Rechazada",
+    "finalized": "Finalizada",
+    "rejectTitle": "Rechazar instrucción",
+    "rejectReasonLabel": "Razón de rechazo",
+    "rejectReasonPlaceholder": "Ingrese la razón del rechazo...",
+    "rejectReasonRequired": "La razón es requerida",
+    "rejectionReason": "Razón de rechazo",
+    "approvedSuccess": "Instrucción aprobada",
+    "rejectedSuccess": "Instrucción rechazada",
+    "finalizedSuccess": "Instrucción finalizada — HAWB generado",
+    "actions": "Acciones"
+  },
   "reports": {
     "title": "Reportes",
     "inventory": "Inventario",

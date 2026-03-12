@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
+import { getCachedRoleAssignments } from "@/lib/auth/cached";
+import { getUserAgencyScope, getUserCourierScope, getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createShippingInstruction(formData: FormData): Promise<{ id: string } | { error: string }> {
@@ -222,9 +223,10 @@ export async function getShippingInstructions(filters?: {
   modality?: string;
 }) {
   const supabase = await createClient();
-  const [warehouseScope, agencyScope] = await Promise.all([
+  const [warehouseScope, agencyScope, courierScope] = await Promise.all([
     getUserWarehouseScope(),
     getUserAgencyScope(),
+    getUserCourierScope(),
   ]);
 
   if (warehouseScope !== null && warehouseScope.length === 0) {
@@ -232,6 +234,18 @@ export async function getShippingInstructions(filters?: {
   }
   if (agencyScope !== null && agencyScope.length === 0) {
     return { data: [], error: null };
+  }
+
+  // Courier-scoped users: resolve agency IDs belonging to their couriers
+  let courierAgencyIds: string[] | null = null;
+  if (courierScope !== null) {
+    if (courierScope.length === 0) return { data: [], error: null };
+    const { data: courierAgencies } = await supabase
+      .from("agencies")
+      .select("id")
+      .in("courier_id", courierScope);
+    courierAgencyIds = (courierAgencies ?? []).map((a: { id: string }) => a.id);
+    if (courierAgencyIds.length === 0) return { data: [], error: null };
   }
 
   let query = supabase
@@ -244,6 +258,9 @@ export async function getShippingInstructions(filters?: {
   }
   if (agencyScope !== null) {
     query = query.in("agency_id", agencyScope);
+  }
+  if (courierAgencyIds !== null) {
+    query = query.in("agency_id", courierAgencyIds);
   }
 
   if (filters?.status) query = query.eq("status", filters.status);
@@ -275,14 +292,35 @@ export async function approveShippingInstruction(id: string): Promise<{ error?: 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
+  // Only destination_admin (courier) can approve
+  const assignments = await getCachedRoleAssignments();
+  const isDestinationAdmin = assignments.some((a) => a.role === "destination_admin");
+  if (!isDestinationAdmin) return { error: "Solo el courier puede aprobar instrucciones de embarque" };
+
   const { data: si } = await supabase
     .from("shipping_instructions")
-    .select("status, organization_id")
+    .select("status, organization_id, agency_id")
     .eq("id", id)
     .single();
 
   if (!si) return { error: "SI no encontrada" };
   if (si.status !== "requested") return { error: "Solo se pueden aprobar SIs en estado 'Solicitada'" };
+
+  // Courier scope check: verify the SI's agency belongs to this courier
+  const courierIds = assignments
+    .filter((a) => a.role === "destination_admin" && a.courier_id)
+    .map((a) => a.courier_id!);
+
+  if (courierIds.length > 0) {
+    const { data: agency } = await supabase
+      .from("agencies")
+      .select("id")
+      .eq("id", si.agency_id)
+      .in("courier_id", courierIds)
+      .single();
+
+    if (!agency) return { error: "No tiene permisos sobre esta agencia" };
+  }
 
   await supabase
     .from("shipping_instructions")
@@ -307,13 +345,34 @@ export async function rejectShippingInstruction(id: string, reason: string): Pro
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado" };
 
+  // Only destination_admin (courier) can reject
+  const assignments = await getCachedRoleAssignments();
+  const isDestinationAdmin = assignments.some((a) => a.role === "destination_admin");
+  if (!isDestinationAdmin) return { error: "Solo el courier puede rechazar instrucciones de embarque" };
+
   const { data: si } = await supabase
     .from("shipping_instructions")
-    .select("status, organization_id, shipping_instruction_items(warehouse_receipt_id)")
+    .select("status, organization_id, agency_id, shipping_instruction_items(warehouse_receipt_id)")
     .eq("id", id)
     .single();
 
   if (!si) return { error: "SI no encontrada" };
+
+  // Courier scope check
+  const courierIds = assignments
+    .filter((a) => a.role === "destination_admin" && a.courier_id)
+    .map((a) => a.courier_id!);
+
+  if (courierIds.length > 0) {
+    const { data: agency } = await supabase
+      .from("agencies")
+      .select("id")
+      .eq("id", si.agency_id)
+      .in("courier_id", courierIds)
+      .single();
+
+    if (!agency) return { error: "No tiene permisos sobre esta agencia" };
+  }
 
   await supabase
     .from("shipping_instructions")

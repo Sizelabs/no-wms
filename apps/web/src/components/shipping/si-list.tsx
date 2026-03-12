@@ -2,10 +2,13 @@
 
 import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
+import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
+import { SiRejectModal } from "@/components/shipping/si-reject-modal";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import {
@@ -42,6 +45,8 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-500",
 };
 
+const FORWARDER_ROLES = new Set(["super_admin", "forwarder_admin", "warehouse_admin", "shipping_clerk"]);
+
 function formatWeight(si: ShippingInstruction): string {
   const w = si.total_billable_weight_lb
     ?? (si.shipping_instruction_items.reduce((s, i) => s + Number(i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0) || null);
@@ -50,11 +55,21 @@ function formatWeight(si: ShippingInstruction): string {
 
 export function SiList({ data, locale }: SiListProps) {
   const { notify } = useNotification();
+  const t = useTranslations("shipping");
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: [] as string[], modality: [] as string[] });
   const [showFilters, setShowFilters] = useState(false);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+
+  const roles = useUserRoles();
+  const isDestinationAdmin = roles.includes("destination_admin");
+  const isForwarderSide = roles.some((r) => FORWARDER_ROLES.has(r));
+
+  const hasActions = data.some((si) =>
+    si.status === "requested" || (si.status === "approved" && isForwarderSide)
+  );
 
   const filtered = data.filter((si) => {
     if (search) {
@@ -76,15 +91,19 @@ export function SiList({ data, locale }: SiListProps) {
 
   const handleApprove = (id: string) => {
     startTransition(async () => {
-      await approveShippingInstruction(id);
+      const result = await approveShippingInstruction(id);
+      if (result.error) notify(result.error, "error");
+      else notify(t("approvedSuccess"), "success");
     });
   };
 
-  const handleReject = (id: string) => {
-    const reason = prompt("Razón del rechazo:");
-    if (!reason) return;
+  const handleReject = (reason: string) => {
+    if (!rejectTarget) return;
+    const id = rejectTarget;
     startTransition(async () => {
-      await rejectShippingInstruction(id, reason);
+      const result = await rejectShippingInstruction(id, reason);
+      if (result.error) notify(result.error, "error");
+      else { setRejectTarget(null); notify(t("rejectedSuccess"), "success"); }
     });
   };
 
@@ -92,7 +111,7 @@ export function SiList({ data, locale }: SiListProps) {
     startTransition(async () => {
       const result = await finalizeShippingInstruction(id);
       if (result.hawb_number) {
-        notify(`HAWB generado: ${result.hawb_number}`, "success");
+        notify(`HAWB: ${result.hawb_number}`, "success");
       } else if (result.error) {
         notify(result.error, "error");
       }
@@ -161,13 +180,13 @@ export function SiList({ data, locale }: SiListProps) {
               <th className="px-4 py-3">HAWB</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Acciones</th>
+              {hasActions && <th className="px-4 py-3">{t("actions")}</th>}
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={10}
+            colSpan={hasActions ? 10 : 9}
             emptyMessage="No hay instrucciones de embarque"
             renderRow={(si) => (
               <tr key={si.id}>
@@ -196,42 +215,54 @@ export function SiList({ data, locale }: SiListProps) {
                 <td className="px-4 py-3 text-xs text-gray-500">
                   {new Date(si.created_at).toLocaleDateString("es")}
                 </td>
+                {hasActions && (
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
-                    {si.status === "requested" && (
+                    {si.status === "requested" && isDestinationAdmin && (
                       <>
                         <button
                           onClick={() => handleApprove(si.id)}
                           disabled={isPending}
                           className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
                         >
-                          Aprobar
+                          {t("approve")}
                         </button>
                         <button
-                          onClick={() => handleReject(si.id)}
+                          onClick={() => setRejectTarget(si.id)}
                           disabled={isPending}
                           className="rounded border px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
                         >
-                          Rechazar
+                          {t("reject")}
                         </button>
                       </>
                     )}
-                    {si.status === "approved" && (
+                    {si.status === "requested" && !isDestinationAdmin && (
+                      <span className="text-xs text-amber-600">{t("pendingCourierApproval")}</span>
+                    )}
+                    {si.status === "approved" && isForwarderSide && (
                       <button
                         onClick={() => handleFinalize(si.id)}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-purple-700 hover:bg-purple-50"
                       >
-                        Finalizar (HAWB)
+                        {t("finalize")} (HAWB)
                       </button>
                     )}
                   </div>
                 </td>
+                )}
               </tr>
             )}
           />
         </table>
       </div>
+
+      <SiRejectModal
+        open={rejectTarget !== null}
+        onClose={() => setRejectTarget(null)}
+        onConfirm={handleReject}
+        isPending={isPending}
+      />
     </div>
   );
 }
