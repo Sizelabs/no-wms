@@ -2,29 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getActionAuth } from "@/lib/auth/action";
 import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 // ── MAWB ──
 
 export async function createMawb(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient();
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) return { error: "Perfil no encontrado" };
-
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("mawbs")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: auth.organizationId,
       warehouse_id: formData.get("warehouse_id") as string,
       mawb_number: formData.get("mawb_number") as string,
       airline: formData.get("airline") as string,
@@ -37,12 +28,12 @@ export async function createMawb(formData: FormData): Promise<{ id: string } | {
 
   if (error) return { error: error.message };
 
-  await supabase.from("mawb_status_history").insert({
-    organization_id: profile.organization_id,
+  await auth.supabase.from("mawb_status_history").insert({
+    organization_id: auth.organizationId,
     mawb_id: data.id,
     old_status: null,
     new_status: "created",
-    changed_by: user.id,
+    changed_by: auth.user.id,
   });
 
   revalidatePath("/manifests");
@@ -87,12 +78,10 @@ export async function getMawb(id: string) {
 }
 
 export async function updateMawbStatus(id: string, newStatus: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
-
-  const { data: mawb } = await supabase
+  const { data: mawb } = await auth.supabase
     .from("mawbs")
     .select("status, organization_id")
     .eq("id", id)
@@ -100,25 +89,25 @@ export async function updateMawbStatus(id: string, newStatus: string): Promise<{
 
   if (!mawb) return { error: "MAWB no encontrado" };
 
-  await supabase.from("mawbs").update({ status: newStatus }).eq("id", id);
+  await auth.supabase.from("mawbs").update({ status: newStatus }).eq("id", id);
 
   // If delivered, mark all related WRs as dispatched
   if (newStatus === "delivered") {
-    const { data: hawbs } = await supabase
+    const { data: hawbs } = await auth.supabase
       .from("hawbs")
       .select("id")
       .eq("mawb_id", id);
 
     if (hawbs?.length) {
       const hawbIds = hawbs.map((h) => h.id);
-      const { data: wrs } = await supabase
+      const { data: wrs } = await auth.supabase
         .from("warehouse_receipts")
         .select("id")
         .in("hawb_id", hawbIds);
 
       if (wrs?.length) {
         const wrIds = wrs.map((w) => w.id);
-        await supabase
+        await auth.supabase
           .from("warehouse_receipts")
           .update({ status: "dispatched" })
           .in("id", wrIds);
@@ -126,12 +115,12 @@ export async function updateMawbStatus(id: string, newStatus: string): Promise<{
     }
   }
 
-  await supabase.from("mawb_status_history").insert({
+  await auth.supabase.from("mawb_status_history").insert({
     organization_id: mawb.organization_id,
     mawb_id: id,
     old_status: mawb.status,
     new_status: newStatus,
-    changed_by: user.id,
+    changed_by: auth.user.id,
   });
 
   revalidatePath("/manifests");
@@ -156,31 +145,21 @@ export async function assignHawbToMawb(hawbId: string, mawbId: string): Promise<
 // ── Airline Reservations ──
 
 export async function createAirlineReservation(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) return { error: "Perfil no encontrado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const numbers = JSON.parse(formData.get("reserved_mawb_numbers") as string) as string[];
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("airline_reservations")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: auth.organizationId,
       airline: formData.get("airline") as string,
       reserved_mawb_numbers: numbers,
       week_start: formData.get("week_start") as string,
       week_end: formData.get("week_end") as string,
       notes: (formData.get("notes") as string) || null,
-      created_by: user.id,
+      created_by: auth.user.id,
     })
     .select("id")
     .single();
@@ -196,7 +175,7 @@ export async function getAirlineReservations() {
 
   const { data, error } = await supabase
     .from("airline_reservations")
-    .select("*")
+    .select("id, airline, reserved_mawb_numbers, week_start, week_end, notes, status, created_at")
     .order("week_start", { ascending: false });
 
   if (error) return { data: null, error: error.message };
@@ -206,25 +185,15 @@ export async function getAirlineReservations() {
 // ── Pickup Requests ──
 
 export async function createPickupRequest(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) return { error: "Perfil no encontrado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const wrIds = JSON.parse(formData.get("warehouse_receipt_ids") as string) as string[];
 
-  const { data: pickup, error } = await supabase
+  const { data: pickup, error } = await auth.supabase
     .from("pickup_requests")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: auth.organizationId,
       agency_id: formData.get("agency_id") as string,
       pickup_date: formData.get("pickup_date") as string,
       pickup_time: (formData.get("pickup_time") as string) || null,
@@ -234,7 +203,7 @@ export async function createPickupRequest(formData: FormData): Promise<{ id: str
       contact_phone: (formData.get("contact_phone") as string) || null,
       contact_email: (formData.get("contact_email") as string) || null,
       notes: (formData.get("notes") as string) || null,
-      created_by: user.id,
+      created_by: auth.user.id,
     })
     .select("id")
     .single();
@@ -246,7 +215,7 @@ export async function createPickupRequest(formData: FormData): Promise<{ id: str
       pickup_request_id: pickup.id,
       warehouse_receipt_id: wrId,
     }));
-    await supabase.from("pickup_request_wrs").insert(items);
+    await auth.supabase.from("pickup_request_wrs").insert(items);
   }
 
   revalidatePath("/shipping");
@@ -285,27 +254,17 @@ export async function updatePickupStatus(id: string, newStatus: string): Promise
 // ── WR Transfer Requests ──
 
 export async function createTransferRequest(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient();
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) return { error: "Perfil no encontrado" };
-
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("wr_transfer_requests")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: auth.organizationId,
       warehouse_receipt_id: formData.get("warehouse_receipt_id") as string,
       from_agency_id: formData.get("from_agency_id") as string,
       to_agency_id: formData.get("to_agency_id") as string,
-      requested_by: user.id,
+      requested_by: auth.user.id,
     })
     .select("id")
     .single();
@@ -317,12 +276,10 @@ export async function createTransferRequest(formData: FormData): Promise<{ id: s
 }
 
 export async function approveTransferRequest(id: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
-
-  const { data: transfer } = await supabase
+  const { data: transfer } = await auth.supabase
     .from("wr_transfer_requests")
     .select("warehouse_receipt_id, to_agency_id")
     .eq("id", id)
@@ -330,17 +287,17 @@ export async function approveTransferRequest(id: string): Promise<{ error?: stri
 
   if (!transfer) return { error: "Solicitud no encontrada" };
 
-  await supabase
+  await auth.supabase
     .from("wr_transfer_requests")
     .update({
       status: "approved",
-      approved_by: user.id,
+      approved_by: auth.user.id,
       approved_at: new Date().toISOString(),
     })
     .eq("id", id);
 
   // Re-assign WR to new agency
-  await supabase
+  await auth.supabase
     .from("warehouse_receipts")
     .update({ agency_id: transfer.to_agency_id })
     .eq("id", transfer.warehouse_receipt_id);
@@ -362,14 +319,12 @@ export async function getTransferRequests() {
 }
 
 export async function rejectTransferRequest(id: string, reason: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
-
-  await supabase
+  await auth.supabase
     .from("wr_transfer_requests")
-    .update({ status: "rejected", rejection_reason: reason, approved_by: user.id })
+    .update({ status: "rejected", rejection_reason: reason, approved_by: auth.user.id })
     .eq("id", id);
 
   revalidatePath("/inventory");

@@ -29,7 +29,7 @@ export async function getOrganizations() {
 
   const { data, error } = await supabase
     .from("organizations")
-    .select("*")
+    .select("id, name, slug, logo_url, created_at")
     .order("name");
 
   if (error) {

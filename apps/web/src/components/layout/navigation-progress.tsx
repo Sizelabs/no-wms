@@ -63,8 +63,6 @@ export function NavigationProgress() {
       observerRef.current.observe(document.body, {
         childList: true,
         subtree: true,
-        attributes: true,
-        attributeFilter: ["class"],
       });
     }, 100);
 
@@ -74,8 +72,7 @@ export function NavigationProgress() {
         checkTimerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, finish]);
 
   const handleClick = useCallback(
     (e: MouseEvent) => {

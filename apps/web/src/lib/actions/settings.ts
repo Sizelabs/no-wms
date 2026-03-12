@@ -9,7 +9,7 @@ export async function getSettings(organizationId: string, scopeType: string, sco
 
   let query = supabase
     .from("settings")
-    .select("*")
+    .select("id, key, value, scope_type, scope_id, organization_id, updated_at")
     .eq("scope_type", scopeType);
 
   if (scopeType === "platform") {

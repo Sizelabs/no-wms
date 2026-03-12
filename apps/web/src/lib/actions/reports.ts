@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 // ---------------------------------------------------------------------------
 // Dashboard stats (live counts)
 // ---------------------------------------------------------------------------
-export async function getDashboardStats() {
+export async function getDashboardStatCounts() {
   const { warehouseIds: warehouseScope, agencyIds: agencyScope } = await getUserFullScope();
   const supabase = await createClient();
 
@@ -17,47 +17,65 @@ export async function getDashboardStats() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  // Build all queries (don't await yet)
   let receivedQuery = supabase
     .from("warehouse_receipts")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .gte("created_at", todayIso);
   if (warehouseScope !== null && warehouseScope.length) receivedQuery = receivedQuery.in("warehouse_id", warehouseScope);
   if (agencyScope !== null && agencyScope.length) receivedQuery = receivedQuery.in("agency_id", agencyScope);
 
   let inWarehouseQuery = supabase
     .from("warehouse_receipts")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .in("status", ["in_warehouse", "in_work_order", "in_dispatch"]);
   if (warehouseScope !== null && warehouseScope.length) inWarehouseQuery = inWarehouseQuery.in("warehouse_id", warehouseScope);
   if (agencyScope !== null && agencyScope.length) inWarehouseQuery = inWarehouseQuery.in("agency_id", agencyScope);
 
   let woQuery = supabase
     .from("work_orders")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .in("status", ["requested", "approved", "in_progress"]);
   if (warehouseScope !== null && warehouseScope.length) woQuery = woQuery.in("warehouse_id", warehouseScope);
   if (agencyScope !== null && agencyScope.length) woQuery = woQuery.in("agency_id", agencyScope);
 
+  let storageQuery = supabase
+    .from("warehouse_receipts")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["in_warehouse", "in_work_order", "in_dispatch"])
+    .lte("received_at", thirtyDaysAgo.toISOString());
+  if (warehouseScope !== null && warehouseScope.length) storageQuery = storageQuery.in("warehouse_id", warehouseScope);
+  if (agencyScope !== null && agencyScope.length) storageQuery = storageQuery.in("agency_id", agencyScope);
+
+  const [received, inWarehouse, wo, storage] = await Promise.all([
+    receivedQuery,
+    inWarehouseQuery,
+    woQuery,
+    storageQuery,
+  ]);
+
+  return {
+    boxesReceivedToday: received.count ?? 0,
+    totalInWarehouse: inWarehouse.count ?? 0,
+    pendingWorkOrders: wo.count ?? 0,
+    storageAlerts: storage.count ?? 0,
+  };
+}
+
+export async function getDashboardWidgetData() {
+  const { warehouseIds: warehouseScope, agencyIds: agencyScope } = await getUserFullScope();
+  const supabase = await createClient();
+
   let siQuery = supabase
     .from("shipping_instructions")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .in("status", ["requested", "approved"]);
   if (agencyScope !== null && agencyScope.length) siQuery = siQuery.in("agency_id", agencyScope);
 
   let ticketQuery = supabase
     .from("tickets")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("status", "open");
   if (agencyScope !== null && agencyScope.length) ticketQuery = ticketQuery.in("agency_id", agencyScope);
-
-  let storageQuery = supabase
-    .from("warehouse_receipts")
-    .select("*", { count: "exact", head: true })
-    .in("status", ["in_warehouse", "in_work_order", "in_dispatch"])
-    .lte("received_at", thirtyDaysAgo.toISOString());
-  if (warehouseScope !== null && warehouseScope.length) storageQuery = storageQuery.in("warehouse_id", warehouseScope);
-  if (agencyScope !== null && agencyScope.length) storageQuery = storageQuery.in("agency_id", agencyScope);
 
   let recentWrQuery = supabase
     .from("warehouse_receipts")
@@ -67,24 +85,15 @@ export async function getDashboardStats() {
   if (warehouseScope !== null && warehouseScope.length) recentWrQuery = recentWrQuery.in("warehouse_id", warehouseScope);
   if (agencyScope !== null && agencyScope.length) recentWrQuery = recentWrQuery.in("agency_id", agencyScope);
 
-  // Execute all 7 queries in parallel
-  const [received, inWarehouse, wo, si, tickets, storage, recentWrs] = await Promise.all([
-    receivedQuery,
-    inWarehouseQuery,
-    woQuery,
+  const [si, tickets, recentWrs] = await Promise.all([
     siQuery,
     ticketQuery,
-    storageQuery,
     recentWrQuery,
   ]);
 
   return {
-    boxesReceivedToday: received.count ?? 0,
-    totalInWarehouse: inWarehouse.count ?? 0,
-    pendingWorkOrders: wo.count ?? 0,
     pendingDispatches: si.count ?? 0,
     openTickets: tickets.count ?? 0,
-    storageAlerts: storage.count ?? 0,
     recentWrs: recentWrs.data ?? [],
   };
 }

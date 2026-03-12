@@ -2,26 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getActionAuth } from "@/lib/auth/action";
 import { getUserCourierScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
-
-// ── Helpers ──
-
-async function getAuthProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { supabase, profile: null };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  return { supabase, profile };
-}
 
 // ── Handling Costs ──
 
@@ -29,7 +12,7 @@ export async function getHandlingCosts() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("handling_costs")
-    .select("*")
+    .select("id, name, description, is_active, display_order, base_rate, base_rate_unit, base_minimum_charge")
     .order("display_order")
     .order("name");
 
@@ -113,17 +96,17 @@ export async function getHandlingCost(id: string) {
 }
 
 export async function createHandlingCost(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const baseRate = formData.get("base_rate") as string | null;
   const baseRateUnit = formData.get("base_rate_unit") as string | null;
   const baseMinCharge = formData.get("base_minimum_charge") as string | null;
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("handling_costs")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: auth.organizationId,
       name: formData.get("name") as string,
       description: (formData.get("description") as string) || null,
       ...(baseRate ? { base_rate: parseFloat(baseRate) } : {}),
@@ -142,8 +125,8 @@ export async function createHandlingCost(formData: FormData): Promise<{ id: stri
 }
 
 export async function updateHandlingCost(id: string, formData: FormData): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const updates: Record<string, unknown> = {};
   for (const field of ["name", "description"]) {
@@ -161,7 +144,7 @@ export async function updateHandlingCost(id: string, formData: FormData): Promis
   const baseMinCharge = formData.get("base_minimum_charge") as string | null;
   if (baseMinCharge !== null) updates.base_minimum_charge = baseMinCharge ? parseFloat(baseMinCharge) : null;
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("handling_costs")
     .update(updates)
     .eq("id", id);
@@ -176,14 +159,14 @@ export async function updateCourierTariff(
   handlingCostId: string,
   data: { rate: number; rate_unit: string; minimum_charge: number | null },
 ): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("courier_tariffs")
     .upsert(
       {
-        organization_id: profile.organization_id,
+        organization_id: auth.organizationId,
         courier_id: courierId,
         handling_cost_id: handlingCostId,
         rate: data.rate,
@@ -202,11 +185,11 @@ export async function resetCourierTariff(
   courierId: string,
   handlingCostId: string,
 ): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   // Get base values
-  const { data: hc, error: hcError } = await supabase
+  const { data: hc, error: hcError } = await auth.supabase
     .from("handling_costs")
     .select("base_rate, base_rate_unit, base_minimum_charge")
     .eq("id", handlingCostId)
@@ -214,7 +197,7 @@ export async function resetCourierTariff(
 
   if (hcError || !hc) return { error: hcError?.message ?? "No encontrado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("courier_tariffs")
     .update({
       rate: hc.base_rate,
@@ -230,10 +213,10 @@ export async function resetCourierTariff(
 }
 
 export async function deleteHandlingCost(id: string): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("handling_costs")
     .update({ is_active: false })
     .eq("id", id);
@@ -244,11 +227,11 @@ export async function deleteHandlingCost(id: string): Promise<{ error?: string }
 }
 
 export async function reorderHandlingCosts(ids: string[]): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   for (let i = 0; i < ids.length; i++) {
-    const { error } = await supabase
+    const { error } = await auth.supabase
       .from("handling_costs")
       .update({ display_order: i + 1 })
       .eq("id", ids[i]);
@@ -265,7 +248,7 @@ export async function getModalities() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("modalities")
-    .select("*")
+    .select("id, name, code, description, is_active, display_order, base_rate, base_rate_unit, base_minimum_charge")
     .order("display_order")
     .order("name");
 
@@ -349,17 +332,17 @@ export async function getModality(id: string) {
 }
 
 export async function createModality(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const baseRate = formData.get("base_rate") as string | null;
   const baseRateUnit = formData.get("base_rate_unit") as string | null;
   const baseMinCharge = formData.get("base_minimum_charge") as string | null;
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("modalities")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: auth.organizationId,
       name: formData.get("name") as string,
       code: formData.get("code") as string,
       description: (formData.get("description") as string) || null,
@@ -379,8 +362,8 @@ export async function createModality(formData: FormData): Promise<{ id: string }
 }
 
 export async function updateModality(id: string, formData: FormData): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const updates: Record<string, unknown> = {};
   for (const field of ["name", "code", "description"]) {
@@ -398,7 +381,7 @@ export async function updateModality(id: string, formData: FormData): Promise<{ 
   const baseMinCharge = formData.get("base_minimum_charge") as string | null;
   if (baseMinCharge !== null) updates.base_minimum_charge = baseMinCharge ? parseFloat(baseMinCharge) : null;
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("modalities")
     .update(updates)
     .eq("id", id);
@@ -409,10 +392,10 @@ export async function updateModality(id: string, formData: FormData): Promise<{ 
 }
 
 export async function deleteModality(id: string): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("modalities")
     .update({ is_active: false })
     .eq("id", id);
@@ -427,14 +410,14 @@ export async function updateCourierModalityTariff(
   modalityId: string,
   data: { rate: number; rate_unit: string; minimum_charge: number | null },
 ): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("courier_modality_tariffs")
     .upsert(
       {
-        organization_id: profile.organization_id,
+        organization_id: auth.organizationId,
         courier_id: courierId,
         modality_id: modalityId,
         rate: data.rate,
@@ -453,10 +436,10 @@ export async function resetCourierModalityTariff(
   courierId: string,
   modalityId: string,
 ): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { data: mod, error: modError } = await supabase
+  const { data: mod, error: modError } = await auth.supabase
     .from("modalities")
     .select("base_rate, base_rate_unit, base_minimum_charge")
     .eq("id", modalityId)
@@ -464,7 +447,7 @@ export async function resetCourierModalityTariff(
 
   if (modError || !mod) return { error: modError?.message ?? "No encontrado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("courier_modality_tariffs")
     .update({
       rate: mod.base_rate,
@@ -497,14 +480,14 @@ export async function toggleWarehouseDestinationModality(
   modalityId: string,
   isActive: boolean,
 ): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("warehouse_destination_modalities")
     .upsert(
       {
-        organization_id: profile.organization_id,
+        organization_id: auth.organizationId,
         warehouse_destination_id: warehouseDestinationId,
         modality_id: modalityId,
         is_active: isActive,
@@ -582,13 +565,13 @@ export async function getTariffSchedule(id: string) {
 }
 
 export async function createTariffSchedule(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("tariff_schedules")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: auth.organizationId,
       warehouse_id: formData.get("warehouse_id") as string,
       handling_cost_id: formData.get("handling_cost_id") as string,
       destination_id: (formData.get("destination_id") as string) || null,
@@ -613,8 +596,8 @@ export async function createTariffSchedule(formData: FormData): Promise<{ id: st
 }
 
 export async function updateTariffSchedule(id: string, formData: FormData): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const updates: Record<string, unknown> = {};
 
@@ -638,7 +621,7 @@ export async function updateTariffSchedule(id: string, formData: FormData): Prom
   const isActive = formData.get("is_active");
   if (isActive !== null) updates.is_active = isActive === "true";
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("tariff_schedules")
     .update(updates)
     .eq("id", id);
@@ -649,10 +632,10 @@ export async function updateTariffSchedule(id: string, formData: FormData): Prom
 }
 
 export async function deleteTariffSchedule(id: string): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("tariff_schedules")
     .update({ is_active: false })
     .eq("id", id);

@@ -90,7 +90,7 @@ export async function getStorageCharges(wrId: string) {
 
   const { data, error } = await supabase
     .from("storage_charges")
-    .select("*")
+    .select("id, charge_date, daily_rate, amount, invoice_line_item_id, created_at")
     .eq("warehouse_receipt_id", wrId)
     .order("charge_date", { ascending: false });
 

@@ -3,6 +3,7 @@
 import { INVOICE_VALID_TRANSITIONS } from "@no-wms/shared/validators/invoice";
 import { revalidatePath } from "next/cache";
 
+import { getActionAuth } from "@/lib/auth/action";
 import { getUserAgencyScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
@@ -59,23 +60,11 @@ export async function getInvoice(id: string) {
  * Computes shipping, storage, work order, and surcharge line items.
  */
 export async function generateInvoice(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient();
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) return { error: "Perfil no encontrado" };
-
-  const orgId = profile.organization_id;
+  const supabase = auth.supabase;
+  const orgId = auth.organizationId;
   const agencyId = formData.get("agency_id") as string;
   const periodStart = formData.get("period_start") as string;
   const periodEnd = formData.get("period_end") as string;
@@ -87,7 +76,7 @@ export async function generateInvoice(formData: FormData): Promise<{ id: string 
   // Generate invoice number (org-scoped sequential)
   const { count } = await supabase
     .from("invoices")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("organization_id", orgId);
 
   const invoiceNumber = `INV${String((count ?? 0) + 1).padStart(5, "0")}`;
@@ -379,13 +368,10 @@ export async function updateInvoiceStatus(
   id: string,
   newStatus: string,
 ): Promise<{ error?: string }> {
-  const supabase = await createClient();
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
+  const supabase = auth.supabase;
 
   const { data: invoice } = await supabase
     .from("invoices")
@@ -417,13 +403,10 @@ export async function updateInvoiceStatus(
 }
 
 export async function voidInvoice(id: string, reason: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "No autenticado" };
+  const supabase = auth.supabase;
 
   const { data: invoice } = await supabase
     .from("invoices")

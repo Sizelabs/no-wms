@@ -24,7 +24,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import type { NavConfig, NavItem, SettingsNavGroup } from "@/lib/navigation";
 
@@ -181,7 +181,7 @@ export function Sidebar({ navConfig, settingsGroups, locale, defaultCollapsed }:
   );
 }
 
-function NavLink({
+const NavLink = memo(function NavLink({
   item,
   locale,
   active,
@@ -234,9 +234,9 @@ function NavLink({
   }
 
   return <li>{linkContent}</li>;
-}
+});
 
-function SettingsNavLink({
+const SettingsNavLink = memo(function SettingsNavLink({
   item,
   locale,
   active,
@@ -297,4 +297,4 @@ function SettingsNavLink({
       </div>
     </li>
   );
-}
+});

@@ -57,20 +57,26 @@ export function TableSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?: nu
   );
 }
 
+export function WidgetsSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 3 }, (_, i) => (
+        <div key={i} className="rounded-lg border bg-white p-5 shadow-sm">
+          <Pulse className="mb-3 h-4 w-32" />
+          <Pulse className="mb-2 h-10 w-16" />
+          <Pulse className="h-3 w-24" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function DashboardSkeleton() {
   return (
     <div className="space-y-6">
       <Pulse className="h-8 w-64" />
       <StatCardsSkeleton />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="rounded-lg border bg-white p-5 shadow-sm">
-            <Pulse className="mb-3 h-4 w-32" />
-            <Pulse className="mb-2 h-10 w-16" />
-            <Pulse className="h-3 w-24" />
-          </div>
-        ))}
-      </div>
+      <WidgetsSkeleton />
     </div>
   );
 }

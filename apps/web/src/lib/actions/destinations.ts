@@ -3,23 +3,8 @@
 import { Country } from "country-state-city";
 import { revalidatePath } from "next/cache";
 
+import { getActionAuth } from "@/lib/auth/action";
 import { createClient } from "@/lib/supabase/server";
-
-async function getAuthProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { supabase, profile: null };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  return { supabase, profile };
-}
 
 /** Resolve country name from ISO code for display */
 function resolveCountryName(countryCode: string): string | null {
@@ -62,8 +47,8 @@ export async function getDestination(id: string) {
 }
 
 export async function createDestination(formData: FormData): Promise<{ id: string } | { error: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const city = formData.get("city") as string;
   const state = formData.get("state") as string;
@@ -71,10 +56,10 @@ export async function createDestination(formData: FormData): Promise<{ id: strin
 
   if (!city || !countryCode) return { error: "Ciudad y país son requeridos" };
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("destinations")
     .insert({
-      organization_id: profile.organization_id,
+      organization_id: auth.organizationId,
       city,
       state: state || null,
       country_code: countryCode,
@@ -92,8 +77,8 @@ export async function createDestination(formData: FormData): Promise<{ id: strin
 }
 
 export async function updateDestination(id: string, formData: FormData): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
   const updates: Record<string, unknown> = {};
 
@@ -111,7 +96,7 @@ export async function updateDestination(id: string, formData: FormData): Promise
   const isActive = formData.get("is_active");
   if (isActive !== null) updates.is_active = isActive === "true";
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("destinations")
     .update(updates)
     .eq("id", id);
@@ -122,10 +107,10 @@ export async function updateDestination(id: string, formData: FormData): Promise
 }
 
 export async function deleteDestination(id: string): Promise<{ error?: string }> {
-  const { supabase, profile } = await getAuthProfile();
-  if (!profile) return { error: "No autenticado" };
+  const auth = await getActionAuth();
+  if (!auth) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from("destinations")
     .update({ is_active: false })
     .eq("id", id);

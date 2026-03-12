@@ -1,21 +1,34 @@
 import { Suspense } from "react";
 
-import { DashboardGrid } from "@/components/layout/dashboard-grid";
-import { DashboardSkeleton } from "@/components/ui/skeletons";
-import { getDashboardStats } from "@/lib/actions/reports";
+import { DashboardStatCards, DashboardWidgets } from "@/components/layout/dashboard-grid";
+import { StatCardsSkeleton, WidgetsSkeleton } from "@/components/ui/skeletons";
+import { getDashboardStatCounts, getDashboardWidgetData } from "@/lib/actions/reports";
 import { getAuthContext } from "@/lib/auth/context";
 
-async function DashboardContent() {
+async function StatsSection() {
+  const counts = await getDashboardStatCounts();
+  return <DashboardStatCards counts={counts} />;
+}
+
+async function WidgetsSection() {
   const ctx = await getAuthContext();
   if (!ctx) return null;
-  const stats = await getDashboardStats();
-  return <DashboardGrid role={ctx.primaryRole} stats={stats as never} />;
+  const widgets = await getDashboardWidgetData();
+  return <DashboardWidgets role={ctx.primaryRole} widgets={widgets as never} />;
 }
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardContent />
-    </Suspense>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+        Dashboard
+      </h1>
+      <Suspense fallback={<StatCardsSkeleton />}>
+        <StatsSection />
+      </Suspense>
+      <Suspense fallback={<WidgetsSkeleton />}>
+        <WidgetsSection />
+      </Suspense>
+    </div>
   );
 }
