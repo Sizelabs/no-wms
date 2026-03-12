@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createWorkOrder(formData: FormData): Promise<{ id: string } | { error: string }> {
@@ -44,13 +45,6 @@ export async function createWorkOrder(formData: FormData): Promise<{ id: string 
 
   const priority = agency?.type === "corporativo" ? "high" : "normal";
 
-  // Generate WO number
-  const { count } = await supabase
-    .from("work_orders")
-    .select("*", { count: "exact", head: true });
-
-  const woNumber = `WO${String((count ?? 0) + 1).padStart(5, "0")}`;
-
   // Get org_id from profile
   const { data: profile } = await supabase
     .from("profiles")
@@ -59,6 +53,21 @@ export async function createWorkOrder(formData: FormData): Promise<{ id: string 
     .single();
 
   if (!profile) return { error: "Perfil no encontrado" };
+
+  // Generate WO number using admin client to bypass RLS
+  const admin = createAdminClient();
+  const { data: maxWo } = await admin
+    .from("work_orders")
+    .select("wo_number")
+    .eq("organization_id", profile.organization_id)
+    .order("wo_number", { ascending: false })
+    .limit(1)
+    .single();
+
+  const lastNum = maxWo?.wo_number
+    ? parseInt(maxWo.wo_number.replace("WO", ""), 10)
+    : 0;
+  const woNumber = `WO${String(lastNum + 1).padStart(5, "0")}`;
 
   const insertData: Record<string, unknown> = {
     organization_id: profile.organization_id,
