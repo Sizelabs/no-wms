@@ -46,7 +46,16 @@ export async function createZone(raw: CreateZoneInput) {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
 
   const supabase = await createClient();
-  const { data: profile } = await supabase.from("profiles").select("organization_id").limit(1).single();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
   if (!profile?.organization_id) return { error: "Sin organización" };
 
   // Auto-assign sort_order as max + 1

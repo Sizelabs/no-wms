@@ -111,6 +111,7 @@ export default async function UserDetailPage({
                     id: string;
                     role: string;
                     warehouse_id: string | null;
+                    courier_id: string | null;
                     destination_id: string | null;
                     agency_id: string | null;
                   }) => (
@@ -130,6 +131,11 @@ export default async function UserDetailPage({
                         {r.destination_id && (
                           <span className="rounded bg-purple-50 px-1.5 py-0.5 text-purple-700">
                             Destino
+                          </span>
+                        )}
+                        {r.courier_id && (
+                          <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-indigo-700">
+                            Courier
                           </span>
                         )}
                         {r.agency_id && (

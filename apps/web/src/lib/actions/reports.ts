@@ -1,6 +1,6 @@
 "use server";
 
-import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
+import { getUserAgencyScope, getUserFullScope, getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 // ---------------------------------------------------------------------------
@@ -8,101 +8,102 @@ import { createClient } from "@/lib/supabase/server";
 // ---------------------------------------------------------------------------
 export async function getDashboardStats() {
   const supabase = await createClient();
-  const warehouseScope = await getUserWarehouseScope();
-  const agencyScope = await getUserAgencyScope();
+  const { warehouseIds: warehouseScope, agencyIds: agencyScope } = await getUserFullScope();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayIso = today.toISOString();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const withScopes = (query: any) => {
+    let scopedQuery = query;
+    if (warehouseScope !== null && warehouseScope.length) {
+      scopedQuery = scopedQuery.in("warehouse_id", warehouseScope);
+    }
+    if (agencyScope !== null && agencyScope.length) {
+      scopedQuery = scopedQuery.in("agency_id", agencyScope);
+    }
+    return scopedQuery;
+  };
 
   // Boxes received today
-  let receivedQuery = supabase
+  const receivedQuery = withScopes(
+    supabase
     .from("warehouse_receipts")
-    .select("*", { count: "exact", head: true })
-    .gte("created_at", todayIso);
-  if (warehouseScope !== null && warehouseScope.length) {
-    receivedQuery = receivedQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    receivedQuery = receivedQuery.in("agency_id", agencyScope);
-  }
-  const { count: boxesReceivedToday } = await receivedQuery;
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", todayIso),
+  );
 
   // Total in warehouse
-  let inWarehouseQuery = supabase
+  const inWarehouseQuery = withScopes(
+    supabase
     .from("warehouse_receipts")
-    .select("*", { count: "exact", head: true })
-    .in("status", ["in_warehouse", "in_work_order", "in_dispatch"]);
-  if (warehouseScope !== null && warehouseScope.length) {
-    inWarehouseQuery = inWarehouseQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    inWarehouseQuery = inWarehouseQuery.in("agency_id", agencyScope);
-  }
-  const { count: totalInWarehouse } = await inWarehouseQuery;
+    .select("id", { count: "exact", head: true })
+    .in("status", ["in_warehouse", "in_work_order", "in_dispatch"]),
+  );
 
   // Pending work orders
-  let woQuery = supabase
+  const woQuery = withScopes(
+    supabase
     .from("work_orders")
-    .select("*", { count: "exact", head: true })
-    .in("status", ["requested", "approved", "in_progress"]);
-  if (warehouseScope !== null && warehouseScope.length) {
-    woQuery = woQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    woQuery = woQuery.in("agency_id", agencyScope);
-  }
-  const { count: pendingWorkOrders } = await woQuery;
+    .select("id", { count: "exact", head: true })
+    .in("status", ["requested", "approved", "in_progress"]),
+  );
 
   // Pending dispatches (SIs awaiting action)
   let siQuery = supabase
     .from("shipping_instructions")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .in("status", ["requested", "approved"]);
   if (agencyScope !== null && agencyScope.length) {
     siQuery = siQuery.in("agency_id", agencyScope);
   }
-  const { count: pendingDispatches } = await siQuery;
 
   // Open tickets
   let ticketQuery = supabase
     .from("tickets")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("status", "open");
   if (agencyScope !== null && agencyScope.length) {
     ticketQuery = ticketQuery.in("agency_id", agencyScope);
   }
-  const { count: openTickets } = await ticketQuery;
 
   // Storage alerts (WRs in warehouse > 30 days — simplified check)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  let storageQuery = supabase
+  const storageQuery = withScopes(
+    supabase
     .from("warehouse_receipts")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .in("status", ["in_warehouse", "in_work_order", "in_dispatch"])
-    .lte("received_at", thirtyDaysAgo.toISOString());
-  if (warehouseScope !== null && warehouseScope.length) {
-    storageQuery = storageQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    storageQuery = storageQuery.in("agency_id", agencyScope);
-  }
-  const { count: storageAlerts } = await storageQuery;
+    .lte("received_at", thirtyDaysAgo.toISOString()),
+  );
 
   // Recent WRs (last 5)
-  let recentWrQuery = supabase
+  const recentWrQuery = withScopes(
+    supabase
     .from("warehouse_receipts")
     .select("id, wr_number, status, created_at, agencies:agency_id(name), packages(tracking_number)")
     .order("created_at", { ascending: false })
-    .limit(5);
-  if (warehouseScope !== null && warehouseScope.length) {
-    recentWrQuery = recentWrQuery.in("warehouse_id", warehouseScope);
-  }
-  if (agencyScope !== null && agencyScope.length) {
-    recentWrQuery = recentWrQuery.in("agency_id", agencyScope);
-  }
-  const { data: recentWrs } = await recentWrQuery;
+    .limit(5),
+  );
+
+  const [
+    { count: boxesReceivedToday },
+    { count: totalInWarehouse },
+    { count: pendingWorkOrders },
+    { count: pendingDispatches },
+    { count: openTickets },
+    { count: storageAlerts },
+    { data: recentWrs },
+  ] = await Promise.all([
+    receivedQuery,
+    inWarehouseQuery,
+    woQuery,
+    siQuery,
+    ticketQuery,
+    storageQuery,
+    recentWrQuery,
+  ]);
 
   return {
     boxesReceivedToday: boxesReceivedToday ?? 0,

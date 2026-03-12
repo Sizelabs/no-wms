@@ -153,8 +153,8 @@ export async function assignRole(formData: FormData): Promise<void> {
     organization_id: formData.get("organization_id") as string,
     role: formData.get("role") as string,
     warehouse_id: (formData.get("warehouse_id") as string) || null,
-    destination_id:
-      (formData.get("destination_id") as string) || null,
+    destination_id: (formData.get("destination_id") as string) || null,
+    courier_id: (formData.get("courier_id") as string) || null,
     agency_id: (formData.get("agency_id") as string) || null,
   });
 
