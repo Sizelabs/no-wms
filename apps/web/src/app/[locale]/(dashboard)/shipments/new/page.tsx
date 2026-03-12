@@ -1,27 +1,18 @@
-import { redirect } from "next/navigation";
-
 import { PageHeader } from "@/components/layout/page-header";
-import { MawbCreateForm } from "@/components/manifests/mawb-create-form";
+import { ShipmentCreateForm } from "@/components/shipments/shipment-create-form";
+import { getCarriers } from "@/lib/actions/carriers";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function NewMawbPage({
+export default async function NewShipmentPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  await requirePermission(locale, "manifests", "create");
+  await requirePermission(locale, "shipments", "create");
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(`/${locale}/login`);
-  }
 
   const warehouseScope = await getUserWarehouseScope();
 
@@ -35,19 +26,23 @@ export default async function NewMawbPage({
     warehousesQuery = warehousesQuery.in("id", warehouseScope);
   }
 
-  const [warehousesResult, destinationsResult] = await Promise.all([
+  const [warehousesResult, destinationsResult, carriersResult, agenciesResult] = await Promise.all([
     warehouseScope !== null && warehouseScope.length === 0
       ? Promise.resolve({ data: [] })
       : warehousesQuery,
-    supabase.from("destinations").select("id, city, country_code").order("city"),
+    supabase.from("destinations").select("id, city, country_code").eq("is_active", true).order("city"),
+    getCarriers(),
+    supabase.from("agencies").select("id, name, code").eq("is_active", true).order("name"),
   ]);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Nuevo MAWB" />
-      <MawbCreateForm
+      <PageHeader title="Nuevo Embarque" />
+      <ShipmentCreateForm
         warehouses={warehousesResult.data ?? []}
         destinations={destinationsResult.data ?? []}
+        carriers={carriersResult.data ?? []}
+        agencies={agenciesResult.data ?? []}
       />
     </div>
   );

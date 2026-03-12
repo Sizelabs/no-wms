@@ -17,6 +17,7 @@ import {
   PanelLeftOpen,
   Receipt,
   Settings,
+  Ship,
   TicketCheck,
   Truck,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   PackageSearch,
   Receipt,
   Settings,
+  Ship,
   TicketCheck,
   Truck,
 };

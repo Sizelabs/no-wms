@@ -127,7 +127,7 @@ export function DashboardGrid({ role, stats }: DashboardGridProps) {
           <div className="rounded-lg border bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-medium text-gray-900">{t("pendingDispatches")}</h3>
-              <Link href="/shipping" className="text-xs text-blue-600 hover:underline">
+              <Link href="/shipping-instructions" className="text-xs text-blue-600 hover:underline">
                 Ver todos
               </Link>
             </div>

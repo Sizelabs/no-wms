@@ -1405,7 +1405,7 @@ export function WrEditableDocument({
                     <div className="space-y-1.5">
                       {shippingDocs.shippingInstruction && (
                         <Link
-                          href={`/shipping/${shippingDocs.shippingInstruction.id}`}
+                          href={`/shipping-instructions/${shippingDocs.shippingInstruction.id}`}
                           className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-3 py-2 transition-colors hover:border-gray-200 hover:bg-gray-50"
                         >
                           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-purple-50 text-[10px] font-bold text-purple-600">SI</div>

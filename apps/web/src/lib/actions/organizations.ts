@@ -15,7 +15,7 @@ const DEFAULT_HANDLING_COST_NAMES = [
   "FSC x KG",
   "SCR x KG",
   "SED",
-  "MAWB",
+  "Embarque",
   "HAWB",
   "Delivery por KG",
   "DGR",

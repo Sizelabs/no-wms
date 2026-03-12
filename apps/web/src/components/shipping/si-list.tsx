@@ -5,10 +5,11 @@ import { FORWARDER_SIDE_ROLES, ROLES } from "@no-wms/shared/constants/roles";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
+import { SiActionBar } from "@/components/shipping/si-action-bar";
 import { SiRejectModal } from "@/components/shipping/si-reject-modal";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
@@ -17,6 +18,12 @@ import {
   finalizeShippingInstruction,
   rejectShippingInstruction,
 } from "@/lib/actions/shipping-instructions";
+
+interface HouseBill {
+  id: string;
+  hawb_number: string;
+  document_type: string;
+}
 
 interface ShippingInstruction {
   id: string;
@@ -28,13 +35,42 @@ interface ShippingInstruction {
   created_at: string;
   agencies: { name: string; code: string } | null;
   consignees: { full_name: string } | null;
-  hawbs: { hawb_number: string }[];
+  hawbs: HouseBill[];
   shipping_instruction_items: { warehouse_receipt_id: string; warehouse_receipts: { total_billable_weight_lb: number | null } | null }[];
+}
+
+interface Warehouse {
+  id: string;
+  name: string;
+  code: string;
+}
+
+interface Destination {
+  id: string;
+  city: string;
+  country_code: string;
+}
+
+interface Carrier {
+  id: string;
+  code: string;
+  name: string;
+  modality: string;
+}
+
+interface Agency {
+  id: string;
+  name: string;
+  code: string;
 }
 
 interface SiListProps {
   data: ShippingInstruction[];
   locale: string;
+  warehouses: Warehouse[];
+  destinations: Destination[];
+  carriers: Carrier[];
+  agencies: Agency[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -52,7 +88,7 @@ function formatWeight(si: ShippingInstruction): string {
   return w ? `${Number(w).toFixed(1)} lb` : "—";
 }
 
-export function SiList({ data, locale }: SiListProps) {
+export function SiList({ data, locale, warehouses, destinations, carriers, agencies }: SiListProps) {
   const { notify } = useNotification();
   const t = useTranslations("shipping");
   const [isPending, startTransition] = useTransition();
@@ -62,12 +98,21 @@ export function SiList({ data, locale }: SiListProps) {
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
 
+  // Selection state
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
   const roles = useUserRoles();
   const isDestinationAdmin = roles.includes(ROLES.DESTINATION_ADMIN);
   const isForwarderSide = roles.some((r) => (FORWARDER_SIDE_ROLES as readonly string[]).includes(r));
 
   const hasActions = data.some((si) =>
     si.status === "requested" || (si.status === "approved" && isForwarderSide)
+  );
+
+  // Only SIs with hawbs can be selected
+  const selectableIds = useMemo(
+    () => new Set(data.filter((si) => si.hawbs.length > 0).map((si) => si.id)),
+    [data],
   );
 
   const filtered = data.filter((si) => {
@@ -85,6 +130,32 @@ export function SiList({ data, locale }: SiListProps) {
     if (filter.modality.length > 0 && !filter.modality.includes(si.modality)) return false;
     return true;
   });
+
+  const selectableFiltered = filtered.filter((si) => selectableIds.has(si.id));
+  const allSelectableSelected = selectableFiltered.length > 0 && selectableFiltered.every((si) => selected.has(si.id));
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    if (allSelectableSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(selectableFiltered.map((si) => si.id)));
+    }
+  }, [allSelectableSelected, selectableFiltered]);
+
+  // Collect house bills from selected SIs
+  const selectedHouseBills = useMemo(() => {
+    return data
+      .filter((si) => selected.has(si.id))
+      .flatMap((si) => si.hawbs);
+  }, [data, selected]);
 
   const activeFilterCount = [filter.modality].filter((f) => f.length > 0).length;
 
@@ -166,92 +237,143 @@ export function SiList({ data, locale }: SiListProps) {
         </div>
       )}
 
+      {/* Selection summary bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+          <span className="font-medium text-gray-900">{selected.size}</span>
+          <span className="text-gray-500">instrucción(es) seleccionada(s)</span>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="ml-auto text-xs text-gray-500 hover:text-gray-700"
+          >
+            Deseleccionar
+          </button>
+        </div>
+      )}
+
       <div ref={setScrollEl} className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-220px)]">
-        <table className="w-full text-sm">
+        <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-white">
-            <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th className="px-4 py-3">SI #</th>
-              <th className="px-4 py-3">Modalidad</th>
-              <th className="px-4 py-3">Agencia</th>
-              <th className="px-4 py-3">Consignatario</th>
-              <th className="px-4 py-3">WRs</th>
-              <th className="px-4 py-3">Peso</th>
-              <th className="px-4 py-3">HAWB</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Fecha</th>
-              {hasActions && <th className="px-4 py-3">{t("actions")}</th>}
+            <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3">
+                <input
+                  type="checkbox"
+                  checked={allSelectableSelected}
+                  onChange={toggleAll}
+                  disabled={selectableFiltered.length === 0}
+                  className="rounded border-gray-300"
+                />
+              </th>
+              <th className="px-3 py-3">SI #</th>
+              <th className="px-3 py-3">Modalidad</th>
+              <th className="px-3 py-3">Agencia</th>
+              <th className="px-3 py-3">Consignatario</th>
+              <th className="px-3 py-3">WRs</th>
+              <th className="px-3 py-3">Peso</th>
+              <th className="px-3 py-3">Guía</th>
+              <th className="px-3 py-3">Estado</th>
+              <th className="px-3 py-3">Fecha</th>
+              {hasActions && <th className="px-3 py-3">{t("actions")}</th>}
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={hasActions ? 10 : 9}
+            colSpan={hasActions ? 11 : 10}
             emptyMessage="No hay instrucciones de embarque"
-            renderRow={(si) => (
-              <tr key={si.id}>
-                <td className="px-4 py-3 font-mono text-xs">
-                  <Link href={`/${locale}/shipping/${si.id}`} className="text-blue-600 hover:underline">
-                    {si.si_number}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {MODALITY_LABELS[si.modality as keyof typeof MODALITY_LABELS] ?? si.modality}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {si.agencies ? `${si.agencies.name} (${si.agencies.code})` : "—"}
-                </td>
-                <td className="px-4 py-3 text-xs">{si.consignees?.full_name ?? "—"}</td>
-                <td className="px-4 py-3 text-xs">{si.shipping_instruction_items.length}</td>
-                <td className="px-4 py-3 text-xs">{formatWeight(si)}</td>
-                <td className="px-4 py-3 font-mono text-xs">
-                  {si.hawbs.length ? si.hawbs.map((h) => h.hawb_number).join(", ") : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[si.status] ?? ""}`}>
-                    {SI_STATUS_LABELS[si.status as keyof typeof SI_STATUS_LABELS] ?? si.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-gray-500">
-                  {new Date(si.created_at).toLocaleDateString("es")}
-                </td>
-                {hasActions && (
-                <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    {si.status === "requested" && isDestinationAdmin && (
-                      <>
+            renderRow={(si) => {
+              const isSelectable = selectableIds.has(si.id);
+              const isSelected = selected.has(si.id);
+              return (
+                <tr
+                  key={si.id}
+                  className={`border-t border-gray-100 hover:bg-gray-50${isSelectable ? " cursor-pointer" : ""}`}
+                  onClick={() => { if (isSelectable) toggleSelect(si.id); }}
+                >
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    {isSelectable ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(si.id)}
+                        className="rounded border-gray-300"
+                      />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        disabled
+                        className="rounded border-gray-200 opacity-30"
+                      />
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Link
+                      href={`/${locale}/shipping-instructions/${si.id}`}
+                      className="font-mono text-xs font-medium text-gray-900 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {si.si_number}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {MODALITY_LABELS[si.modality as keyof typeof MODALITY_LABELS] ?? si.modality}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {si.agencies ? `${si.agencies.name} (${si.agencies.code})` : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs">{si.consignees?.full_name ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-xs">{si.shipping_instruction_items.length}</td>
+                  <td className="px-3 py-2.5 text-xs">{formatWeight(si)}</td>
+                  <td className="px-3 py-2.5 font-mono text-xs">
+                    {si.hawbs.length ? si.hawbs.map((h) => h.hawb_number).join(", ") : "—"}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[si.status] ?? ""}`}>
+                      {SI_STATUS_LABELS[si.status as keyof typeof SI_STATUS_LABELS] ?? si.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-gray-500">
+                    {new Date(si.created_at).toLocaleDateString("es")}
+                  </td>
+                  {hasActions && (
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                      {si.status === "requested" && isDestinationAdmin && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(si.id)}
+                            disabled={isPending}
+                            className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
+                          >
+                            {t("approve")}
+                          </button>
+                          <button
+                            onClick={() => setRejectTarget(si.id)}
+                            disabled={isPending}
+                            className="rounded border px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
+                          >
+                            {t("reject")}
+                          </button>
+                        </>
+                      )}
+                      {si.status === "requested" && !isDestinationAdmin && (
+                        <span className="text-xs text-amber-600">{t("pendingCourierApproval")}</span>
+                      )}
+                      {si.status === "approved" && isForwarderSide && (
                         <button
-                          onClick={() => handleApprove(si.id)}
+                          onClick={() => handleFinalize(si.id)}
                           disabled={isPending}
-                          className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
+                          className="rounded border px-2 py-0.5 text-xs text-purple-700 hover:bg-purple-50"
                         >
-                          {t("approve")}
+                          {t("finalize")} (HAWB)
                         </button>
-                        <button
-                          onClick={() => setRejectTarget(si.id)}
-                          disabled={isPending}
-                          className="rounded border px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
-                        >
-                          {t("reject")}
-                        </button>
-                      </>
-                    )}
-                    {si.status === "requested" && !isDestinationAdmin && (
-                      <span className="text-xs text-amber-600">{t("pendingCourierApproval")}</span>
-                    )}
-                    {si.status === "approved" && isForwarderSide && (
-                      <button
-                        onClick={() => handleFinalize(si.id)}
-                        disabled={isPending}
-                        className="rounded border px-2 py-0.5 text-xs text-purple-700 hover:bg-purple-50"
-                      >
-                        {t("finalize")} (HAWB)
-                      </button>
-                    )}
-                  </div>
-                </td>
-                )}
-              </tr>
-            )}
+                      )}
+                    </div>
+                  </td>
+                  )}
+                </tr>
+              );
+            }}
           />
         </table>
       </div>
@@ -261,6 +383,18 @@ export function SiList({ data, locale }: SiListProps) {
         onClose={() => setRejectTarget(null)}
         onConfirm={handleReject}
         isPending={isPending}
+      />
+
+      {/* Bottom padding when action bar is visible */}
+      {selected.size > 0 && <div className="h-16" />}
+
+      <SiActionBar
+        selectedHouseBills={selectedHouseBills}
+        onClearSelection={() => setSelected(new Set())}
+        warehouses={warehouses}
+        destinations={destinations}
+        carriers={carriers}
+        agencies={agencies}
       />
     </div>
   );

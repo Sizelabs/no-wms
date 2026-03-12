@@ -1,52 +1,56 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  createMawbSchema,
   createPickupRequestSchema,
   createTransferRequestSchema,
 } from "../manifest";
+import { createShipmentSchema } from "../shipment";
 
-describe("createMawbSchema", () => {
-  it("accepts valid MAWB", () => {
-    const result = createMawbSchema.safeParse({
+describe("createShipmentSchema", () => {
+  it("accepts valid air shipment", () => {
+    const result = createShipmentSchema.safeParse({
+      modality: "air",
       warehouse_id: "a0000000-0000-0000-0000-000000000001",
-      mawb_number: "123-45678901",
-      airline: "LATAM",
-      destination_id: "a0000000-0000-0000-0000-000000000003",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects empty mawb_number", () => {
-    const result = createMawbSchema.safeParse({
-      warehouse_id: "a0000000-0000-0000-0000-000000000001",
-      mawb_number: "",
-      airline: "LATAM",
-      destination_id: "a0000000-0000-0000-0000-000000000003",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects empty airline", () => {
-    const result = createMawbSchema.safeParse({
-      warehouse_id: "a0000000-0000-0000-0000-000000000001",
-      mawb_number: "123-45678901",
-      airline: "",
-      destination_id: "a0000000-0000-0000-0000-000000000003",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts optional flight fields", () => {
-    const result = createMawbSchema.safeParse({
-      warehouse_id: "a0000000-0000-0000-0000-000000000001",
-      mawb_number: "123-45678901",
-      airline: "LATAM",
       flight_number: "LA-601",
-      flight_date: "2026-03-15",
-      destination_id: "a0000000-0000-0000-0000-000000000003",
+      departure_date: "2026-03-15",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("accepts valid ocean shipment", () => {
+    const result = createShipmentSchema.safeParse({
+      modality: "ocean",
+      warehouse_id: "a0000000-0000-0000-0000-000000000001",
+      vessel_name: "MSC Fantasia",
+      port_of_loading: "Guayaquil",
+      freight_terms: "prepaid",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid ground shipment", () => {
+    const result = createShipmentSchema.safeParse({
+      modality: "ground",
+      warehouse_id: "a0000000-0000-0000-0000-000000000001",
+      truck_plate: "ABC-1234",
+      driver_name: "Juan Pérez",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid modality", () => {
+    const result = createShipmentSchema.safeParse({
+      modality: "rail",
+      warehouse_id: "a0000000-0000-0000-0000-000000000001",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing warehouse_id", () => {
+    const result = createShipmentSchema.safeParse({
+      modality: "air",
+    });
+    expect(result.success).toBe(false);
   });
 });
 

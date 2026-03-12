@@ -37,8 +37,8 @@
     "warehouseReceipts": "Recibos de Carga",
     "inventory": "Inventario",
     "workOrders": "Órdenes de Trabajo",
-    "shipping": "Embarques",
-    "manifests": "Manifiestos",
+    "shippingInstructions": "Instrucciones de Envío",
+    "shipments": "Embarques",
     "agencies": "Agencias",
     "tariffs": "Tarifas",
     "invoicing": "Facturación",
@@ -85,6 +85,7 @@
     "groupAccess": "Acceso",
     "groupCatalog": "Catálogo",
     "groupPlatform": "Plataforma",
+    "carriers": "Transportistas",
     "locations": "Ubicaciones"
   },
   "couriers": {

@@ -63,23 +63,74 @@ export const SI_STATUS_LABELS: Record<SiStatus, string> = {
   cancelled: "Cancelada",
 };
 
-// ── MAWB statuses ──
-export const MAWB_STATUSES = {
-  CREATED: "created",
-  READY_FOR_FLIGHT: "ready_for_flight",
+// ── Shipment statuses ──
+export const SHIPMENT_STATUSES = {
+  DRAFT: "draft",
+  BOOKING_CONFIRMED: "booking_confirmed",
+  CARGO_RECEIVED: "cargo_received",
+  DEPARTED: "departed",
   IN_TRANSIT: "in_transit",
+  VESSEL_LOADED: "vessel_loaded",
+  TRANSHIPMENT: "transhipment",
+  AT_PORT: "at_port",
   ARRIVED: "arrived",
+  CUSTOMS_CLEARANCE: "customs_clearance",
+  OUT_FOR_DELIVERY: "out_for_delivery",
   DELIVERED: "delivered",
+  CANCELLED: "cancelled",
 } as const;
 
-export type MawbStatus = (typeof MAWB_STATUSES)[keyof typeof MAWB_STATUSES];
+export type ShipmentStatus = (typeof SHIPMENT_STATUSES)[keyof typeof SHIPMENT_STATUSES];
 
-export const MAWB_STATUS_LABELS: Record<MawbStatus, string> = {
-  created: "Creado",
-  ready_for_flight: "Listo para Vuelo",
+export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
+  draft: "Borrador",
+  booking_confirmed: "Reserva Confirmada",
+  cargo_received: "Carga Recibida",
+  departed: "Despachado",
   in_transit: "En Tránsito",
+  vessel_loaded: "Cargado en Buque",
+  transhipment: "Transbordo",
+  at_port: "En Puerto",
   arrived: "Arribado",
+  customs_clearance: "Desaduanización",
+  out_for_delivery: "En Reparto",
   delivered: "Entregado",
+  cancelled: "Cancelado",
+};
+
+export type ShipmentModality = "air" | "ocean" | "ground";
+
+/** Modality-aware next-status maps */
+export const SHIPMENT_STATUS_FLOW: Record<ShipmentModality, Partial<Record<ShipmentStatus, ShipmentStatus>>> = {
+  air: {
+    draft: "booking_confirmed",
+    booking_confirmed: "cargo_received",
+    cargo_received: "departed",
+    departed: "in_transit",
+    in_transit: "arrived",
+    arrived: "customs_clearance",
+    customs_clearance: "delivered",
+  },
+  ocean: {
+    draft: "booking_confirmed",
+    booking_confirmed: "cargo_received",
+    cargo_received: "vessel_loaded",
+    vessel_loaded: "in_transit",
+    in_transit: "transhipment",
+    transhipment: "at_port",
+    at_port: "arrived",
+    arrived: "customs_clearance",
+    customs_clearance: "delivered",
+  },
+  ground: {
+    draft: "booking_confirmed",
+    booking_confirmed: "cargo_received",
+    cargo_received: "departed",
+    departed: "in_transit",
+    in_transit: "arrived",
+    arrived: "out_for_delivery",
+    out_for_delivery: "delivered",
+  },
 };
 
 // ── Ticket statuses ──

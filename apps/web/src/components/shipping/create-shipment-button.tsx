@@ -9,12 +9,12 @@ import { Combobox } from "@/components/ui/combobox";
 import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees";
 import {
   createShippingInstruction,
-  getAvailableWrsForShipping,
+  getAvailableHouseBillsForShipping,
   getAgencyDestinations,
   getShippingCategories,
 } from "@/lib/actions/shipping-instructions";
 
-interface AvailableWr {
+interface HouseBillWr {
   id: string;
   wr_number: string;
   warehouse_id: string;
@@ -29,6 +29,13 @@ interface AvailableWr {
   consignees: { full_name: string; casillero: string | null } | null;
 }
 
+interface AvailableHouseBill {
+  id: string;
+  hawb_number: string;
+  document_type: string;
+  warehouse_receipts: HouseBillWr[];
+}
+
 interface Destination { id: string; city: string; state: string | null; country_code: string }
 interface ShippingCategory {
   id: string;
@@ -39,6 +46,12 @@ interface ShippingCategory {
   description: string | null;
 }
 interface ConsigneeResult { id: string; full_name: string; casillero: string | null; cedula_ruc: string | null; city: string | null }
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  hawb: "HAWB",
+  hbl: "HBL",
+  hwb: "HWB",
+};
 
 export function CreateShipmentButton() {
   const [open, setOpen] = useState(false);
@@ -58,7 +71,7 @@ export function CreateShipmentButton() {
 }
 
 function CreateShipmentModal({ onClose }: { onClose: () => void }) {
-  const [availableWrs, setAvailableWrs] = useState<AvailableWr[]>([]);
+  const [houseBills, setHouseBills] = useState<AvailableHouseBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -83,23 +96,20 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
 
-  // Fetch WRs on mount
+  // Fetch house bills on mount
   useEffect(() => {
-    getAvailableWrsForShipping().then((wrsRes) => {
-      // Normalize consignees from Supabase (may come as array for join)
-      const normalized = wrsRes.data.map((wr: Record<string, unknown>) => ({
-        ...wr,
-        consignees: Array.isArray(wr.consignees) ? wr.consignees[0] ?? null : wr.consignees ?? null,
-      })) as AvailableWr[];
-      setAvailableWrs(normalized);
+    getAvailableHouseBillsForShipping().then((res) => {
+      setHouseBills((res.data ?? []) as unknown as AvailableHouseBill[]);
       setLoading(false);
     });
   }, []);
 
-  const selectedWrs = useMemo(() => availableWrs.filter((wr) => selected.has(wr.id)), [availableWrs, selected]);
-  const firstSelected = selectedWrs[0];
-  const agencyId = firstSelected?.agency_id ?? "";
-  const warehouseId = firstSelected?.warehouse_id ?? "";
+  // Derive WRs from selected house bills
+  const selectedHouseBills = useMemo(() => houseBills.filter((hb) => selected.has(hb.id)), [houseBills, selected]);
+  const selectedWrs = useMemo(() => selectedHouseBills.flatMap((hb) => hb.warehouse_receipts), [selectedHouseBills]);
+  const firstWr = selectedWrs[0];
+  const agencyId = firstWr?.agency_id ?? "";
+  const warehouseId = firstWr?.warehouse_id ?? "";
 
   // Fetch agency destinations when selection changes
   useEffect(() => {
@@ -115,25 +125,25 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
     getShippingCategories(dest.country_code).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); setSelectedCategoryId(""); });
   }, [destinationId, destinations]);
 
-  // Pre-fill consignee when all selected WRs share the same one (only if user hasn't manually chosen)
+  // Pre-fill consignee when all selected house bills share the same one
   const prevSelectedRef = useRef(selected);
   useEffect(() => {
-    // Only run when selection actually changed (not on other re-renders)
     if (prevSelectedRef.current === selected) return;
     prevSelectedRef.current = selected;
     if (selected.size === 0) return;
-    const first = selectedWrs[0];
+    const allWrs = selectedHouseBills.flatMap((hb) => hb.warehouse_receipts);
+    const first = allWrs[0];
     if (!first?.consignee_id || !first.consignees) return;
-    const allSame = selectedWrs.every((wr) => wr.consignee_id === first.consignee_id);
+    const allSame = allWrs.every((wr) => wr.consignee_id === first.consignee_id);
     if (!allSame) return;
     setSelectedConsignee({ id: first.consignee_id, full_name: first.consignees.full_name, casillero: first.consignees.casillero, cedula_ruc: null, city: null });
     setConsigneeQuery(first.consignees.full_name + (first.consignees.casillero ? ` (${first.consignees.casillero})` : ""));
-  }, [selected, selectedWrs]);
+  }, [selected, selectedHouseBills]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
-  const toggleWr = (id: string) => {
+  const toggleHouseBill = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -143,20 +153,6 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
 
   const totalWeight = useMemo(() => selectedWrs.reduce((sum, wr) => sum + (Number(wr.total_billable_weight_lb) || 0), 0), [selectedWrs]);
   const totalPackages = useMemo(() => selectedWrs.reduce((sum, wr) => sum + (wr.total_packages || 0), 0), [selectedWrs]);
-
-  // Group WRs by consignee for display
-  const groupedWrs = useMemo(() => {
-    const groups = new Map<string, { label: string; wrs: AvailableWr[] }>();
-    for (const wr of availableWrs) {
-      const key = wr.consignee_id ?? "_none";
-      const label = wr.consignees
-        ? `${wr.consignees.full_name}${wr.consignees.casillero ? ` #${wr.consignees.casillero}` : ""}`
-        : "Sin consignatario";
-      if (!groups.has(key)) groups.set(key, { label, wrs: [] });
-      groups.get(key)!.wrs.push(wr);
-    }
-    return Array.from(groups.entries()).map(([key, group]) => ({ key, ...group }));
-  }, [availableWrs]);
 
   const consigneeDropdownOpen = !selectedConsignee && consigneeQuery.trim().length >= 2;
 
@@ -209,7 +205,9 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
       if (categoryCode) fd.set("courier_category", categoryCode);
       if (selectedCategoryId) fd.set("shipping_category_id", selectedCategoryId);
       fd.set("consignee_id", selectedConsignee.id);
-      fd.set("warehouse_receipt_ids", JSON.stringify(selectedWrs.map((w) => w.id)));
+      // Derive WR IDs from selected house bills
+      const wrIds = selectedHouseBills.flatMap((hb) => hb.warehouse_receipts.map((wr) => wr.id));
+      fd.set("warehouse_receipt_ids", JSON.stringify(wrIds));
       fd.set("insure_cargo", String(insureCargo));
       fd.set("is_dgr", String(isDgr));
       if (specialInstructions.trim()) fd.set("special_instructions", specialInstructions.trim());
@@ -229,47 +227,56 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
       <ModalHeader onClose={onClose}>Enviar</ModalHeader>
       <ModalBody>
         {loading ? (
-          <p className="py-8 text-center text-sm text-gray-400">Cargando recibos...</p>
+          <p className="py-8 text-center text-sm text-gray-400">Cargando guías...</p>
         ) : (
           <div className="space-y-4">
-            {/* WR selection */}
+            {/* House bill selection */}
             <fieldset className="space-y-2">
               <legend className="text-xs font-medium uppercase tracking-wider text-gray-400">
-                Recibos {selected.size > 0 && (
+                Guías {selected.size > 0 && (
                   <span className="normal-case text-gray-600">
                     — {selected.size} sel. · {totalPackages} paq. · {totalWeight.toFixed(1)} lb
                   </span>
                 )}
               </legend>
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white">
-                {availableWrs.length === 0 ? (
-                  <p className="px-3 py-4 text-center text-sm text-gray-400">No hay recibos disponibles</p>
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+                {houseBills.length === 0 ? (
+                  <p className="px-3 py-4 text-center text-sm text-gray-400">No hay guías disponibles</p>
                 ) : (
-                  groupedWrs.map((group) => (
-                    <div key={group.key}>
-                      <div className="sticky top-0 flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-3 py-1.5">
-                        <span className="text-xs font-medium text-gray-600">{group.label}</span>
-                        <span className="text-[10px] text-gray-400">{group.wrs.length} recibo{group.wrs.length !== 1 && "s"}</span>
-                      </div>
-                      {group.wrs.map((wr) => (
-                        <label
-                          key={wr.id}
-                          className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-gray-50"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.has(wr.id)}
-                            onChange={() => toggleWr(wr.id)}
-                            className={checkboxClass}
-                          />
-                          <span className="font-mono text-xs font-medium text-gray-900">{wr.wr_number}</span>
-                          <span className="ml-auto shrink-0 text-xs text-gray-500">
-                            {wr.total_packages} paq. · {wr.total_billable_weight_lb?.toFixed(1) ?? "—"} lb
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  ))
+                  houseBills.map((hb) => {
+                    const hbWeight = hb.warehouse_receipts.reduce((s, wr) => s + (Number(wr.total_billable_weight_lb) || 0), 0);
+                    const hbPackages = hb.warehouse_receipts.reduce((s, wr) => s + (wr.total_packages || 0), 0);
+                    const consignee = hb.warehouse_receipts[0]?.consignees;
+                    return (
+                      <label
+                        key={hb.id}
+                        className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0 hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected.has(hb.id)}
+                          onChange={() => toggleHouseBill(hb.id)}
+                          className={checkboxClass}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-medium text-gray-900">{hb.hawb_number}</span>
+                            <span className="rounded bg-gray-100 px-1 py-0.5 text-[10px] font-medium text-gray-500">
+                              {DOC_TYPE_LABELS[hb.document_type] ?? hb.document_type}
+                            </span>
+                          </div>
+                          {consignee && (
+                            <span className="text-[11px] text-gray-500">
+                              {consignee.full_name}{consignee.casillero ? ` #${consignee.casillero}` : ""}
+                            </span>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-right text-xs text-gray-500">
+                          {hb.warehouse_receipts.length} WR · {hbPackages} paq. · {hbWeight.toFixed(1)} lb
+                        </span>
+                      </label>
+                    );
+                  })
                 )}
               </div>
             </fieldset>
@@ -285,7 +292,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
                   }))}
                   value={destinationId}
                   onChange={setDestinationId}
-                  placeholder={agencyId ? "Seleccionar..." : "Seleccione recibos primero..."}
+                  placeholder={agencyId ? "Seleccionar..." : "Seleccione guías primero..."}
                   disabled={!agencyId}
                   required
                 />
@@ -325,7 +332,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
                   type="text"
                   value={consigneeQuery}
                   onChange={(e) => handleConsigneeSearch(e.target.value)}
-                  placeholder={selected.size === 0 ? "Seleccione recibos primero..." : "Buscar por nombre o casillero..."}
+                  placeholder={selected.size === 0 ? "Seleccione guías primero..." : "Buscar por nombre o casillero..."}
                   disabled={selected.size === 0}
                   className={inputClass}
                 />

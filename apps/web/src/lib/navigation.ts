@@ -40,8 +40,8 @@ const NAV_CONFIG: NavConfig = {
       id: "fulfillment",
       items: [
         { label: "workOrders", href: "/work-orders", icon: "ClipboardList", resource: "work_orders" },
-        { label: "shipping", href: "/shipping", icon: "Truck", resource: "shipping" },
-        { label: "manifests", href: "/manifests", icon: "FileText", resource: "manifests" },
+        { label: "shippingInstructions", href: "/shipping-instructions", icon: "FileText", resource: "shipping" },
+        { label: "shipments", href: "/shipments", icon: "Ship", resource: "shipments" },
       ],
     },
     {
@@ -124,6 +124,7 @@ export const SETTINGS_GROUPS: SettingsNavGroup[] = [
       { label: "forwarders", href: "/settings/forwarders", resource: "forwarders" },
       { label: "warehouses", href: "/settings/warehouses", resource: "warehouses" },
       { label: "couriers", href: "/settings/couriers", resource: "couriers" },
+      { label: "carriers", href: "/settings/carriers", resource: "carriers" },
       { label: "locations", href: "/settings/locations", resource: "locations" },
     ],
   },

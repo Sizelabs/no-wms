@@ -37,8 +37,8 @@
     "warehouseReceipts": "Warehouse Receipts",
     "inventory": "Inventory",
     "workOrders": "Work Orders",
-    "shipping": "Shipping",
-    "manifests": "Manifests",
+    "shippingInstructions": "Shipping Instructions",
+    "shipments": "Shipments",
     "agencies": "Agencies",
     "tariffs": "Tariffs",
     "invoicing": "Invoicing",
@@ -83,6 +83,7 @@
     "groupAccess": "Access",
     "groupCatalog": "Catalog",
     "groupPlatform": "Platform",
+    "carriers": "Carriers",
     "locations": "Locations"
   },
   "couriers": {
