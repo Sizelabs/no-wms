@@ -102,11 +102,11 @@ export function HouseBillActionBar({
       {/* Floating action bar */}
       <div
         className={`fixed bottom-0 left-60 right-0 z-40 transition-transform duration-300 ease-out ${
-          mounted ? "translate-y-0" : "translate-y-full"
+          mounted && !showModal ? "translate-y-0" : "translate-y-full"
         }`}
       >
         <div className="border-t bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-          <div className="flex items-center gap-3 px-6 py-3">
+          <div className="flex items-center gap-3 px-6 py-3.5">
             {/* Left: Selection count */}
             <div className="flex shrink-0 items-center gap-1.5">
               <span className="text-sm font-bold text-gray-900">{count}</span>
