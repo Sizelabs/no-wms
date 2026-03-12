@@ -149,33 +149,53 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
 
   const canCreateWorkOrders = permissions?.work_orders.create === true;
 
+  const getConsigneeKey = useCallback(
+    (wr: WarehouseReceipt) => wr.consignees?.full_name ?? wr.consignee_name ?? "",
+    [],
+  );
+
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        const wr = data.find((w) => w.id === id);
+        if (!wr) return next;
+        // If switching consignee, clear previous selections
+        if (next.size > 0) {
+          const firstWr = data.find((w) => next.has(w.id));
+          if (firstWr && getConsigneeKey(firstWr) !== getConsigneeKey(wr)) {
+            next.clear();
+          }
+        }
+        next.add(id);
+      }
       return next;
     });
-  }, []);
+  }, [data, getConsigneeKey]);
 
   const toggleAll = useCallback(() => {
-    if (selected.size === data.length) {
+    if (selected.size > 0) {
       setSelected(new Set());
-    } else {
+    } else if (grouped.length === 1) {
+      // Only allow select-all when all data belongs to one consignee
       setSelected(new Set(data.map((wr) => wr.id)));
     }
-  }, [data, selected.size]);
+  }, [data, grouped.length, selected.size]);
 
   const toggleGroup = useCallback((receipts: WarehouseReceipt[]) => {
     setSelected((prev) => {
-      const next = new Set(prev);
       const groupIds = receipts.map((r) => r.id);
-      const allSelected = groupIds.every((id) => next.has(id));
+      const allSelected = groupIds.every((id) => prev.has(id));
       if (allSelected) {
+        const next = new Set(prev);
         for (const id of groupIds) next.delete(id);
+        return next;
       } else {
-        for (const id of groupIds) next.add(id);
+        // Replace entire selection with this group (single-consignee constraint)
+        return new Set(groupIds);
       }
-      return next;
     });
   }, []);
 
@@ -364,8 +384,10 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                 <input
                   type="checkbox"
                   checked={selected.size === data.length && data.length > 0}
+                  ref={(el) => { if (el) el.indeterminate = selected.size > 0 && selected.size < data.length; }}
                   onChange={toggleAll}
-                  className="rounded border-gray-300"
+                  disabled={grouped.length > 1 && selected.size === 0}
+                  className={`rounded border-gray-300 ${grouped.length > 1 && selected.size === 0 ? "opacity-40" : ""}`}
                 />
               </th>
               <th className="px-3 py-3">WR#</th>
