@@ -39,6 +39,7 @@ function formatLocation(d: DestinationRow): string {
 }
 
 export function DestinationList({ data, canUpdate = false, canDelete = false, couriers = [] }: DestinationListProps) {
+  const hasActions = canUpdate || canDelete;
   const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -113,13 +114,13 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
                   {couriers.length === 1 ? "Cobertura" : c.name}
                 </th>
               ))}
-              <th className="px-4 py-3">Acciones</th>
+              {hasActions && <th className="px-4 py-3">Acciones</th>}
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={4 + couriers.length}
+            colSpan={(hasActions ? 4 : 3) + couriers.length}
             emptyMessage="No hay destinos registrados."
             renderRow={(d) => (
               <tr key={d.id} className="hover:bg-gray-50">
@@ -173,6 +174,7 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
                     </td>
                   );
                 })}
+                {hasActions && (
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     {canUpdate && (
@@ -194,6 +196,7 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
                     )}
                   </div>
                 </td>
+                )}
               </tr>
             )}
           />

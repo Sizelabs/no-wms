@@ -35,6 +35,7 @@ interface HandlingCostListProps {
 }
 
 export function HandlingCostList({ data, selectedCourierId, canUpdate = false, canDelete = false }: HandlingCostListProps) {
+  const hasActions = canUpdate || canDelete;
   const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -156,13 +157,13 @@ export function HandlingCostList({ data, selectedCourierId, canUpdate = false, c
               <th className="px-4 py-3">Unidad</th>
               <th className="px-4 py-3">Mínimo</th>
               <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Acciones</th>
+              {hasActions && <th className="px-4 py-3">Acciones</th>}
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={6}
+            colSpan={hasActions ? 6 : 5}
             emptyMessage="No hay costos de manejo registrados."
             renderRow={(hc) => (
               <tr key={hc.id} className="hover:bg-gray-50">
@@ -231,6 +232,7 @@ export function HandlingCostList({ data, selectedCourierId, canUpdate = false, c
                     {hc.is_active ? "Activo" : "Inactivo"}
                   </span>
                 </td>
+                {hasActions && (
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     {editingId === hc.id ? (
@@ -289,6 +291,7 @@ export function HandlingCostList({ data, selectedCourierId, canUpdate = false, c
                     )}
                   </div>
                 </td>
+                )}
               </tr>
             )}
           />

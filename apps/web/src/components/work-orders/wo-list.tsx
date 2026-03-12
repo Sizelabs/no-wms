@@ -66,6 +66,8 @@ export function WoList({ data, locale }: WoListProps) {
     return true;
   });
 
+  const hasActions = data.some((wo) => !["completed", "cancelled"].includes(wo.status));
+
   const activeFilterCount = [filter.type.length > 0].filter(Boolean).length;
 
   const handleStatusChange = (woId: string, newStatus: string) => {
@@ -158,13 +160,13 @@ export function WoList({ data, locale }: WoListProps) {
               <th className="px-4 py-3">WRs</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Acciones</th>
+              {hasActions && <th className="px-4 py-3">Acciones</th>}
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={8}
+            colSpan={hasActions ? 8 : 7}
             emptyMessage="No hay órdenes de trabajo"
             renderRow={(wo) => (
               <tr key={wo.id}>
@@ -193,6 +195,7 @@ export function WoList({ data, locale }: WoListProps) {
                 <td className="px-4 py-3 text-xs text-gray-500">
                   {new Date(wo.created_at).toLocaleDateString("es")}
                 </td>
+                {hasActions && (
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     {wo.status === "requested" && (
@@ -242,6 +245,7 @@ export function WoList({ data, locale }: WoListProps) {
                     )}
                   </div>
                 </td>
+                )}
               </tr>
             )}
           />

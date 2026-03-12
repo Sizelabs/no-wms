@@ -61,6 +61,8 @@ export function MawbList({ data }: MawbListProps) {
   const [filter, setFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
+  const hasActions = data.some((m) => STATUS_FLOW[m.status] !== undefined);
+
   const filtered = data.filter((m) => {
     if (search) {
       const q = search.toLowerCase();
@@ -120,13 +122,13 @@ export function MawbList({ data }: MawbListProps) {
               <th className="px-4 py-3">Pzas</th>
               <th className="px-4 py-3">Peso</th>
               <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Acciones</th>
+              {hasActions && <th className="px-4 py-3">Acciones</th>}
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={10}
+            colSpan={hasActions ? 10 : 9}
             emptyMessage="No hay MAWBs"
             renderRow={(m) => {
               const nextStatus = STATUS_FLOW[m.status];
@@ -155,6 +157,7 @@ export function MawbList({ data }: MawbListProps) {
                       {MAWB_STATUS_LABELS[m.status as keyof typeof MAWB_STATUS_LABELS] ?? m.status}
                     </span>
                   </td>
+                  {hasActions && (
                   <td className="px-4 py-3">
                     {nextStatus && (
                       <button
@@ -166,6 +169,7 @@ export function MawbList({ data }: MawbListProps) {
                       </button>
                     )}
                   </td>
+                  )}
                 </tr>
               );
             }}
