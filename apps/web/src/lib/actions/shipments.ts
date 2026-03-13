@@ -65,7 +65,7 @@ async function generateHawbForSi(
 
 // ── Shipments ──
 
-export async function createShipment(formData: FormData): Promise<{ id: string } | { error: string }> {
+export async function createShipment(formData: FormData): Promise<{ id: string; shipment_number: string } | { error: string }> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -171,7 +171,7 @@ export async function createShipment(formData: FormData): Promise<{ id: string }
   const { data, error } = await supabase
     .from("shipments")
     .insert(insertData)
-    .select("id")
+    .select("id, shipment_number")
     .single();
 
   if (error) return { error: error.message };
@@ -186,7 +186,7 @@ export async function createShipment(formData: FormData): Promise<{ id: string }
   });
 
   revalidatePath("/shipments");
-  return { id: data.id };
+  return { id: data.id, shipment_number: data.shipment_number };
 }
 
 export async function getShipments(filters?: { status?: string; modality?: string }) {
@@ -326,7 +326,7 @@ export async function getUnassignedFinalizedSIs(shipmentModality?: string) {
   // Single query: get finalized SIs with hawbs(id) to filter in-memory
   const { data: sis, error } = await supabase
     .from("shipping_instructions")
-    .select("id, si_number, modality, modalities(id, name, code), agency_id, agencies(name, code), total_pieces, total_billable_weight_lb, created_at, hawbs(id), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(wr_number, packages(tracking_number)))")
+    .select("id, si_number, modality, modalities(id, name, code), agency_id, agencies(name, code), destination_id, total_pieces, total_billable_weight_lb, created_at, hawbs(id), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(wr_number, packages(tracking_number)))")
     .eq("status", "finalized")
     .order("created_at", { ascending: false });
 
@@ -353,7 +353,7 @@ export async function getUnassignedFinalizedSIs(shipmentModality?: string) {
 export async function createShipmentWithSIs(
   formData: FormData,
   siIds: string[],
-): Promise<{ id: string } | { error: string }> {
+): Promise<{ id: string; shipment_number: string } | { error: string }> {
   const shipmentResult = await createShipment(formData);
   if ("error" in shipmentResult) return shipmentResult;
 
@@ -366,7 +366,7 @@ export async function createShipmentWithSIs(
     .select("id, organization_id, modality, modalities(code), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
     .in("id", siIds);
 
-  if (!sis?.length) return { id: shipmentId };
+  if (!sis?.length) return { id: shipmentId, shipment_number: shipmentResult.shipment_number };
 
   // Generate HAWBs for each SI (sequential — number generation requires advisory lock)
   for (const si of sis) {
@@ -375,7 +375,7 @@ export async function createShipmentWithSIs(
 
   revalidatePath("/shipments");
   revalidatePath("/shipping-instructions");
-  return { id: shipmentId };
+  return { id: shipmentId, shipment_number: shipmentResult.shipment_number };
 }
 
 // ── Containers (ocean shipments) ──

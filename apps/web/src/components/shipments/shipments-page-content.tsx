@@ -40,6 +40,7 @@ interface ShipmentsPageContentProps {
   carriers: Carrier[];
   agencies: Agency[];
   canCreate: boolean;
+  orgName?: string;
 }
 
 type Tab = "shipments" | "unassigned";
@@ -52,6 +53,7 @@ export function ShipmentsPageContent({
   carriers,
   agencies,
   canCreate,
+  orgName,
 }: ShipmentsPageContentProps) {
   const { locale } = useParams<{ locale: string }>();
   const [tab, setTab] = useState<Tab>("shipments");
@@ -87,6 +89,7 @@ export function ShipmentsPageContent({
           destinations={destinations}
           carriers={carriers}
           agencies={agencies}
+          orgName={orgName}
         />
       )}
     </div>

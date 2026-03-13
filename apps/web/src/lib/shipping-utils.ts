@@ -29,6 +29,9 @@ export interface SelectedSI {
   id: string;
   si_number: string;
   modality_code: string;
+  agency_id?: string;
+  agency_name?: string;
+  destination_id?: string;
 }
 
 /** Extract the modality code from a Supabase SI row (handles the `as unknown as` cast) */

@@ -38,6 +38,7 @@ interface SiActionBarProps {
   destinations: Destination[];
   carriers: Carrier[];
   agencies: Agency[];
+  orgName?: string;
 }
 
 export function SiActionBar({
@@ -47,6 +48,7 @@ export function SiActionBar({
   destinations,
   carriers,
   agencies,
+  orgName,
 }: SiActionBarProps) {
   const [showModal, setShowModal] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -138,6 +140,7 @@ export function SiActionBar({
           destinations={destinations}
           carriers={carriers}
           agencies={agencies}
+          orgName={orgName}
         />
       )}
     </>

@@ -15,7 +15,7 @@ export default async function ShippingPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const { permissions } = await requirePermission(locale, "shipping", "read");
+  const { userId, permissions } = await requirePermission(locale, "shipping", "read");
   const t = await getTranslations("nav");
   const supabase = await createClient();
   const warehouseScope = await getUserWarehouseScope();
@@ -30,7 +30,14 @@ export default async function ShippingPage({
     warehousesQuery = warehousesQuery.in("id", warehouseScope);
   }
 
-  const [siResult, warehousesResult, destinationsResult, carriersResult, agenciesResult] =
+  // Fetch user's org for MAWB shipper auto-fill
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", userId)
+    .single();
+
+  const [siResult, warehousesResult, destinationsResult, carriersResult, agenciesResult, orgResult] =
     await Promise.all([
       getShippingInstructions(),
       warehouseScope !== null && warehouseScope.length === 0
@@ -39,6 +46,9 @@ export default async function ShippingPage({
       supabase.from("destinations").select("id, city, country_code").eq("is_active", true).order("city"),
       getCarriers(),
       supabase.from("agencies").select("id, name, code").eq("is_active", true).order("name"),
+      profile?.organization_id
+        ? supabase.from("organizations").select("name").eq("id", profile.organization_id).single()
+        : Promise.resolve({ data: null }),
     ]);
 
   const canCreate = permissions.shipping.create;
@@ -55,6 +65,7 @@ export default async function ShippingPage({
         destinations={destinationsResult.data ?? []}
         carriers={carriersResult.data ?? []}
         agencies={agenciesResult.data ?? []}
+        orgName={orgResult.data?.name ?? undefined}
       />
     </div>
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -56,6 +58,7 @@ interface CreateShipmentModalProps {
   destinations: Destination[];
   carriers: Carrier[];
   agencies: Agency[];
+  orgName?: string;
 }
 
 export function CreateShipmentModal({
@@ -67,8 +70,10 @@ export function CreateShipmentModal({
   destinations,
   carriers,
   agencies,
+  orgName,
 }: CreateShipmentModalProps) {
   const { notify } = useNotification();
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -76,13 +81,22 @@ export function CreateShipmentModal({
   const modality = getShipmentModality(selectedSIs[0]?.modality_code ?? "");
   const filteredCarriers = carriers.filter((c) => c.modality === modality);
 
-  // Common
+  // Derive defaults from selected SIs
+  const commonAgencyId = selectedSIs.every((si) => si.agency_id && si.agency_id === selectedSIs[0]?.agency_id)
+    ? selectedSIs[0]?.agency_id ?? ""
+    : "";
+  const commonAgencyName = commonAgencyId ? (selectedSIs[0]?.agency_name ?? "") : "";
+  const commonDestinationId = selectedSIs.every((si) => si.destination_id && si.destination_id === selectedSIs[0]?.destination_id)
+    ? selectedSIs[0]?.destination_id ?? ""
+    : "";
+
+  // Common — pre-fill from SI data (MAWB: shipper=forwarder, consignee=destination agent)
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
-  const [destinationId, setDestinationId] = useState("");
+  const [destinationId, setDestinationId] = useState(commonDestinationId);
   const [carrierId, setCarrierId] = useState("");
-  const [agentId, setAgentId] = useState("");
-  const [shipperName, setShipperName] = useState("");
-  const [consigneeName, setConsigneeName] = useState("");
+  const [agentId, setAgentId] = useState(commonAgencyId);
+  const [shipperName, setShipperName] = useState(orgName ?? "");
+  const [consigneeName, setConsigneeName] = useState(commonAgencyName);
   const [notes, setNotes] = useState("");
 
   // Air
@@ -160,7 +174,16 @@ export function CreateShipmentModal({
       if ("error" in res) {
         notify(res.error, "error");
       } else {
-        notify("Embarque creado exitosamente", "success");
+        notify(
+          <span>
+            Embarque{" "}
+            <Link href={`/${locale}/shipments/${res.id}`} className="font-medium underline hover:text-gray-600">
+              {res.shipment_number}
+            </Link>{" "}
+            creado
+          </span>,
+          "success",
+        );
         onSuccess();
         router.push(`shipments/${res.id}`);
       }

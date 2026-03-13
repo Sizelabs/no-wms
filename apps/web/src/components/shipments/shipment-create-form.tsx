@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -42,6 +44,7 @@ interface ShipmentCreateFormProps {
 
 export function ShipmentCreateForm({ warehouses, destinations, carriers, agencies }: ShipmentCreateFormProps) {
   const { notify } = useNotification();
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [modality, setModality] = useState<"air" | "ocean" | "ground">("air");
@@ -131,7 +134,16 @@ export function ShipmentCreateForm({ warehouses, destinations, carriers, agencie
       if ("error" in res) {
         notify(res.error, "error");
       } else {
-        notify("Embarque creado exitosamente", "success");
+        notify(
+          <span>
+            Embarque{" "}
+            <Link href={`/${locale}/shipments/${res.id}`} className="font-medium underline hover:text-gray-600">
+              {res.shipment_number}
+            </Link>{" "}
+            creado
+          </span>,
+          "success",
+        );
         router.push(`shipments/${res.id}`);
       }
     });

@@ -30,6 +30,8 @@ interface ShippingInstruction {
   modality: string;
   modalities: { id: string; name: string; code: string } | null;
   status: string;
+  agency_id: string | null;
+  destination_id: string | null;
   total_pieces: number | null;
   total_billable_weight_lb: number | null;
   created_at: string;
@@ -71,6 +73,7 @@ interface SiListProps {
   destinations: Destination[];
   carriers: Carrier[];
   agencies: Agency[];
+  orgName?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -88,7 +91,7 @@ function formatWeight(si: ShippingInstruction): string {
   return w ? `${Number(w).toFixed(1)} lb` : "—";
 }
 
-export function SiList({ data, locale, warehouses, destinations, carriers, agencies }: SiListProps) {
+export function SiList({ data, locale, warehouses, destinations, carriers, agencies, orgName }: SiListProps) {
   const { notify } = useNotification();
   const t = useTranslations("shipping");
   const [isPending, startTransition] = useTransition();
@@ -169,7 +172,14 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
   const selectedSIs = useMemo(() => {
     return data
       .filter((si) => selected.has(si.id))
-      .map((si) => ({ id: si.id, si_number: si.si_number, modality_code: si.modalities?.code ?? si.modality }));
+      .map((si) => ({
+        id: si.id,
+        si_number: si.si_number,
+        modality_code: si.modalities?.code ?? si.modality,
+        agency_id: si.agency_id ?? undefined,
+        agency_name: si.agencies?.name ?? undefined,
+        destination_id: si.destination_id ?? undefined,
+      }));
   }, [data, selected]);
 
   const activeFilterCount = [filter.modality].filter((f) => f.length > 0).length;
@@ -396,6 +406,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
         destinations={destinations}
         carriers={carriers}
         agencies={agencies}
+        orgName={orgName}
       />
     </div>
   );

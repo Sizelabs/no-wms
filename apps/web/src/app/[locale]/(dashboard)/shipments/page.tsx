@@ -12,7 +12,7 @@ export default async function ShipmentsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const { permissions } = await requirePermission(locale, "shipments", "read");
+  const { userId, permissions } = await requirePermission(locale, "shipments", "read");
   const supabase = await createClient();
   const warehouseScope = await getUserWarehouseScope();
 
@@ -26,6 +26,13 @@ export default async function ShipmentsPage({
     warehousesQuery = warehousesQuery.in("id", warehouseScope);
   }
 
+  // Fetch user's org for MAWB shipper auto-fill
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", userId)
+    .single();
+
   const [
     shipmentsResult,
     houseBillsResult,
@@ -33,6 +40,7 @@ export default async function ShipmentsPage({
     destinationsResult,
     carriersResult,
     agenciesResult,
+    orgResult,
   ] = await Promise.all([
     getShipments(),
     getUnassignedFinalizedSIs(),
@@ -42,6 +50,9 @@ export default async function ShipmentsPage({
     supabase.from("destinations").select("id, city, country_code").eq("is_active", true).order("city"),
     getCarriers(),
     supabase.from("agencies").select("id, name, code").eq("is_active", true).order("name"),
+    profile?.organization_id
+      ? supabase.from("organizations").select("name").eq("id", profile.organization_id).single()
+      : Promise.resolve({ data: null }),
   ]);
 
   const canCreate = permissions.shipments.create;
@@ -57,6 +68,7 @@ export default async function ShipmentsPage({
         carriers={carriersResult.data ?? []}
         agencies={agenciesResult.data ?? []}
         canCreate={canCreate}
+        orgName={orgResult.data?.name ?? undefined}
       />
     </div>
   );

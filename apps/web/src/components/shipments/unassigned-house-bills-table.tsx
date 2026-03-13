@@ -31,6 +31,7 @@ interface UnassignedSIRow {
   modalities: any;
   agency_id: string;
   agencies: any;
+  destination_id: string | null;
   total_pieces: number | null;
   total_billable_weight_lb: number | null;
   created_at: string;
@@ -68,6 +69,7 @@ interface UnassignedHouseBillsTableProps {
   destinations: Destination[];
   carriers: Carrier[];
   agencies: Agency[];
+  orgName?: string;
 }
 
 export function UnassignedHouseBillsTable({
@@ -76,6 +78,7 @@ export function UnassignedHouseBillsTable({
   destinations,
   carriers,
   agencies,
+  orgName,
 }: UnassignedHouseBillsTableProps) {
   const [search, setSearch] = useState("");
   const [modalityFilter, setModalityFilter] = useState<string[]>([]);
@@ -140,6 +143,9 @@ export function UnassignedHouseBillsTable({
       id: si.id,
       si_number: si.si_number,
       modality_code: unwrap(si.modalities)?.code ?? si.modality,
+      agency_id: si.agency_id,
+      agency_name: unwrap(si.agencies)?.name ?? undefined,
+      destination_id: si.destination_id ?? undefined,
     }));
 
   return (
@@ -246,6 +252,7 @@ export function UnassignedHouseBillsTable({
         destinations={destinations}
         carriers={carriers}
         agencies={agencies}
+        orgName={orgName}
       />
     </div>
   );
