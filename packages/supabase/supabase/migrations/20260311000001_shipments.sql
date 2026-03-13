@@ -156,10 +156,10 @@ BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('house_bill_' || p_doc_type || '_' || p_org_id::text));
 
   CASE p_doc_type
-    WHEN 'hawb' THEN v_prefix := 'GLP';
+    WHEN 'hawb' THEN v_prefix := 'HAWB';
     WHEN 'hbl'  THEN v_prefix := 'HBL';
     WHEN 'hwb'  THEN v_prefix := 'HWB';
-    ELSE v_prefix := 'GLP';
+    ELSE v_prefix := 'HAWB';
   END CASE;
 
   SELECT COALESCE(
@@ -500,32 +500,48 @@ ALTER TABLE hawbs ADD CONSTRAINT hawbs_shipment_id_fkey FOREIGN KEY (shipment_id
 -- 1I. UPDATE TARIFF RATE UNITS: per_mawb → per_shipment
 -- ============================================================================
 
-UPDATE tariff_schedules SET rate_unit = 'per_shipment' WHERE rate_unit = 'per_mawb';
-UPDATE courier_tariffs SET rate_unit = 'per_shipment' WHERE rate_unit = 'per_mawb';
-UPDATE handling_costs SET base_rate_unit = 'per_shipment' WHERE base_rate_unit = 'per_mawb';
-UPDATE modalities SET base_rate_unit = 'per_shipment' WHERE base_rate_unit = 'per_mawb';
-UPDATE courier_modality_tariffs SET rate_unit = 'per_shipment' WHERE rate_unit = 'per_mawb';
+-- All tariff rate_unit updates are guarded: these tables/columns may not exist
+-- yet (created in later migrations 20260312, 20260314).
+DO $$
+BEGIN
+  -- tariff_schedules.rate_unit exists from initial schema
+  UPDATE tariff_schedules SET rate_unit = 'per_shipment' WHERE rate_unit = 'per_mawb';
+  ALTER TABLE tariff_schedules DROP CONSTRAINT IF EXISTS tariff_schedules_rate_unit_check;
+  ALTER TABLE tariff_schedules ADD CONSTRAINT tariff_schedules_rate_unit_check
+    CHECK (rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
 
--- Drop old CHECK constraints and recreate with per_shipment
-ALTER TABLE tariff_schedules DROP CONSTRAINT IF EXISTS tariff_schedules_rate_unit_check;
-ALTER TABLE tariff_schedules ADD CONSTRAINT tariff_schedules_rate_unit_check
-  CHECK (rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
+  -- handling_costs.base_rate_unit added in 20260312
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'handling_costs' AND column_name = 'base_rate_unit') THEN
+    UPDATE handling_costs SET base_rate_unit = 'per_shipment' WHERE base_rate_unit = 'per_mawb';
+    ALTER TABLE handling_costs DROP CONSTRAINT IF EXISTS handling_costs_base_rate_unit_check;
+    ALTER TABLE handling_costs ADD CONSTRAINT handling_costs_base_rate_unit_check
+      CHECK (base_rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
+  END IF;
 
-ALTER TABLE courier_tariffs DROP CONSTRAINT IF EXISTS courier_tariffs_rate_unit_check;
-ALTER TABLE courier_tariffs ADD CONSTRAINT courier_tariffs_rate_unit_check
-  CHECK (rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
+  -- courier_tariffs created in 20260312
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'courier_tariffs') THEN
+    UPDATE courier_tariffs SET rate_unit = 'per_shipment' WHERE rate_unit = 'per_mawb';
+    ALTER TABLE courier_tariffs DROP CONSTRAINT IF EXISTS courier_tariffs_rate_unit_check;
+    ALTER TABLE courier_tariffs ADD CONSTRAINT courier_tariffs_rate_unit_check
+      CHECK (rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
+  END IF;
 
-ALTER TABLE handling_costs DROP CONSTRAINT IF EXISTS handling_costs_base_rate_unit_check;
-ALTER TABLE handling_costs ADD CONSTRAINT handling_costs_base_rate_unit_check
-  CHECK (base_rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
+  -- modalities.base_rate_unit added in 20260314
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'modalities' AND column_name = 'base_rate_unit') THEN
+    UPDATE modalities SET base_rate_unit = 'per_shipment' WHERE base_rate_unit = 'per_mawb';
+    ALTER TABLE modalities DROP CONSTRAINT IF EXISTS modalities_base_rate_unit_check;
+    ALTER TABLE modalities ADD CONSTRAINT modalities_base_rate_unit_check
+      CHECK (base_rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
+  END IF;
 
-ALTER TABLE modalities DROP CONSTRAINT IF EXISTS modalities_base_rate_unit_check;
-ALTER TABLE modalities ADD CONSTRAINT modalities_base_rate_unit_check
-  CHECK (base_rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
-
-ALTER TABLE courier_modality_tariffs DROP CONSTRAINT IF EXISTS courier_modality_tariffs_rate_unit_check;
-ALTER TABLE courier_modality_tariffs ADD CONSTRAINT courier_modality_tariffs_rate_unit_check
-  CHECK (rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
+  -- courier_modality_tariffs created in 20260314
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'courier_modality_tariffs') THEN
+    UPDATE courier_modality_tariffs SET rate_unit = 'per_shipment' WHERE rate_unit = 'per_mawb';
+    ALTER TABLE courier_modality_tariffs DROP CONSTRAINT IF EXISTS courier_modality_tariffs_rate_unit_check;
+    ALTER TABLE courier_modality_tariffs ADD CONSTRAINT courier_modality_tariffs_rate_unit_check
+      CHECK (rate_unit IN ('flat','per_kg','per_lb','per_cbm','per_shipment','per_hawb'));
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 1J. UPDATE role_permissions: manifests → shipments, add carriers

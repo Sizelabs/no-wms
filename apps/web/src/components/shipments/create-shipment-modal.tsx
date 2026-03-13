@@ -6,7 +6,9 @@ import { useState, useTransition } from "react";
 import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
-import { createShipmentWithHouseBills } from "@/lib/actions/shipments";
+import { createShipmentWithSIs } from "@/lib/actions/shipments";
+import type { SelectedSI } from "@/lib/shipping-utils";
+import { getShipmentModality } from "@/lib/shipping-utils";
 
 const MODALITY_LABELS: Record<string, string> = {
   air: "Aéreo",
@@ -19,18 +21,6 @@ const MODALITY_COLORS: Record<string, string> = {
   ocean: "bg-blue-50 text-blue-700",
   ground: "bg-amber-50 text-amber-700",
 };
-
-const DOC_TYPE_TO_MODALITY: Record<string, "air" | "ocean" | "ground"> = {
-  hawb: "air",
-  hbl: "ocean",
-  hwb: "ground",
-};
-
-interface SelectedHouseBill {
-  id: string;
-  hawb_number: string;
-  document_type: string;
-}
 
 interface Warehouse {
   id: string;
@@ -61,7 +51,7 @@ interface CreateShipmentModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  houseBills: SelectedHouseBill[];
+  selectedSIs: SelectedSI[];
   warehouses: Warehouse[];
   destinations: Destination[];
   carriers: Carrier[];
@@ -72,7 +62,7 @@ export function CreateShipmentModal({
   open,
   onClose,
   onSuccess,
-  houseBills,
+  selectedSIs,
   warehouses,
   destinations,
   carriers,
@@ -82,9 +72,8 @@ export function CreateShipmentModal({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  // Derive modality from house bills
-  const docType = houseBills[0]?.document_type ?? "hawb";
-  const modality = DOC_TYPE_TO_MODALITY[docType] ?? "air";
+  // Derive modality from SI modality code
+  const modality = getShipmentModality(selectedSIs[0]?.modality_code ?? "");
   const filteredCarriers = carriers.filter((c) => c.modality === modality);
 
   // Common
@@ -163,9 +152,9 @@ export function CreateShipmentModal({
         if (driverPhone) fd.set("driver_phone", driverPhone);
       }
 
-      const res = await createShipmentWithHouseBills(
+      const res = await createShipmentWithSIs(
         fd,
-        houseBills.map((hb) => hb.id),
+        selectedSIs.map((si) => si.id),
       );
 
       if ("error" in res) {
@@ -187,18 +176,18 @@ export function CreateShipmentModal({
         </span>
       </ModalHeader>
       <ModalBody>
-        {/* Selected house bills summary */}
+        {/* Selected SIs summary */}
         <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
           <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400">
-            {houseBills.length} guía{houseBills.length !== 1 && "s"} seleccionada{houseBills.length !== 1 && "s"}
+            {selectedSIs.length} SI{selectedSIs.length !== 1 && "s"} seleccionada{selectedSIs.length !== 1 && "s"}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {houseBills.map((hb) => (
+            {selectedSIs.map((si) => (
               <span
-                key={hb.id}
+                key={si.id}
                 className="inline-flex rounded-md border border-gray-200 bg-white px-2 py-0.5 font-mono text-xs text-gray-700"
               >
-                {hb.hawb_number}
+                {si.si_number}
               </span>
             ))}
           </div>

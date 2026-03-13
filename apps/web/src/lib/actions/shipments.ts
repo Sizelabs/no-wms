@@ -3,7 +3,65 @@
 import { revalidatePath } from "next/cache";
 
 import { getUserWarehouseScope } from "@/lib/auth/scope";
+import { extractModalityCode, getDocumentType, SHIPMENT_MODALITY_TO_DOC_TYPE } from "@/lib/shipping-utils";
 import { createClient } from "@/lib/supabase/server";
+
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+interface SiWithItems {
+  id: string;
+  organization_id: string;
+  modality: string | null;
+  modalities: unknown;
+  shipping_instruction_items: Array<{
+    warehouse_receipt_id: string;
+    warehouse_receipts: { total_billable_weight_lb: number | null } | null;
+  }>;
+}
+
+/** Generate a HAWB row for a single SI and backfill hawb_id on its WRs. */
+async function generateHawbForSi(
+  supabase: SupabaseClient,
+  si: SiWithItems,
+  shipmentId: string,
+): Promise<void> {
+  const modalityCode = extractModalityCode(si);
+  const documentType = getDocumentType(modalityCode);
+
+  const { data: hawbNumber } = await supabase.rpc("next_house_bill_number", {
+    p_org_id: si.organization_id,
+    p_doc_type: documentType,
+  });
+  if (!hawbNumber) return;
+
+  const items = si.shipping_instruction_items ?? [];
+  const totalPieces = items.length;
+  const totalWeight = items.reduce(
+    (sum, i) => sum + Number(i.warehouse_receipts?.total_billable_weight_lb ?? 0),
+    0,
+  );
+
+  const { data: hawb } = await supabase
+    .from("hawbs")
+    .insert({
+      organization_id: si.organization_id,
+      shipping_instruction_id: si.id,
+      shipment_id: shipmentId,
+      hawb_number: hawbNumber,
+      document_type: documentType,
+      pieces: totalPieces,
+      weight_lb: totalWeight,
+    })
+    .select("id")
+    .single();
+
+  if (hawb) {
+    const wrIds = items.map((i) => i.warehouse_receipt_id).filter(Boolean);
+    if (wrIds.length) {
+      await supabase.from("warehouse_receipts").update({ hawb_id: hawb.id }).in("id", wrIds);
+    }
+  }
+}
 
 // ── Shipments ──
 
@@ -36,16 +94,6 @@ export async function createShipment(formData: FormData): Promise<{ id: string }
   const carrierId = (formData.get("carrier_id") as string) || null;
 
   if (modality === "air" && !awbNumber && carrierId) {
-    // Find an available AWB batch for this carrier
-    const { data: batches } = await supabase
-      .from("awb_batches")
-      .select("id")
-      .eq("carrier_id", carrierId)
-      .filter("next_available", "lte", supabase.rpc as unknown as string) // We'll check in the function
-      .order("created_at", { ascending: true })
-      .limit(1);
-
-    // Try the first batch that might have availability
     const { data: allBatches } = await supabase
       .from("awb_batches")
       .select("id, next_available, range_end")
@@ -59,8 +107,6 @@ export async function createShipment(formData: FormData): Promise<{ id: string }
       });
       if (generatedAwb) awbNumber = generatedAwb as string;
     }
-    // If no batch available, allow manual entry (awbNumber stays null or whatever was provided)
-    void batches; // suppress unused
   }
 
   // Build insert object
@@ -234,85 +280,102 @@ export async function updateShipmentStatus(id: string, newStatus: string): Promi
   return {};
 }
 
-export async function assignHouseBillToShipment(
-  houseBillId: string,
+/** Generate a HAWB from a finalized SI and assign it to a shipment. */
+export async function assignSiToShipment(
+  siId: string,
   shipmentId: string,
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
 
-  // Get house bill document_type and shipment modality for validation
-  const [{ data: houseBill }, { data: shipment }] = await Promise.all([
-    supabase.from("hawbs").select("document_type").eq("id", houseBillId).single(),
-    supabase.from("shipments").select("modality").eq("id", shipmentId).single(),
+  // Fetch SI (with existing HAWBs check) and shipment in parallel
+  const [{ data: si }, { data: shipment }] = await Promise.all([
+    supabase
+      .from("shipping_instructions")
+      .select("id, status, organization_id, modality, modalities(code), hawbs(id), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
+      .eq("id", siId)
+      .single(),
+    supabase.from("shipments").select("id, modality, organization_id").eq("id", shipmentId).single(),
   ]);
 
-  if (!houseBill) return { error: "House bill no encontrado" };
+  if (!si) return { error: "SI no encontrada" };
   if (!shipment) return { error: "Embarque no encontrado" };
+  if (si.status !== "finalized") return { error: "Solo se pueden asignar SIs finalizadas" };
 
-  // Validate document_type matches shipment modality
-  const modalityDocMap: Record<string, string> = {
-    air: "hawb",
-    ocean: "hbl",
-    ground: "hwb",
-  };
-  if (houseBill.document_type !== modalityDocMap[shipment.modality]) {
-    return { error: `Tipo de documento ${houseBill.document_type} no coincide con modalidad ${shipment.modality}` };
+  // Check SI doesn't already have a HAWB
+  if ((si.hawbs as unknown[] | null)?.length) return { error: "Esta SI ya tiene una guía generada" };
+
+  // Validate modality match
+  const modalityCode = extractModalityCode(si);
+  const documentType = getDocumentType(modalityCode);
+  const expectedDocType = SHIPMENT_MODALITY_TO_DOC_TYPE[shipment.modality];
+  if (documentType !== expectedDocType) {
+    return { error: `Modalidad de SI (${modalityCode}) no coincide con modalidad del embarque (${shipment.modality})` };
   }
 
-  const { error } = await supabase
-    .from("hawbs")
-    .update({ shipment_id: shipmentId })
-    .eq("id", houseBillId);
-
-  if (error) return { error: error.message };
+  await generateHawbForSi(supabase, si as unknown as SiWithItems, shipmentId);
 
   revalidatePath("/shipments");
+  revalidatePath("/shipping-instructions");
   return {};
 }
 
-export async function getUnassignedHouseBills(modality?: string) {
+/** Fetch finalized SIs that don't have a HAWB yet (available for shipment assignment). */
+export async function getUnassignedFinalizedSIs(shipmentModality?: string) {
   const supabase = await createClient();
 
-  let query = supabase
-    .from("hawbs")
-    .select("*, shipping_instructions(si_number, agency_id, agencies(name, code), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(wr_number, packages(tracking_number))))")
-    .is("shipment_id", null)
+  // Single query: get finalized SIs with hawbs(id) to filter in-memory
+  const { data: sis, error } = await supabase
+    .from("shipping_instructions")
+    .select("id, si_number, modality, modalities(id, name, code), agency_id, agencies(name, code), total_pieces, total_billable_weight_lb, created_at, hawbs(id), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(wr_number, packages(tracking_number)))")
+    .eq("status", "finalized")
     .order("created_at", { ascending: false });
 
-  if (modality) {
-    const modalityDocMap: Record<string, string> = {
-      air: "hawb",
-      ocean: "hbl",
-      ground: "hwb",
-    };
-    const docType = modalityDocMap[modality];
-    if (!docType) return { data: null, error: "Modalidad inválida" };
-    query = query.eq("document_type", docType);
+  if (error) return { data: null, error: error.message };
+
+  // Filter out SIs that already have a HAWB
+  let result = (sis ?? []).filter((si) => !(si.hawbs as unknown[] | null)?.length);
+
+  // Filter by shipment modality if provided
+  if (shipmentModality) {
+    const expectedDocType = SHIPMENT_MODALITY_TO_DOC_TYPE[shipmentModality];
+    if (!expectedDocType) return { data: null, error: "Modalidad inválida" };
+
+    result = result.filter((si) => {
+      const code = extractModalityCode(si);
+      return getDocumentType(code) === expectedDocType;
+    });
   }
 
-  const { data, error } = await query;
-  if (error) return { data: null, error: error.message };
-  return { data, error: null };
+  return { data: result, error: null };
 }
 
-export async function createShipmentWithHouseBills(
+/** Create a shipment and generate HAWBs for each finalized SI. */
+export async function createShipmentWithSIs(
   formData: FormData,
-  houseBillIds: string[],
+  siIds: string[],
 ): Promise<{ id: string } | { error: string }> {
-  const result = await createShipment(formData);
-  if ("error" in result) return result;
+  const shipmentResult = await createShipment(formData);
+  if ("error" in shipmentResult) return shipmentResult;
 
   const supabase = await createClient();
+  const shipmentId = shipmentResult.id;
 
-  const { error } = await supabase
-    .from("hawbs")
-    .update({ shipment_id: result.id })
-    .in("id", houseBillIds);
+  // Fetch all SIs with their modality + items
+  const { data: sis } = await supabase
+    .from("shipping_instructions")
+    .select("id, organization_id, modality, modalities(code), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
+    .in("id", siIds);
 
-  if (error) return { error: error.message };
+  if (!sis?.length) return { id: shipmentId };
+
+  // Generate HAWBs for each SI (sequential — number generation requires advisory lock)
+  for (const si of sis) {
+    await generateHawbForSi(supabase, si as unknown as SiWithItems, shipmentId);
+  }
 
   revalidatePath("/shipments");
-  return { id: result.id };
+  revalidatePath("/shipping-instructions");
+  return { id: shipmentId };
 }
 
 // ── Containers (ocean shipments) ──

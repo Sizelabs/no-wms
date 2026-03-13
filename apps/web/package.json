@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "dev:staging": "env $(cat .env.staging | xargs) next dev --port 3001",
+    "dev": "next dev --port 3000 --turbopack",
+    "dev:staging": "env $(cat .env.staging | xargs) next dev --port 3001 --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -23,6 +23,7 @@
     "@tanstack/react-virtual": "^3.13.19",
     "country-state-city": "^3.2.1",
     "html2pdf.js": "^0.14.0",
+    "import-in-the-middle": "^3.0.0",
     "jsbarcode": "^3.12.3",
     "lucide-react": "^0.576.0",
     "next": "^15.3.4",
@@ -30,6 +31,7 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "require-in-the-middle": "^8.0.1",
     "resend": "^6.9.3"
   },
   "devDependencies": {

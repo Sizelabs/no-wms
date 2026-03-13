@@ -60,6 +60,11 @@ input[type="radio"] {
   border-bottom-color: #334155 !important; /* slate-700 */
 }
 
+/* HAWB AWB form cell borders */
+.hawb-document .awb-cell {
+  border-color: #1e3a5f;
+}
+
 @media print {
   @page { size: letter portrait; margin: 0.3in 0.5in; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -67,4 +72,7 @@ input[type="radio"] {
   /* Scale WR document to fit one page */
   .wr-document { font-size: 76%; }
   .wr-document td { padding-top: 0; padding-bottom: 0; }
+
+  /* Scale HAWB document to fit one page */
+  .hawb-document { font-size: 90%; }
 }

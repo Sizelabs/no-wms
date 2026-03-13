@@ -8,6 +8,7 @@ import { SiActions } from "@/components/shipping/si-actions";
 import { InfoCard, Section } from "@/components/ui/detail-page";
 import { getShippingInstruction } from "@/lib/actions/shipping-instructions";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { createClient } from "@/lib/supabase/server";
 
 const STATUS_COLORS: Record<string, string> = {
   requested: "bg-blue-100 text-blue-800",
@@ -36,6 +37,28 @@ export default async function ShippingDetailPage({
       sum + (item.warehouse_receipts?.total_billable_weight_lb ? Number(item.warehouse_receipts.total_billable_weight_lb) : 0),
     0,
   ) ?? 0;
+
+  // Build human-readable label map from category snapshot
+  const docLabelMap: Record<string, string> = {};
+  const snapshot = si.category_snapshot as { required_documents?: Array<{ document_type: string; label: string }> } | null;
+  for (const rd of snapshot?.required_documents ?? []) {
+    docLabelMap[rd.document_type] = rd.label;
+  }
+
+  // Generate signed URLs for documents
+  type SiDoc = { id: string; document_type: string; storage_path: string; file_name: string; content_type: string | null; file_size: number | null };
+  const rawDocs = (si.shipping_instruction_documents ?? []) as SiDoc[];
+  let docsWithUrls: Array<SiDoc & { url: string }> = [];
+  if (rawDocs.length > 0) {
+    const supabase = await createClient();
+    const { data: signed } = await supabase.storage
+      .from("si-documents")
+      .createSignedUrls(rawDocs.map((d) => d.storage_path), 60 * 60);
+    docsWithUrls = rawDocs.map((doc, i) => ({
+      ...doc,
+      url: signed?.[i]?.signedUrl ?? "",
+    }));
+  }
 
   return (
     <div className="space-y-6">
@@ -113,16 +136,28 @@ export default async function ShippingDetailPage({
           )}
 
           {/* SI Documents */}
-          {si.shipping_instruction_documents && (si.shipping_instruction_documents as Array<{ id: string; document_type: string; file_name: string }>).length > 0 && (
+          {docsWithUrls.length > 0 && (
             <Section title="Documentos">
-              <div className="space-y-1 text-sm">
-                {(si.shipping_instruction_documents as Array<{ id: string; document_type: string; file_name: string }>).map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between rounded-md border p-2">
-                    <div>
-                      <span className="text-xs font-medium text-gray-600">{doc.document_type}</span>
-                      <span className="ml-2 text-xs text-gray-500">{doc.file_name}</span>
+              <div className="space-y-1.5 text-sm">
+                {docsWithUrls.map((doc) => (
+                  <a
+                    key={doc.id}
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-md border p-2.5 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-gray-100 text-xs font-medium text-gray-500">
+                      {doc.file_name.split(".").pop()?.toUpperCase() ?? "?"}
                     </div>
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-gray-900">
+                        {docLabelMap[doc.document_type] ?? doc.document_type}
+                      </p>
+                      <p className="truncate text-xs text-gray-500">{doc.file_name}</p>
+                    </div>
+                    <span className="shrink-0 text-xs font-medium text-blue-600">Ver</span>
+                  </a>
                 ))}
               </div>
             </Section>

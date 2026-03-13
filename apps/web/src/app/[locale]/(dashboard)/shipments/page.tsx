@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { ShipmentsPageContent } from "@/components/shipments/shipments-page-content";
 import { getCarriers } from "@/lib/actions/carriers";
-import { getShipments, getUnassignedHouseBills } from "@/lib/actions/shipments";
+import { getShipments, getUnassignedFinalizedSIs } from "@/lib/actions/shipments";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
@@ -35,7 +35,7 @@ export default async function ShipmentsPage({
     agenciesResult,
   ] = await Promise.all([
     getShipments(),
-    getUnassignedHouseBills(),
+    getUnassignedFinalizedSIs(),
     warehouseScope !== null && warehouseScope.length === 0
       ? Promise.resolve({ data: [] })
       : warehousesQuery,

@@ -35,6 +35,6 @@ begin
   ) + 1 into next_num
   from hawbs
   where organization_id = p_org_id;
-  return 'GLP' || lpad(next_num::text, 5, '0');
+  return 'HAWB' || lpad(next_num::text, 5, '0');
 end;
 $$;

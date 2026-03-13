@@ -3,18 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { CreateShipmentModal } from "@/components/shipments/create-shipment-modal";
-
-const DOC_TYPE_LABELS: Record<string, string> = {
-  hawb: "HAWB",
-  hbl: "HBL",
-  hwb: "HWB",
-};
-
-interface SelectedHouseBill {
-  id: string;
-  hawb_number: string;
-  document_type: string;
-}
+import type { SelectedSI } from "@/lib/shipping-utils";
+import { getShipmentModality } from "@/lib/shipping-utils";
 
 interface Warehouse {
   id: string;
@@ -42,7 +32,7 @@ interface Agency {
 }
 
 interface SiActionBarProps {
-  selectedHouseBills: SelectedHouseBill[];
+  selectedSIs: SelectedSI[];
   onClearSelection: () => void;
   warehouses: Warehouse[];
   destinations: Destination[];
@@ -51,7 +41,7 @@ interface SiActionBarProps {
 }
 
 export function SiActionBar({
-  selectedHouseBills,
+  selectedSIs,
   onClearSelection,
   warehouses,
   destinations,
@@ -60,7 +50,7 @@ export function SiActionBar({
 }: SiActionBarProps) {
   const [showModal, setShowModal] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const count = selectedHouseBills.length;
+  const count = selectedSIs.length;
 
   useEffect(() => {
     if (count > 0) {
@@ -81,12 +71,9 @@ export function SiActionBar({
 
   if (count === 0) return null;
 
-  // Check if all selected house bills have the same document_type
-  const docTypes = new Set(selectedHouseBills.map((hb) => hb.document_type));
-  const isMixed = docTypes.size > 1;
-  const docTypeLabel = isMixed
-    ? "mixtos"
-    : DOC_TYPE_LABELS[selectedHouseBills[0]?.document_type ?? ""] ?? "—";
+  // Check if all selected SIs have the same shipment modality
+  const modalities = new Set(selectedSIs.map((si) => getShipmentModality(si.modality_code)));
+  const isMixed = modalities.size > 1;
 
   return (
     <>
@@ -94,7 +81,7 @@ export function SiActionBar({
       {isMixed && (
         <div className="fixed bottom-[68px] left-60 right-0 z-40 flex justify-center px-6">
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
-            Las guías seleccionadas tienen tipos mixtos. Seleccione solo un tipo para crear un embarque.
+            Las SIs seleccionadas tienen modalidades mixtas. Seleccione solo una modalidad para crear un embarque.
           </div>
         </div>
       )}
@@ -110,7 +97,7 @@ export function SiActionBar({
             {/* Left: Selection count */}
             <div className="flex shrink-0 items-center gap-1.5">
               <span className="text-sm font-bold text-gray-900">{count}</span>
-              <span className="text-sm text-gray-500">guía{count !== 1 && "s"} ({docTypeLabel})</span>
+              <span className="text-sm text-gray-500">SI{count !== 1 && "s"} seleccionada{count !== 1 && "s"}</span>
               <button
                 type="button"
                 onClick={onClearSelection}
@@ -146,7 +133,7 @@ export function SiActionBar({
           open={showModal}
           onClose={handleCloseModal}
           onSuccess={handleSuccess}
-          houseBills={selectedHouseBills}
+          selectedSIs={selectedSIs}
           warehouses={warehouses}
           destinations={destinations}
           carriers={carriers}

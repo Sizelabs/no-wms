@@ -19,10 +19,15 @@ export async function getUserRoleAssignments(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserRoleAssignment[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("user_roles")
     .select("role, warehouse_id, courier_id, agency_id")
     .eq("user_id", userId);
+
+  if (error) {
+    console.error("[getUserRoleAssignments] query failed:", error.message);
+    return [];
+  }
 
   if (data?.length) {
     return data.map((r) => ({

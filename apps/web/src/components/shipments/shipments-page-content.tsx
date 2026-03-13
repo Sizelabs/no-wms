@@ -65,7 +65,7 @@ export function ShipmentsPageContent({
             Embarques
           </TabButton>
           <TabButton active={tab === "unassigned"} onClick={() => setTab("unassigned")} badge={unassignedHouseBills.length || undefined}>
-            Guías sin asignar
+            SIs sin asignar
           </TabButton>
         </div>
         {canCreate && tab === "shipments" && (
