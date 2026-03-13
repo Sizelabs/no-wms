@@ -32,7 +32,7 @@ async function verifyCourierScope(
   return {};
 }
 
-export async function createShippingInstruction(formData: FormData): Promise<{ id: string } | { error: string }> {
+export async function createShippingInstruction(formData: FormData): Promise<{ id: string; si_number: string } | { error: string }> {
   const supabase = await createClient();
 
   const {
@@ -66,6 +66,7 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
 
   // Generate SI number, fetch WR totals, and fetch shipping category in parallel
   const shippingCategoryId = formData.get("shipping_category_id") as string | null;
+  const modalityId = (formData.get("modality_id") as string) || null;
 
   const [{ data: siNumber }, { data: wrs }, categoryResult] = await Promise.all([
     supabase.rpc("next_si_number", { p_org_id: profile.organization_id }),
@@ -169,7 +170,7 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
       agency_id: formData.get("agency_id") as string,
       destination_id: formData.get("destination_id") as string,
       modality: (formData.get("modality") as string) || null,
-      modality_id: (formData.get("modality_id") as string) || null,
+      modality_id: modalityId,
       courier_category: (formData.get("courier_category") as string) || null,
       shipping_category_id: shippingCategoryId || null,
       category_snapshot: categorySnapshot,
@@ -189,7 +190,7 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
       total_billable_weight_lb: totalBillable,
       total_declared_value_usd: totalDeclared,
     })
-    .select("id")
+    .select("id, si_number")
     .single();
 
   if (error) return { error: error.message };
@@ -241,7 +242,7 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
   revalidatePath("/shipping-instructions");
   revalidatePath("/inventory");
 
-  return { id: si.id };
+  return { id: si.id, si_number: si.si_number };
 }
 
 export async function getShippingInstructions(filters?: {

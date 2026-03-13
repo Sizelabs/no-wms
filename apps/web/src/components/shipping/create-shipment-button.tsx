@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
+import { useLocale } from "next-intl";
+import Link from "next/link";
+
 import { useNotification } from "@/components/layout/notification";
 import { checkboxClass, Field, inputClass, selectClass, textareaClass } from "@/components/ui/form-section";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -82,6 +85,7 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
 
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
+  const locale = useLocale();
 
   // Fetch WRs on mount
   useEffect(() => {
@@ -218,7 +222,16 @@ function CreateShipmentModal({ onClose }: { onClose: () => void }) {
       if ("error" in result) {
         notify(result.error, "error");
       } else {
-        notify("Instruccion de envio creada", "success");
+        notify(
+          <span>
+            Instrucción de envío{" "}
+            <Link href={`/${locale}/shipping-instructions/${result.id}`} className="font-medium underline hover:text-gray-600">
+              {result.si_number}
+            </Link>{" "}
+            creada
+          </span>,
+          "success",
+        );
         onClose();
       }
     });

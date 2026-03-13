@@ -2,8 +2,13 @@
 
 import { useEffect, useState, useTransition } from "react";
 
+import { useLocale } from "next-intl";
+import Link from "next/link";
+
 import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
+import type { UploadedFile } from "@/components/ui/file-upload";
+import { FileUpload } from "@/components/ui/file-upload";
 import { selectClass } from "@/components/ui/form-section";
 import { createShippingInstruction, getRouteModalities, getShippingCategories } from "@/lib/actions/shipping-instructions";
 
@@ -84,6 +89,7 @@ export function SiCreateForm({
   availableWrs,
 }: SiCreateFormProps) {
   const { notify } = useNotification();
+  const locale = useLocale();
   const [isPending, startTransition] = useTransition();
   const [agencyId, setAgencyId] = useState(agencies[0]?.id ?? "");
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
@@ -125,6 +131,9 @@ export function SiCreateForm({
     });
   }, [modalityId, destinationId, destinations]);
 
+  // Document upload state — keyed by document_type
+  const [docUploads, setDocUploads] = useState<Record<string, UploadedFile[]>>({});
+
   // Auto-set cupo 4x4 and cedula/ruc requirements based on category
   const selectedCategory = shippingCategories.find((c) => c.id === selectedCategoryId);
 
@@ -134,6 +143,9 @@ export function SiCreateForm({
       setCupo4x4(true);
     }
   }, [selectedCategory]);
+
+  // Reset uploaded files when category changes
+  useEffect(() => { setDocUploads({}); }, [selectedCategoryId]);
 
   const filteredWrs = availableWrs.filter(
     (wr) => wr.status === "received" || wr.status === "in_warehouse",
@@ -154,6 +166,11 @@ export function SiCreateForm({
     if (!selectedWrs.length || !agencyId || !consigneeId || !destinationId || !modalityId || !selectedCategoryId) return;
 
     startTransition(async () => {
+      // Collect already-uploaded document metadata
+      const uploadedDocs = Object.entries(docUploads).flatMap(([docType, files]) =>
+        files.map((f) => ({ document_type: docType, storage_path: f.storagePath, file_name: f.fileName, content_type: "", file_size: 0 })),
+      );
+
       const fd = new FormData();
       fd.set("modality_id", modalityId);
       fd.set("warehouse_id", warehouseId);
@@ -166,16 +183,27 @@ export function SiCreateForm({
       if (cedulaRuc) fd.set("cedula_ruc", cedulaRuc);
       fd.set("cupo_4x4_used", String(cupo4x4));
       if (specialInstructions) fd.set("special_instructions", specialInstructions);
+      if (uploadedDocs.length > 0) fd.set("documents", JSON.stringify(uploadedDocs));
 
       const res = await createShippingInstruction(fd);
       if ("error" in res) {
         notify(res.error, "error");
       } else {
-        notify("Instrucción de embarque creada", "success");
+        notify(
+          <span>
+            Instrucción de embarque{" "}
+            <Link href={`/${locale}/shipping-instructions/${res.id}`} className="font-medium underline hover:text-gray-600">
+              {res.si_number}
+            </Link>{" "}
+            creada
+          </span>,
+          "success",
+        );
         setSelectedWrs([]);
         setSpecialInstructions("");
         setCedulaRuc("");
         setSelectedCategoryId("");
+        setDocUploads({});
       }
     });
   };
@@ -323,14 +351,25 @@ export function SiCreateForm({
           {selectedCategory?.country_specific_rules?.consumes_cupo_4x4 === true && (
             <p className="mt-2 text-xs text-amber-600">Esta categoría consume cupo 4x4</p>
           )}
-          {selectedCategory && selectedCategory.shipping_category_required_documents.length > 0 && (
-            <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2">
-              <p className="text-xs font-medium text-amber-800">Documentos requeridos para esta categoría:</p>
-              <ul className="mt-1 list-inside list-disc text-xs text-amber-700">
-                {selectedCategory.shipping_category_required_documents.filter((d) => d.is_required).map((d) => (
-                  <li key={d.id}>{d.label}</li>
+          {selectedCategory && selectedCategory.shipping_category_required_documents.filter((d) => d.is_required).length > 0 && (
+            <div className="mt-3 space-y-3">
+              <p className="text-sm font-medium text-gray-700">Documentos requeridos</p>
+              {selectedCategory.shipping_category_required_documents
+                .filter((d) => d.is_required)
+                .map((doc) => (
+                  <div key={doc.id}>
+                    <span className="mb-1 block text-sm text-gray-600">
+                      {doc.label} <span className="text-red-400">*</span>
+                    </span>
+                    <FileUpload
+                      bucket="si-documents"
+                      folder={doc.document_type}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      maxFiles={1}
+                      onFilesChange={(files) => setDocUploads((prev) => ({ ...prev, [doc.document_type]: files }))}
+                    />
+                  </div>
                 ))}
-              </ul>
             </div>
           )}
         </div>

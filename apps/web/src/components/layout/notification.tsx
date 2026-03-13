@@ -13,12 +13,12 @@ import {
 type NotificationType = "success" | "error";
 
 interface Notification {
-  message: string;
+  message: ReactNode;
   type: NotificationType;
 }
 
 interface NotificationContextValue {
-  notify: (message: string, type: NotificationType) => void;
+  notify: (message: ReactNode, type: NotificationType) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -31,7 +31,7 @@ export function useNotification() {
   return ctx;
 }
 
-const DURATION = 5000;
+const DURATION = 8000;
 const EXIT_MS = 200;
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
@@ -55,8 +55,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }, EXIT_MS);
   }, []);
 
+  const startAutoClose = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(dismiss, DURATION);
+  }, [dismiss]);
+
+  const pauseAutoClose = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
   const notify = useCallback(
-    (message: string, type: NotificationType) => {
+    (message: ReactNode, type: NotificationType) => {
       clearTimers();
       setNotification({ message, type });
       setPhase("in");
@@ -77,6 +86,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         <div
           key={key}
           role="alert"
+          onMouseEnter={pauseAutoClose}
+          onMouseLeave={startAutoClose}
           className={`fixed bottom-6 left-1/2 z-50 flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm shadow-lg ${
             notification.type === "success"
               ? "border-gray-200 bg-white text-gray-800"

@@ -3,11 +3,16 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
+import { useLocale } from "next-intl";
+import Link from "next/link";
+
 import type { WrSummaryItem } from "./service-flow-wrapper";
 import { ServiceFlowWrapper } from "./service-flow-wrapper";
 
 import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
+import type { UploadedFile } from "@/components/ui/file-upload";
+import { FileUpload } from "@/components/ui/file-upload";
 import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees";
 import {
   createShippingInstruction,
@@ -79,12 +84,21 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
   // Cleanup debounce timer on unmount
   useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
+  // Track uploaded files per required document type
+  const [docUploads, setDocUploads] = useState<Record<string, UploadedFile[]>>({});
+
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+
+  // Reset uploaded files when category changes
+  useEffect(() => { setDocUploads({}); }, [selectedCategoryId]);
+
   const [insureCargo, setInsureCargo] = useState(false);
   const [isDgr, setIsDgr] = useState(() => wrs.some((wr) => wr.has_dgr_package));
   const [specialInstructions, setSpecialInstructions] = useState("");
 
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
+  const locale = useLocale();
 
   useEffect(() => {
     getAgencyDestinations(agencyId).then((res) => { if (res.data) setDestinations(res.data); });
@@ -147,6 +161,11 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
     if (!selectedConsignee) return;
     const dest = destinations.find((d) => d.id === destinationId);
     startTransition(async () => {
+      // Collect already-uploaded document metadata
+      const uploadedDocs = Object.entries(docUploads).flatMap(([docType, files]) =>
+        files.map((f) => ({ document_type: docType, storage_path: f.storagePath, file_name: f.fileName, content_type: "", file_size: 0 })),
+      );
+
       const fd = new FormData();
       fd.set("warehouse_id", warehouseId);
       fd.set("agency_id", agencyId);
@@ -160,12 +179,22 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
       fd.set("insure_cargo", String(insureCargo));
       fd.set("is_dgr", String(isDgr));
       if (specialInstructions.trim()) fd.set("special_instructions", specialInstructions.trim());
+      if (uploadedDocs.length > 0) fd.set("documents", JSON.stringify(uploadedDocs));
 
       const result = await createShippingInstruction(fd);
       if ("error" in result) {
         notify(result.error, "error");
       } else {
-        notify("Instruccion de envio creada", "success");
+        notify(
+          <span>
+            Instrucción de envío{" "}
+            <Link href={`/${locale}/shipping-instructions/${result.id}`} className="font-medium underline hover:text-gray-600">
+              {result.si_number}
+            </Link>{" "}
+            creada
+          </span>,
+          "success",
+        );
         onSuccess();
       }
     });
@@ -236,6 +265,27 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
           <p className="text-xs text-amber-600">
             No hay categorías de envío configuradas para esta modalidad. Configúralas en Ajustes → Categorías de Envío.
           </p>
+        )}
+        {selectedCategory && selectedCategory.shipping_category_required_documents.filter((d) => d.is_required).length > 0 && (
+          <fieldset className="space-y-3">
+            <legend className="text-xs font-medium uppercase tracking-wider text-gray-400">Documentos requeridos</legend>
+            {selectedCategory.shipping_category_required_documents
+              .filter((d) => d.is_required)
+              .map((doc) => (
+                <div key={doc.id}>
+                  <span className="mb-1 block text-sm text-gray-600">
+                    {doc.label} <span className="text-red-400">*</span>
+                  </span>
+                  <FileUpload
+                    bucket="si-documents"
+                    folder={doc.document_type}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    maxFiles={1}
+                    onFilesChange={(files) => setDocUploads((prev) => ({ ...prev, [doc.document_type]: files }))}
+                  />
+                </div>
+              ))}
+          </fieldset>
         )}
       </fieldset>
 
