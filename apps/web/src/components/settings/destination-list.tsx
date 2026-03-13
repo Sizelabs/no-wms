@@ -20,11 +20,17 @@ interface DestinationRow {
   is_active: boolean;
 }
 
+interface ModalityInfo {
+  id: string;
+  name: string;
+  code: string;
+}
+
 interface CourierWithDestinations {
   id: string;
   name: string;
   organization_id: string;
-  courier_destinations: { destination_id: string; is_active: boolean }[];
+  courier_destinations: { destination_id: string; modality_id: string; is_active: boolean }[];
 }
 
 interface DestinationListProps {
@@ -32,13 +38,14 @@ interface DestinationListProps {
   canUpdate?: boolean;
   canDelete?: boolean;
   couriers?: CourierWithDestinations[];
+  modalities?: ModalityInfo[];
 }
 
 function formatLocation(d: DestinationRow): string {
   return [d.city, d.state, d.country_name ?? d.country_code].filter(Boolean).join(", ");
 }
 
-export function DestinationList({ data, canUpdate = false, canDelete = false, couriers = [] }: DestinationListProps) {
+export function DestinationList({ data, canUpdate = false, canDelete = false, couriers = [], modalities = [] }: DestinationListProps) {
   const hasActions = canUpdate || canDelete;
   const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
@@ -47,7 +54,7 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
-  // Optimistic state for courier destinations: key is "courierId:destinationId"
+  // Optimistic state for courier destinations: key is "courierId:destinationId:modalityId"
   const [optimisticToggles, setOptimisticToggle] = useOptimistic(
     {} as Record<string, boolean>,
     (state: Record<string, boolean>, update: { key: string; value: boolean }) => ({
@@ -137,43 +144,46 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
                     {d.is_active ? "Activo" : "Inactivo"}
                   </span>
                 </td>
-                {couriers.map((c) => {
-                  const toggleKey = `${c.id}:${d.id}`;
-                  const cd = c.courier_destinations.find(
-                    (cd) => cd.destination_id === d.id,
-                  );
-                  const serverValue = cd?.is_active ?? false;
-                  const isEnabled = toggleKey in optimisticToggles ? optimisticToggles[toggleKey]! : serverValue;
-                  return (
-                    <td key={c.id} className="px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isEnabled}
-                        onClick={() => {
-                          startTransition(async () => {
-                            setOptimisticToggle({ key: toggleKey, value: !isEnabled });
-                            await upsertCourierDestination(
-                              c.id,
-                              d.id,
-                              c.organization_id,
-                              !isEnabled,
-                            );
-                          });
-                        }}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                          isEnabled ? "bg-green-600" : "bg-gray-300"
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                            isEnabled ? "translate-x-4.5" : "translate-x-0.5"
-                          }`}
-                        />
-                      </button>
-                    </td>
-                  );
-                })}
+                {couriers.map((c) => (
+                  <td key={c.id} className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1 justify-center">
+                      {modalities.map((m) => {
+                        const toggleKey = `${c.id}:${d.id}:${m.id}`;
+                        const cd = c.courier_destinations.find(
+                          (cd) => cd.destination_id === d.id && cd.modality_id === m.id,
+                        );
+                        const serverValue = cd?.is_active ?? false;
+                        const isEnabled = toggleKey in optimisticToggles ? optimisticToggles[toggleKey]! : serverValue;
+                        return (
+                          <label
+                            key={m.id}
+                            className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer select-none"
+                            title={m.name}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={() => {
+                                startTransition(async () => {
+                                  setOptimisticToggle({ key: toggleKey, value: !isEnabled });
+                                  await upsertCourierDestination(
+                                    c.id,
+                                    d.id,
+                                    m.id,
+                                    c.organization_id,
+                                    !isEnabled,
+                                  );
+                                });
+                              }}
+                              className="h-3 w-3 rounded border-gray-300"
+                            />
+                            {m.code.slice(0, 3).toUpperCase()}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </td>
+                ))}
                 {hasActions && (
                 <td className="px-4 py-3">
                   <div className="flex gap-1">

@@ -92,7 +92,7 @@ describe("createShippingInstruction", () => {
     fd.set("warehouse_id", "wh-1");
     fd.set("agency_id", "ag-1");
     fd.set("destination_id", "dc-1");
-    fd.set("modality", "courier_a");
+    fd.set("modality_id", "mod-1");
     fd.set("consignee_id", "con-1");
     fd.set("warehouse_receipt_ids", '["wr-1"]');
 
@@ -172,14 +172,14 @@ describe("finalizeShippingInstruction", () => {
     expect(result).toEqual({ error: "Solo se pueden finalizar SIs aprobadas" });
   });
 
-  it("finalizes SI, creates HAWB, and returns hawb_number", async () => {
+  it("finalizes SI without generating HAWB (HAWB generated at shipment assignment)", async () => {
     mockResult = {
       data: {
         status: "approved",
         organization_id: "org-1",
         shipping_instruction_items: [
-          { warehouse_receipt_id: "wr-1", warehouse_receipts: { actual_weight_lb: 10, billable_weight_lb: 12 } },
-          { warehouse_receipt_id: "wr-2", warehouse_receipts: { actual_weight_lb: 8, billable_weight_lb: 8 } },
+          { warehouse_receipt_id: "wr-1", warehouse_receipts: { total_billable_weight_lb: 12 } },
+          { warehouse_receipt_id: "wr-2", warehouse_receipts: { total_billable_weight_lb: 8 } },
         ],
       },
       error: null,
@@ -187,11 +187,11 @@ describe("finalizeShippingInstruction", () => {
     };
 
     const result = await finalizeShippingInstruction("si-1");
-    // Should have created HAWB and updated SI
-    expect(mockSupabase.from).toHaveBeenCalledWith("hawbs");
+    // Should NOT have created HAWB
+    expect(mockSupabase.from).not.toHaveBeenCalledWith("hawbs");
+    // Should have updated SI and status history
     expect(mockSupabase.from).toHaveBeenCalledWith("shipping_instructions");
     expect(mockSupabase.from).toHaveBeenCalledWith("shipping_instruction_status_history");
-    // hawb_number should be GLP00001 (count=0, so 0+1=1)
-    expect(result.hawb_number).toBe("GLP00001");
+    expect(result).toEqual({});
   });
 });

@@ -16,11 +16,18 @@ interface RequiredDocEntry {
   is_required: boolean;
 }
 
+interface ModalityOption {
+  id: string;
+  name: string;
+  code: string;
+}
+
 interface ShippingCategoryItem {
   id: string;
   code: string;
   name: string;
   country_code: string;
+  modality_id: string;
   description: string | null;
   display_order: number;
   max_weight_kg: number | null;
@@ -44,9 +51,10 @@ interface ShippingCategoryItem {
 
 interface ShippingCategoryFormProps {
   item?: ShippingCategoryItem;
+  modalities?: ModalityOption[];
 }
 
-export function ShippingCategoryForm({ item }: ShippingCategoryFormProps) {
+export function ShippingCategoryForm({ item, modalities = [] }: ShippingCategoryFormProps) {
   const router = useRouter();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
@@ -125,6 +133,20 @@ export function ShippingCategoryForm({ item }: ShippingCategoryFormProps) {
             className={inputClass}
             placeholder="EC"
           />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Modalidad</label>
+          <select
+            name="modality_id"
+            defaultValue={item?.modality_id ?? ""}
+            required
+            className={selectClass}
+          >
+            <option value="">Seleccionar modalidad...</option>
+            {modalities.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Código</label>

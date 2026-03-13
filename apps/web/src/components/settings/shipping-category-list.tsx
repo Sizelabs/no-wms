@@ -27,6 +27,7 @@ interface ShippingCategoryRow {
   customs_declaration_type: string;
   is_active: boolean;
   display_order: number;
+  modalities: { id: string; name: string; code: string } | null;
   shipping_category_required_documents: RequiredDoc[];
 }
 
@@ -39,14 +40,17 @@ interface ShippingCategoryListProps {
 export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCategoryListProps) {
   const [search, setSearch] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
+  const [modalityFilter, setModalityFilter] = useState("");
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
   const [optimisticData, setOptimistic] = useOptimistic(data);
 
   const countries = [...new Set(data.map((d) => d.country_code))].sort();
+  const uniqueModalities = [...new Map(data.filter((d) => d.modalities).map((d) => [d.modalities!.id, d.modalities!])).values()];
 
   const filtered = optimisticData.filter((cat) => {
     if (countryFilter && cat.country_code !== countryFilter) return false;
+    if (modalityFilter && cat.modalities?.id !== modalityFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       return cat.code.toLowerCase().includes(q) || cat.name.toLowerCase().includes(q);
@@ -83,6 +87,16 @@ export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCat
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
+        <select
+          value={modalityFilter}
+          onChange={(e) => setModalityFilter(e.target.value)}
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none"
+        >
+          <option value="">Todas las modalidades</option>
+          {uniqueModalities.map((m) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
       </div>
 
       <div className="overflow-x-auto rounded-lg border">
@@ -92,6 +106,7 @@ export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCat
               <th className="px-4 py-2">Código</th>
               <th className="px-4 py-2">Nombre</th>
               <th className="px-4 py-2">País</th>
+              <th className="px-4 py-2">Modalidad</th>
               <th className="px-4 py-2">Tipo Carga</th>
               <th className="px-4 py-2">Límites</th>
               <th className="px-4 py-2">Aduanas</th>
@@ -103,7 +118,7 @@ export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCat
           <tbody className="divide-y">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
                   No hay categorías de envío
                 </td>
               </tr>
@@ -117,6 +132,7 @@ export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCat
                   </td>
                   <td className="px-4 py-2 font-medium text-gray-900">{cat.name}</td>
                   <td className="px-4 py-2">{cat.country_code}</td>
+                  <td className="px-4 py-2">{cat.modalities?.name ?? "—"}</td>
                   <td className="px-4 py-2">{CARGO_TYPE_LABELS[cat.cargo_type as CargoType] ?? cat.cargo_type}</td>
                   <td className="px-4 py-2 text-xs text-gray-500">
                     {cat.max_weight_kg && <span>Max {cat.max_weight_kg} kg</span>}

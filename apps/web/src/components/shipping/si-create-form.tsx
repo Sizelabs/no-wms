@@ -1,13 +1,11 @@
 "use client";
 
-import type { Modality } from "@no-wms/shared/constants/modalities";
-import { MODALITY_LABELS, MVP_MODALITIES } from "@no-wms/shared/constants/modalities";
 import { useEffect, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
 import { selectClass } from "@/components/ui/form-section";
-import { createShippingInstruction, getShippingCategories } from "@/lib/actions/shipping-instructions";
+import { createShippingInstruction, getRouteModalities, getShippingCategories } from "@/lib/actions/shipping-instructions";
 
 interface Agency {
   id: string;
@@ -30,6 +28,12 @@ interface Destination {
   id: string;
   city: string;
   country_code: string;
+}
+
+interface ModalityOption {
+  id: string;
+  name: string;
+  code: string;
 }
 
 interface WrPackage {
@@ -81,7 +85,6 @@ export function SiCreateForm({
 }: SiCreateFormProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
-  const [modality, setModality] = useState<Modality>("courier_a");
   const [agencyId, setAgencyId] = useState(agencies[0]?.id ?? "");
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [consigneeId, setConsigneeId] = useState(consignees[0]?.id ?? "");
@@ -91,20 +94,36 @@ export function SiCreateForm({
   const [cupo4x4, setCupo4x4] = useState(false);
   const [specialInstructions, setSpecialInstructions] = useState("");
 
+  // Modality state
+  const [availableModalities, setAvailableModalities] = useState<ModalityOption[]>([]);
+  const [modalityId, setModalityId] = useState("");
+
   // Shipping categories state
   const [shippingCategories, setShippingCategories] = useState<ShippingCategory[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
-  // Fetch categories when destination changes
+  // Fetch available modalities when destination changes
   useEffect(() => {
-    if (!destinationId) { setShippingCategories([]); setSelectedCategoryId(""); return; }
+    if (!destinationId) { setAvailableModalities([]); setModalityId(""); setShippingCategories([]); setSelectedCategoryId(""); return; }
+    getRouteModalities(destinationId).then((res) => {
+      const mods = res.data ?? [];
+      setAvailableModalities(mods);
+      setModalityId(mods.length === 1 ? mods[0]!.id : "");
+      setShippingCategories([]);
+      setSelectedCategoryId("");
+    });
+  }, [destinationId]);
+
+  // Fetch categories when modality changes
+  useEffect(() => {
+    if (!destinationId || !modalityId) { setShippingCategories([]); setSelectedCategoryId(""); return; }
     const dest = destinations.find((d) => d.id === destinationId);
     if (!dest) return;
-    getShippingCategories(dest.country_code).then((res) => {
+    getShippingCategories(dest.country_code, modalityId).then((res) => {
       if (res.data) setShippingCategories(res.data);
       setSelectedCategoryId("");
     });
-  }, [destinationId, destinations]);
+  }, [modalityId, destinationId, destinations]);
 
   // Auto-set cupo 4x4 and cedula/ruc requirements based on category
   const selectedCategory = shippingCategories.find((c) => c.id === selectedCategoryId);
@@ -132,11 +151,11 @@ export function SiCreateForm({
   const hasDgr = selectedWrData.some((wr) => wr.has_dgr_package === true);
 
   const handleSubmit = () => {
-    if (!selectedWrs.length || !agencyId || !consigneeId || !destinationId || !selectedCategoryId) return;
+    if (!selectedWrs.length || !agencyId || !consigneeId || !destinationId || !modalityId || !selectedCategoryId) return;
 
     startTransition(async () => {
       const fd = new FormData();
-      fd.set("modality", modality);
+      fd.set("modality_id", modalityId);
       fd.set("warehouse_id", warehouseId);
       fd.set("agency_id", agencyId);
       fd.set("consignee_id", consigneeId);
@@ -164,20 +183,6 @@ export function SiCreateForm({
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Modalidad</label>
-          <select
-            value={modality}
-            onChange={(e) => setModality(e.target.value as Modality)}
-            className={`mt-1 ${selectClass}`}
-          >
-            {MVP_MODALITIES.map((m) => (
-              <option key={m} value={m}>
-                {MODALITY_LABELS[m]}
-              </option>
-            ))}
-          </select>
-        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Bodega</label>
           <div className="mt-1">
@@ -212,6 +217,27 @@ export function SiCreateForm({
             />
           </div>
         </div>
+        {/* Modality selector — appears after destination is picked */}
+        {destinationId && availableModalities.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Modalidad <span className="text-red-400">*</span></label>
+            <select
+              value={modalityId}
+              onChange={(e) => setModalityId(e.target.value)}
+              className={`mt-1 ${selectClass}`}
+            >
+              {availableModalities.length > 1 && <option value="">Seleccionar modalidad...</option>}
+              {availableModalities.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {destinationId && availableModalities.length === 0 && (
+          <p className="text-sm text-amber-600 sm:col-span-2 lg:col-span-1">
+            No hay modalidades configuradas para este destino.
+          </p>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700">Consignatario</label>
           <div className="mt-1">
@@ -240,7 +266,7 @@ export function SiCreateForm({
       </div>
 
       {/* Shipping Category selector */}
-      {destinationId && shippingCategories.length > 0 && (
+      {modalityId && shippingCategories.length > 0 && (
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Categoría de Envío <span className="text-red-400">*</span>
@@ -309,9 +335,9 @@ export function SiCreateForm({
           )}
         </div>
       )}
-      {destinationId && shippingCategories.length === 0 && (
+      {modalityId && shippingCategories.length === 0 && (
         <p className="text-sm text-amber-600">
-          No hay categorías de envío configuradas para este destino. Configúralas en Ajustes → Categorías de Envío.
+          No hay categorías de envío configuradas para esta modalidad. Configúralas en Ajustes → Categorías de Envío.
         </p>
       )}
 
@@ -382,7 +408,7 @@ export function SiCreateForm({
       <div className="flex justify-end">
         <button
           onClick={handleSubmit}
-          disabled={isPending || !selectedWrs.length || !agencyId || !consigneeId || !selectedCategoryId}
+          disabled={isPending || !selectedWrs.length || !agencyId || !consigneeId || !modalityId || !selectedCategoryId}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
         >
           {isPending ? "Creando..." : "Crear Instrucción de Embarque"}

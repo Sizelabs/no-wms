@@ -25,7 +25,7 @@ export async function getShippingCategoriesList() {
 
   const { data, error } = await supabase
     .from("shipping_categories")
-    .select("*, shipping_category_required_documents(*)")
+    .select("*, modalities(id, name, code), shipping_category_required_documents(*)")
     .order("country_code")
     .order("display_order");
 
@@ -56,11 +56,15 @@ export async function createShippingCategory(formData: FormData): Promise<{ id: 
 
   if (!code || !name || !countryCode) return { error: "Código, nombre y país son requeridos" };
 
+  const modalityId = formData.get("modality_id") as string;
+  if (!modalityId) return { error: "Modalidad es requerida" };
+
   const { data, error } = await supabase
     .from("shipping_categories")
     .insert({
       organization_id: profile.organization_id,
       country_code: countryCode,
+      modality_id: modalityId,
       code,
       name,
       description: (formData.get("description") as string) || null,
@@ -112,7 +116,7 @@ export async function updateShippingCategory(id: string, formData: FormData): Pr
 
   const updates: Record<string, unknown> = {};
 
-  const fields = ["code", "name", "country_code", "description", "cargo_type", "customs_declaration_type"] as const;
+  const fields = ["code", "name", "country_code", "description", "cargo_type", "customs_declaration_type", "modality_id"] as const;
   for (const field of fields) {
     const val = formData.get(field) as string | null;
     if (val !== null) updates[field] = val || null;

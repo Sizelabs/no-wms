@@ -12,6 +12,7 @@ import { searchConsignees, quickCreateConsignee } from "@/lib/actions/consignees
 import {
   createShippingInstruction,
   getAgencyDestinations,
+  getRouteModalities,
   getShippingCategories,
 } from "@/lib/actions/shipping-instructions";
 
@@ -43,9 +44,13 @@ interface ShippingCategory {
 }
 interface ConsigneeResult { id: string; full_name: string; casillero: string | null; cedula_ruc: string | null; city: string | null }
 
+interface ModalityOption { id: string; name: string; code: string }
+
 export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId }: ShipFlowProps) {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [destinationId, setDestinationId] = useState("");
+  const [availableModalities, setAvailableModalities] = useState<ModalityOption[]>([]);
+  const [modalityId, setModalityId] = useState("");
   const [categories, setCategories] = useState<ShippingCategory[]>([]);
   const [categoryCode, setCategoryCode] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -86,11 +91,21 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
   }, [agencyId]);
 
   useEffect(() => {
-    if (!destinationId) { setCategories([]); setCategoryCode(""); setSelectedCategoryId(""); return; }
+    if (!destinationId) { setAvailableModalities([]); setModalityId(""); setCategories([]); setCategoryCode(""); setSelectedCategoryId(""); return; }
+    getRouteModalities(destinationId).then((res) => {
+      const mods = res.data ?? [];
+      setAvailableModalities(mods);
+      setModalityId(mods.length === 1 ? mods[0]!.id : "");
+      setCategories([]); setCategoryCode(""); setSelectedCategoryId("");
+    });
+  }, [destinationId]);
+
+  useEffect(() => {
+    if (!destinationId || !modalityId) { setCategories([]); setCategoryCode(""); setSelectedCategoryId(""); return; }
     const dest = destinations.find((d) => d.id === destinationId);
     if (!dest) return;
-    getShippingCategories(dest.country_code).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); setSelectedCategoryId(""); });
-  }, [destinationId, destinations]);
+    getShippingCategories(dest.country_code, modalityId).then((res) => { if (res.data) setCategories(res.data); setCategoryCode(""); setSelectedCategoryId(""); });
+  }, [modalityId, destinationId, destinations]);
 
   const handleConsigneeSearch = useCallback((query: string) => {
     setConsigneeQuery(query);
@@ -126,7 +141,7 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
     }
   }, [agencyId, newConsigneeName, notify]);
 
-  const canSubmit = destinationId !== "" && selectedConsignee !== null && selectedCategoryId !== "";
+  const canSubmit = destinationId !== "" && modalityId !== "" && selectedConsignee !== null && selectedCategoryId !== "";
 
   function handleSubmit() {
     if (!selectedConsignee) return;
@@ -137,7 +152,7 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
       fd.set("agency_id", agencyId);
       fd.set("destination_id", destinationId);
       fd.set("destination_city", dest?.city ?? "");
-      fd.set("modality", categoryCode ? `courier_${categoryCode.toLowerCase()}` : "air_cargo");
+      fd.set("modality_id", modalityId);
       if (categoryCode) fd.set("courier_category", categoryCode);
       if (selectedCategoryId) fd.set("shipping_category_id", selectedCategoryId);
       fd.set("consignee_id", selectedConsignee.id);
@@ -183,7 +198,21 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
             required
           />
         </Field>
-        {destinationId && categories.length > 0 && (
+        {destinationId && availableModalities.length > 0 && (
+          <Field label="Modalidad" required>
+            <select
+              value={modalityId}
+              onChange={(e) => setModalityId(e.target.value)}
+              className={selectClass}
+            >
+              {availableModalities.length > 1 && <option value="">Seleccionar modalidad...</option>}
+              {availableModalities.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {modalityId && categories.length > 0 && (
           <Field label="Categoría de envío" required>
             <select
               value={selectedCategoryId}
@@ -203,9 +232,9 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
             </select>
           </Field>
         )}
-        {destinationId && categories.length === 0 && (
+        {modalityId && categories.length === 0 && (
           <p className="text-xs text-amber-600">
-            No hay categorías de envío configuradas para este destino. Configúralas en Ajustes → Categorías de Envío.
+            No hay categorías de envío configuradas para esta modalidad. Configúralas en Ajustes → Categorías de Envío.
           </p>
         )}
       </fieldset>

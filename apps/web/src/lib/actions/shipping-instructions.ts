@@ -168,7 +168,8 @@ export async function createShippingInstruction(formData: FormData): Promise<{ i
       si_number: siNumber,
       agency_id: formData.get("agency_id") as string,
       destination_id: formData.get("destination_id") as string,
-      modality: formData.get("modality") as string,
+      modality: (formData.get("modality") as string) || null,
+      modality_id: (formData.get("modality_id") as string) || null,
       courier_category: (formData.get("courier_category") as string) || null,
       shipping_category_id: shippingCategoryId || null,
       category_snapshot: categorySnapshot,
@@ -276,7 +277,7 @@ export async function getShippingInstructions(filters?: {
 
   let query = supabase
     .from("shipping_instructions")
-    .select("*, agencies(name, code), consignees(full_name), hawbs(id, hawb_number, document_type), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
+    .select("*, agencies(name, code), consignees(full_name), hawbs(id, hawb_number, document_type), modalities(id, name, code), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
     .order("created_at", { ascending: false });
 
   if (warehouseScope !== null) {
@@ -304,7 +305,7 @@ export async function getShippingInstruction(id: string) {
 
   const { data, error } = await supabase
     .from("shipping_instructions")
-    .select("*, agencies(name, code), consignees(full_name), hawbs(*), shipping_categories(code, name), shipping_instruction_documents(*), shipping_instruction_items(*, warehouse_receipts(wr_number, total_billable_weight_lb, packages(tracking_number, carrier)))")
+    .select("*, agencies(name, code), consignees(full_name), hawbs(*), modalities(id, name, code), shipping_categories(code, name), shipping_instruction_documents(*), shipping_instruction_items(*, warehouse_receipts(wr_number, total_billable_weight_lb, packages(tracking_number, carrier)))")
     .eq("id", id)
     .single();
 
@@ -397,15 +398,7 @@ export async function rejectShippingInstruction(id: string, reason: string): Pro
   return {};
 }
 
-/** Derive house bill document_type from SI modality */
-function getDocumentType(modality: string): "hawb" | "hbl" | "hwb" {
-  if (modality === "lcl" || modality === "fcl") return "hbl";
-  if (modality === "terrestre") return "hwb";
-  // courier_a–g, air_cargo, and any other → hawb
-  return "hawb";
-}
-
-export async function finalizeShippingInstruction(id: string): Promise<{ hawb_number?: string; error?: string }> {
+export async function finalizeShippingInstruction(id: string): Promise<{ error?: string }> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -413,55 +406,19 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
 
   const { data: si } = await supabase
     .from("shipping_instructions")
-    .select("status, organization_id, modality, shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
+    .select("status, organization_id, shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
     .eq("id", id)
     .single();
 
   if (!si) return { error: "SI no encontrada" };
   if (si.status !== "approved") return { error: "Solo se pueden finalizar SIs aprobadas" };
 
-  // Derive document type from SI modality
-  const documentType = getDocumentType(si.modality ?? "");
-
-  // Generate house bill number via type-aware function
-  const { data: hawbNumber } = await supabase.rpc("next_house_bill_number", {
-    p_org_id: si.organization_id,
-    p_doc_type: documentType,
-  });
-
-  if (!hawbNumber) return { error: "No se pudo generar número de documento" };
-
   // Calculate totals from items
   const items = si.shipping_instruction_items ?? [];
   const totalPieces = items.length;
   const totalWeight = items.reduce((sum: number, i: any) => sum + (i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0);
 
-  // Create house bill (hawb table handles all document types)
-  const { data: hawb } = await supabase
-    .from("hawbs")
-    .insert({
-      organization_id: si.organization_id,
-      shipping_instruction_id: id,
-      hawb_number: hawbNumber,
-      document_type: documentType,
-      pieces: totalPieces,
-      weight_lb: totalWeight,
-    })
-    .select("id")
-    .single();
-
-  // Set hawb_id on all WRs in this SI
-  if (hawb) {
-    const wrIds = items.map((i: any) => i.warehouse_receipt_id).filter(Boolean) as string[];
-    if (wrIds.length) {
-      await supabase
-        .from("warehouse_receipts")
-        .update({ hawb_id: hawb.id })
-        .in("id", wrIds);
-    }
-  }
-
-  // Update SI totals and status
+  // Update SI totals and status (HAWB generated later when assigned to shipment)
   await supabase
     .from("shipping_instructions")
     .update({
@@ -480,7 +437,7 @@ export async function finalizeShippingInstruction(id: string): Promise<{ hawb_nu
   });
 
   revalidatePath("/shipping-instructions");
-  return { hawb_number: hawbNumber as string };
+  return {};
 }
 
 export async function getDestinations() {
@@ -496,44 +453,88 @@ export async function getDestinations() {
   return { data, error: null };
 }
 
-/** Active destinations served by at least one courier. */
+/** Active destinations served by at least one courier, with available modalities. */
 export async function getAgencyDestinations(_agencyId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("destinations")
-    .select("id, city, state, country_code, courier_destinations!inner(courier_id)")
+    .select("id, city, state, country_code, courier_destinations!inner(courier_id, modality_id, modalities(id, name, code))")
     .eq("is_active", true)
     .eq("courier_destinations.is_active", true)
     .order("city");
 
   if (error) return { data: null, error: error.message };
 
-  // Strip join artifacts and deduplicate
-  const seen = new Set<string>();
-  const destinations = (data ?? [])
-    .filter((d) => {
-      if (seen.has(d.id)) return false;
-      seen.add(d.id);
-      return true;
-    })
-    .map(({ id, city, state, country_code }) => ({ id, city, state, country_code }));
+  // Deduplicate destinations and collect distinct modalities per destination
+  const destMap = new Map<string, {
+    id: string;
+    city: string;
+    state: string | null;
+    country_code: string;
+    modalities: { id: string; name: string; code: string }[];
+  }>();
 
-  return { data: destinations, error: null };
+  for (const d of data ?? []) {
+    if (!destMap.has(d.id)) {
+      destMap.set(d.id, { id: d.id, city: d.city, state: d.state, country_code: d.country_code, modalities: [] });
+    }
+    const dest = destMap.get(d.id)!;
+    const cds = d.courier_destinations as unknown as Array<{ modality_id: string; modalities: { id: string; name: string; code: string } | null }>;
+    for (const cd of cds) {
+      if (cd.modalities && !dest.modalities.some((m) => m.id === cd.modalities!.id)) {
+        dest.modalities.push(cd.modalities);
+      }
+    }
+  }
+
+  return { data: Array.from(destMap.values()), error: null };
 }
 
-export async function getShippingCategories(countryCode: string) {
+export async function getShippingCategories(countryCode: string, modalityId?: string) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("shipping_categories")
     .select("*, shipping_category_required_documents(*)")
     .eq("country_code", countryCode)
     .eq("is_active", true)
     .order("display_order");
 
+  if (modalityId) {
+    query = query.eq("modality_id", modalityId);
+  }
+
+  const { data, error } = await query;
+
   if (error) return { data: null, error: error.message };
   return { data, error: null };
+}
+
+/** Fetch distinct modalities available for a destination (from courier_destinations). */
+export async function getRouteModalities(destinationId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("courier_destinations")
+    .select("modality_id, modalities(id, name, code)")
+    .eq("destination_id", destinationId)
+    .eq("is_active", true);
+
+  if (error) return { data: null, error: error.message };
+
+  // Deduplicate by modality_id
+  const seen = new Set<string>();
+  const modalities = (data ?? [])
+    .filter((d) => {
+      if (!d.modality_id || seen.has(d.modality_id)) return false;
+      seen.add(d.modality_id);
+      return true;
+    })
+    .map((d) => d.modalities as unknown as { id: string; name: string; code: string })
+    .filter(Boolean);
+
+  return { data: modalities, error: null };
 }
 
 /** @deprecated Use getShippingCategories instead */
@@ -627,6 +628,110 @@ export async function getShippingDocsForWarehouseReceipt(wrId: string) {
     shippingInstruction: siResult.data as { id: string; si_number: string; status: string } | null,
     shipment: shipmentResult.data as { id: string; shipment_number: string; modality: string; status: string } | null,
   };
+}
+
+export async function getHawbForPrint(siId: string) {
+  const supabase = await createClient();
+
+  // Get user's org ID
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .limit(1)
+    .single();
+
+  const orgId = profile?.organization_id;
+  if (!orgId) return { data: null };
+
+  // Fetch SI with full relations needed for the HAWB document
+  const { data: si, error } = await supabase
+    .from("shipping_instructions")
+    .select(`
+      *,
+      agencies(id, name, code, type, courier_id, ruc, address, phone, email,
+        couriers(name, code, ruc, address, city, country, phone, email)
+      ),
+      consignees(full_name, casillero, cedula_ruc, address_line1, address_line2, city, province, postal_code, phone, email),
+      destinations(id, city, country_code),
+      hawbs(*),
+      modalities(id, name, code),
+      shipping_categories(code, name),
+      warehouses(name, code, city, country, full_address, phone, email),
+      shipping_instruction_items(
+        warehouse_receipt_id,
+        warehouse_receipts(
+          wr_number,
+          total_actual_weight_lb,
+          total_billable_weight_lb,
+          total_packages,
+          total_pieces,
+          content_description,
+          has_dgr_package,
+          packages(tracking_number, carrier, package_type, pieces_count, actual_weight_lb, billable_weight_lb, length_in, width_in, height_in, is_dgr, dgr_class)
+        )
+      )
+    `)
+    .eq("id", siId)
+    .single();
+
+  if (error || !si) return { data: null };
+
+  // Fetch shipment data separately for any HAWB that has a shipment_id
+  const hawbs = (si.hawbs ?? []) as Array<Record<string, unknown>>;
+  const shipmentIds = hawbs.map((h) => h.shipment_id).filter(Boolean) as string[];
+  let shipmentsMap: Record<string, { id: string; shipment_number: string; modality: string | null; status: string; carrier_name: string | null; flight_number: string | null; departure_date: string | null; departure_airport: string | null; arrival_airport: string | null; awb_number: string | null }> = {};
+
+  if (shipmentIds.length > 0) {
+    const { data: shipments } = await supabase
+      .from("shipments")
+      .select("id, shipment_number, modality, status, flight_number, departure_date, departure_airport, arrival_airport, awb_number, carrier_id, carriers(name)")
+      .in("id", shipmentIds);
+
+    for (const s of shipments ?? []) {
+      const carrier = s.carriers as unknown as { name: string } | { name: string }[] | null;
+      const carrierName = carrier ? (Array.isArray(carrier) ? carrier[0]?.name : carrier.name) : null;
+      shipmentsMap[s.id] = {
+        id: s.id,
+        shipment_number: s.shipment_number,
+        modality: s.modality,
+        status: s.status,
+        carrier_name: carrierName ?? null,
+        flight_number: s.flight_number,
+        departure_date: s.departure_date,
+        departure_airport: s.departure_airport ?? null,
+        arrival_airport: s.arrival_airport ?? null,
+        awb_number: s.awb_number ?? null,
+      };
+    }
+  }
+
+  // Attach shipment data to hawbs
+  for (const h of hawbs) {
+    (h as any).shipments = h.shipment_id ? shipmentsMap[(h as any).shipment_id] ?? null : null;
+  }
+
+  // Fetch settings and org info in parallel
+  const settingKeys = [
+    "hawb_iata_code",
+    "hawb_account_no",
+    "hawb_airport_name",
+    "hawb_shipper_account",
+  ] as const;
+
+  const [settingsResults, orgResult] = await Promise.all([
+    Promise.all(
+      settingKeys.map((key) =>
+        supabase.rpc("resolve_setting", { p_org_id: orgId, p_key: key }).then((r) => [key, r.data] as const),
+      ),
+    ),
+    supabase.from("organizations").select("name, logo_url, slug").eq("id", orgId).single(),
+  ]);
+
+  const settings = Object.fromEntries(
+    settingsResults.map(([key, val]) => [key, val != null ? String(val).replace(/^"|"$/g, "") : ""]),
+  );
+
+  return { data: si, settings, org: orgResult.data };
 }
 
 export async function addAdditionalCharges(

@@ -13,8 +13,9 @@ export async function getCouriers() {
   let query = supabase
     .from("couriers")
     .select(`*, courier_destinations(
-      id, destination_id, is_active,
-      destinations(city, state, country_code)
+      id, destination_id, modality_id, is_active,
+      destinations(city, state, country_code),
+      modalities(id, name, code)
     )`)
     .order("name");
 
@@ -43,8 +44,9 @@ export async function getCourier(id: string) {
   const { data, error } = await supabase
     .from("couriers")
     .select(`*, courier_destinations(
-      id, destination_id, is_active,
-      destinations(city, state, country_code)
+      id, destination_id, modality_id, is_active,
+      destinations(city, state, country_code),
+      modalities(id, name, code)
     ), agencies(id, name, code, type, is_active)`)
     .eq("id", id)
     .single();
@@ -176,6 +178,7 @@ export async function deleteCourier(id: string): Promise<{ error: string } | nul
 export async function upsertCourierDestination(
   courierId: string,
   destinationId: string,
+  modalityId: string,
   organizationId: string,
   isActive: boolean,
 ): Promise<void> {
@@ -188,9 +191,10 @@ export async function upsertCourierDestination(
         organization_id: organizationId,
         courier_id: courierId,
         destination_id: destinationId,
+        modality_id: modalityId,
         is_active: isActive,
       },
-      { onConflict: "courier_id,destination_id" },
+      { onConflict: "courier_id,destination_id,modality_id" },
     );
 
   if (error) {

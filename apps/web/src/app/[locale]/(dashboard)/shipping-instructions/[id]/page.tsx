@@ -56,7 +56,7 @@ export default async function ShippingDetailPage({
           </span>
         </InfoCard>
         <InfoCard label="Modalidad / Categoría">
-          {si.modality}
+          {(si as any).modalities?.name ?? si.modality}
           {si.category_snapshot ? ` — Cat ${(si.category_snapshot as { code: string }).code}: ${(si.category_snapshot as { name: string }).name}` : si.courier_category ? ` — Cat ${si.courier_category}` : ""}
         </InfoCard>
         <InfoCard label="Agencia">
@@ -132,11 +132,20 @@ export default async function ShippingDetailPage({
           {si.hawbs && (si.hawbs as Array<{ id: string; hawb_number: string; pieces: number; weight_lb: number }>).length > 0 && (
             <Section title="HAWBs">
               {(si.hawbs as Array<{ id: string; hawb_number: string; pieces: number; weight_lb: number }>).map((hawb) => (
-                <div key={hawb.id} className="rounded-md border p-2 text-sm">
-                  <span className="font-mono font-medium">{hawb.hawb_number}</span>
-                  <span className="ml-2 text-xs text-gray-500">
-                    {hawb.pieces} pzs • {hawb.weight_lb?.toFixed(1)} lb
-                  </span>
+                <div key={hawb.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
+                  <div>
+                    <span className="font-mono font-medium">{hawb.hawb_number}</span>
+                    <span className="ml-2 text-xs text-gray-500">
+                      {hawb.pieces} pzs • {hawb.weight_lb?.toFixed(1)} lb
+                    </span>
+                  </div>
+                  <Link
+                    href={`/${locale}/shipping-instructions/${id}/hawb/print`}
+                    target="_blank"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    Imprimir HAWB
+                  </Link>
                 </div>
               ))}
             </Section>

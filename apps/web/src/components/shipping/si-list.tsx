@@ -1,6 +1,5 @@
 "use client";
 
-import { MODALITY_LABELS } from "@no-wms/shared/constants/modalities";
 import { FORWARDER_SIDE_ROLES, ROLES } from "@no-wms/shared/constants/roles";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useTranslations } from "next-intl";
@@ -29,6 +28,7 @@ interface ShippingInstruction {
   id: string;
   si_number: string;
   modality: string;
+  modalities: { id: string; name: string; code: string } | null;
   status: string;
   total_pieces: number | null;
   total_billable_weight_lb: number | null;
@@ -109,9 +109,21 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
     si.status === "requested" || (si.status === "approved" && isForwarderSide)
   );
 
-  // Only SIs with hawbs can be selected
+  // Build unique modality filter options from data
+  const uniqueModalities = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const si of data) {
+      const key = si.modalities?.code ?? si.modality;
+      if (key && !seen.has(key)) {
+        seen.set(key, si.modalities?.name ?? si.modality);
+      }
+    }
+    return Array.from(seen.entries()).map(([value, label]) => ({ value, label }));
+  }, [data]);
+
+  // Finalized SIs without HAWBs can be selected for shipment creation
   const selectableIds = useMemo(
-    () => new Set(data.filter((si) => si.hawbs.length > 0).map((si) => si.id)),
+    () => new Set(data.filter((si) => si.status === "finalized" && si.hawbs.length === 0).map((si) => si.id)),
     [data],
   );
 
@@ -127,7 +139,10 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
       if (!matches) return false;
     }
     if (filter.status.length > 0 && !filter.status.includes(si.status)) return false;
-    if (filter.modality.length > 0 && !filter.modality.includes(si.modality)) return false;
+    if (filter.modality.length > 0) {
+      const siModalityCode = si.modalities?.code ?? si.modality;
+      if (!filter.modality.includes(siModalityCode)) return false;
+    }
     return true;
   });
 
@@ -150,11 +165,11 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
     }
   }, [allSelectableSelected, selectableFiltered]);
 
-  // Collect house bills from selected SIs
-  const selectedHouseBills = useMemo(() => {
+  // Collect selected SIs for shipment creation
+  const selectedSIs = useMemo(() => {
     return data
       .filter((si) => selected.has(si.id))
-      .flatMap((si) => si.hawbs);
+      .map((si) => ({ id: si.id, si_number: si.si_number, modality_code: si.modalities?.code ?? si.modality }));
   }, [data, selected]);
 
   const activeFilterCount = [filter.modality].filter((f) => f.length > 0).length;
@@ -180,10 +195,10 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
   const handleFinalize = (id: string) => {
     startTransition(async () => {
       const result = await finalizeShippingInstruction(id);
-      if (result.hawb_number) {
-        notify(`HAWB: ${result.hawb_number}`, "success");
-      } else if (result.error) {
+      if (result.error) {
         notify(result.error, "error");
+      } else {
+        notify(t("finalizedSuccess"), "success");
       }
     });
   };
@@ -222,7 +237,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
         <div className="flex flex-wrap gap-2 rounded-md border bg-gray-50 p-3">
           <MultiSelectFilter
             label="Todas las modalidades"
-            options={Object.entries(MODALITY_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+            options={uniqueModalities}
             selected={filter.modality}
             onChange={(v) => setFilter((f) => ({ ...f, modality: v }))}
           />
@@ -302,7 +317,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
                     </Link>
                   </td>
                   <td className="px-3 py-2.5 text-xs">
-                    {MODALITY_LABELS[si.modality as keyof typeof MODALITY_LABELS] ?? si.modality}
+                    {si.modalities?.name ?? si.modality}
                   </td>
                   <td className="px-3 py-2.5 text-xs">
                     {si.agencies ? `${si.agencies.name} (${si.agencies.code})` : "—"}
@@ -351,7 +366,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
                           disabled={isPending}
                           className="rounded border px-2 py-0.5 text-xs text-purple-700 hover:bg-purple-50"
                         >
-                          {t("finalize")} (HAWB)
+                          {t("finalize")}
                         </button>
                       )}
                     </div>
@@ -375,7 +390,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
       {selected.size > 0 && <div className="h-16" />}
 
       <SiActionBar
-        selectedHouseBills={selectedHouseBills}
+        selectedSIs={selectedSIs}
         onClearSelection={() => setSelected(new Set())}
         warehouses={warehouses}
         destinations={destinations}

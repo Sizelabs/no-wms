@@ -16,8 +16,10 @@ import { deleteCourier, upsertCourierDestination } from "@/lib/actions/couriers"
 interface CourierDestination {
   id: string;
   destination_id: string;
+  modality_id: string;
   is_active: boolean;
   destinations: { city: string; state: string | null; country_code: string } | null;
+  modalities: { id: string; name: string; code: string } | null;
 }
 
 interface TariffSchedule {
@@ -300,7 +302,7 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
               <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
                 <th className="px-4 py-3">Destino</th>
                 <th className="px-4 py-3">País</th>
-                <th className="px-4 py-3 text-center">Activo</th>
+                <th className="px-4 py-3 text-center">Modalidades</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -312,10 +314,16 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
                 </tr>
               ) : (
                 destinations.map((dest) => {
-                  const cd = courier.courier_destinations?.find(
-                    (c) => c.destination_id === dest.id,
-                  );
-                  const isEnabled = cd?.is_active ?? false;
+                  // Get distinct modalities from courier_destinations for this courier
+                  const allModalities = courier.courier_destinations
+                    ?.filter((cd) => cd.modalities)
+                    .reduce<Map<string, { id: string; name: string; code: string }>>((acc, cd) => {
+                      if (cd.modalities && !acc.has(cd.modalities.id)) {
+                        acc.set(cd.modalities.id, cd.modalities);
+                      }
+                      return acc;
+                    }, new Map()) ?? new Map();
+                  const modalityList = Array.from(allModalities.values());
 
                   return (
                     <tr key={dest.id} className="hover:bg-gray-50">
@@ -323,36 +331,44 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
                         {dest.city}{dest.state ? `, ${dest.state}` : ""}
                       </td>
                       <td className="px-4 py-3 text-gray-500">{dest.country_code}</td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={isEnabled}
-                          onClick={() => {
-                            startTransition(async () => {
-                              try {
-                                await upsertCourierDestination(
-                                  courier.id,
-                                  dest.id,
-                                  courier.organization_id,
-                                  !isEnabled,
-                                );
-                                notify(!isEnabled ? "Cobertura activada" : "Cobertura desactivada", "success");
-                              } catch {
-                                notify("Error al actualizar cobertura", "error");
-                              }
-                            });
-                          }}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                            isEnabled ? "bg-green-600" : "bg-gray-300"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                              isEnabled ? "translate-x-4.5" : "translate-x-0.5"
-                            }`}
-                          />
-                        </button>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {modalityList.map((mod) => {
+                            const cd = courier.courier_destinations?.find(
+                              (c) => c.destination_id === dest.id && c.modality_id === mod.id,
+                            );
+                            const isEnabled = cd?.is_active ?? false;
+                            return (
+                              <label
+                                key={mod.id}
+                                className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer select-none"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isEnabled}
+                                  onChange={() => {
+                                    startTransition(async () => {
+                                      try {
+                                        await upsertCourierDestination(
+                                          courier.id,
+                                          dest.id,
+                                          mod.id,
+                                          courier.organization_id,
+                                          !isEnabled,
+                                        );
+                                        notify(!isEnabled ? "Cobertura activada" : "Cobertura desactivada", "success");
+                                      } catch {
+                                        notify("Error al actualizar cobertura", "error");
+                                      }
+                                    });
+                                  }}
+                                  className="h-3.5 w-3.5 rounded border-gray-300"
+                                />
+                                {mod.name}
+                              </label>
+                            );
+                          })}
+                        </div>
                       </td>
                     </tr>
                   );
