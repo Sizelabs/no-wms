@@ -48,7 +48,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
   const [isPending, startTransition] = useTransition();
   const { notify } = useNotification();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState({ status: [] as string[], type: [] as string[] });
+  const [filter, setFilter] = useState({ status: ["requested", "approved", "in_progress"] as string[], type: [] as string[] });
   const [showFilters, setShowFilters] = useState(false);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
