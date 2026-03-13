@@ -199,7 +199,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
                     <td className="px-3 py-2.5">
                       {nextStatus && (
                         <button
-                          onClick={() => handleAdvance(s.id, s.modality, s.status)}
+                          onClick={(e) => { e.stopPropagation(); handleAdvance(s.id, s.modality, s.status); }}
                           disabled={isPending}
                           className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                         >
@@ -214,6 +214,13 @@ export function ShipmentList({ data }: ShipmentListProps) {
           />
         </table>
       </div>
+
+      <ShipmentDetailSheet
+        open={sheetOpen}
+        onClose={() => { setSheetOpen(false); setSheetData(null); }}
+        shipment={sheetData}
+        loading={sheetLoading}
+      />
     </div>
   );
 }
