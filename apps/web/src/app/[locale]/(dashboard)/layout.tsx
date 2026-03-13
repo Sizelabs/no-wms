@@ -57,7 +57,17 @@ export default async function DashboardLayout({
   const userEmail = user.email ?? "";
 
   const orgs = profile?.organizations as unknown as { name: string } | { name: string }[] | null;
-  const orgName = Array.isArray(orgs) ? (orgs[0]?.name ?? "") : (orgs?.name ?? "");
+  let orgName = Array.isArray(orgs) ? (orgs[0]?.name ?? "") : (orgs?.name ?? "");
+
+  // Agency users should see their agency name, not the forwarder's org name
+  if (primaryRole === "agency" && agencyIds && agencyIds.length > 0) {
+    const { data: agency } = await supabase
+      .from("agencies")
+      .select("name")
+      .eq("id", agencyIds[0])
+      .single();
+    if (agency?.name) orgName = agency.name;
+  }
   const defaultCollapsed = cookieStore.get("sidebar-collapsed")?.value === "true";
 
   return (
