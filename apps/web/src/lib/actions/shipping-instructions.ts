@@ -642,10 +642,7 @@ export async function getHawbForPrint(siId: string) {
     .single();
 
   const orgId = profile?.organization_id;
-  if (!orgId) {
-    console.error("[getHawbForPrint] No orgId found in profile");
-    return { data: null };
-  }
+  if (!orgId) return { data: null };
 
   // Fetch SI with full relations needed for the HAWB document
   const { data: si, error } = await supabase
@@ -669,19 +666,15 @@ export async function getHawbForPrint(siId: string) {
           total_billable_weight_lb,
           total_packages,
           total_pieces,
-          content_description,
           has_dgr_package,
-          packages(tracking_number, carrier, package_type, pieces_count, actual_weight_lb, billable_weight_lb, length_in, width_in, height_in, is_dgr, dgr_class)
+          packages(tracking_number, carrier, package_type, pieces_count, actual_weight_lb, billable_weight_lb, length_in, width_in, height_in, is_dgr, dgr_class, content_description)
         )
       )
     `)
     .eq("id", siId)
     .single();
 
-  if (error || !si) {
-    console.error("[getHawbForPrint] SI query failed:", error?.message ?? "no data");
-    return { data: null };
-  }
+  if (error || !si) return { data: null };
 
   // Fetch shipment data separately for any HAWB that has a shipment_id
   const hawbs = (si.hawbs ?? []) as Array<Record<string, unknown>>;

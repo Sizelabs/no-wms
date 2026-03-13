@@ -62,6 +62,7 @@ interface WrPackage {
   height_in: number | null;
   is_dgr: boolean;
   dgr_class: string | null;
+  content_description: string | null;
 }
 
 interface SiItem {
@@ -72,7 +73,6 @@ interface SiItem {
     total_billable_weight_lb: number | null;
     total_packages: number | null;
     total_pieces: number | null;
-    content_description: string | null;
     has_dgr_package: boolean;
     packages: WrPackage[] | null;
   } | null;
@@ -203,9 +203,9 @@ function buildGoodsDescription(items: SiItem[]): string {
   for (const item of items) {
     const wr = item.warehouse_receipts;
     if (!wr) continue;
-    if (wr.content_description) descriptions.push(wr.content_description);
     totalPackages += wr.total_packages ?? wr.packages?.length ?? 0;
     for (const pkg of wr.packages ?? []) {
+      if (pkg.content_description) descriptions.push(pkg.content_description);
       if (pkg.package_type) packageTypes.add(pkg.package_type);
     }
   }
