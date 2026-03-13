@@ -302,7 +302,7 @@
     "rejectionReason": "Razón de rechazo",
     "approvedSuccess": "Instrucción aprobada",
     "rejectedSuccess": "Instrucción rechazada",
-    "finalizedSuccess": "Instrucción finalizada — HAWB generado",
+    "finalizedSuccess": "Instrucción finalizada",
     "actions": "Acciones"
   },
   "reports": {

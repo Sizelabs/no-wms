@@ -295,7 +295,7 @@
     "rejectionReason": "Rejection reason",
     "approvedSuccess": "Instruction approved",
     "rejectedSuccess": "Instruction rejected",
-    "finalizedSuccess": "Instruction finalized — HAWB generated",
+    "finalizedSuccess": "Instruction finalized",
     "actions": "Actions"
   },
   "reports": {
