@@ -1,0 +1,284 @@
+"use client";
+
+import type { ShipmentModality, ShipmentStatus } from "@no-wms/shared/constants/statuses";
+
+import { SHIPMENT_STATUS_FLOW, SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useTransition } from "react";
+
+import { useNotification } from "@/components/layout/notification";
+import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
+import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
+import { updateShipmentStatus } from "@/lib/actions/shipments";
+
+const MODALITY_LABELS: Record<string, string> = {
+  air: "Aereo",
+  ocean: "Maritimo",
+  ground: "Terrestre",
+};
+
+interface HouseBill {
+  id: string;
+  hawb_number: string;
+  document_type: string;
+  pieces: number | null;
+  weight_lb: number | null;
+  shipping_instructions: {
+    si_number: string;
+    agency_id: string;
+    agencies: { name: string; code: string } | null;
+  } | null;
+}
+
+interface Container {
+  id: string;
+  container_number: string;
+  seal_number: string | null;
+  container_type: string;
+}
+
+export interface ShipmentSheetData {
+  id: string;
+  shipment_number: string;
+  modality: string;
+  status: string;
+  carriers: { name: string; code: string } | null;
+  destinations: { city: string; country_code: string } | null;
+  agencies: { name: string; code: string } | null;
+  shipper_name: string | null;
+  consignee_name: string | null;
+  total_pieces: number | null;
+  total_weight_lb: number | null;
+  notes: string | null;
+  awb_number: string | null;
+  booking_number: string | null;
+  flight_number: string | null;
+  departure_airport: string | null;
+  arrival_airport: string | null;
+  departure_date: string | null;
+  arrival_date: string | null;
+  bol_number: string | null;
+  port_of_loading: string | null;
+  vessel_name: string | null;
+  voyage_id: string | null;
+  port_of_unloading: string | null;
+  freight_terms: string | null;
+  route_number: string | null;
+  origin_terminal: string | null;
+  destination_terminal: string | null;
+  truck_plate: string | null;
+  driver_name: string | null;
+  driver_phone: string | null;
+  hawbs: HouseBill[];
+  shipment_containers: Container[];
+}
+
+function InfoField({ label, value }: { label: string; value: string | number | null | undefined }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-sm">{value}</p>
+    </div>
+  );
+}
+
+interface ShipmentDetailSheetProps {
+  open: boolean;
+  onClose: () => void;
+  shipment: ShipmentSheetData | null;
+  loading?: boolean;
+}
+
+export function ShipmentDetailSheet({ open, onClose, shipment, loading }: ShipmentDetailSheetProps) {
+  const { locale } = useParams<{ locale: string }>();
+  const { notify } = useNotification();
+  const [isPending, startTransition] = useTransition();
+
+  const flow = shipment ? SHIPMENT_STATUS_FLOW[shipment.modality as ShipmentModality] : undefined;
+  const nextStatus = shipment && flow ? flow[shipment.status as ShipmentStatus] : undefined;
+
+  const handleAdvance = () => {
+    if (!shipment || !nextStatus) return;
+    startTransition(async () => {
+      const res = await updateShipmentStatus(shipment.id, nextStatus);
+      if (res.error) {
+        notify(res.error, "error");
+      } else {
+        notify(`Embarque actualizado a ${SHIPMENT_STATUS_LABELS[nextStatus] ?? nextStatus}`, "success");
+      }
+    });
+  };
+
+  return (
+    <Sheet open={open} onClose={onClose}>
+      <SheetHeader onClose={onClose}>
+        {loading ? "Cargando..." : shipment ? `Embarque ${shipment.shipment_number}` : "Detalle"}
+      </SheetHeader>
+      <SheetBody>
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="size-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+          </div>
+        )}
+
+        {!loading && shipment && (
+          <div className="space-y-5">
+            {/* Status + actions bar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <ShipmentStatusBadge status={shipment.status} />
+                <span className="text-sm text-gray-500">
+                  {MODALITY_LABELS[shipment.modality] ?? shipment.modality}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {nextStatus && (
+                  <button
+                    onClick={handleAdvance}
+                    disabled={isPending}
+                    className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {isPending ? "..." : `Avanzar a: ${SHIPMENT_STATUS_LABELS[nextStatus] ?? nextStatus}`}
+                  </button>
+                )}
+                <Link
+                  href={`/${locale}/shipments/${shipment.id}`}
+                  onClick={onClose}
+                  className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Abrir pagina completa
+                </Link>
+              </div>
+            </div>
+
+            {/* Common fields */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InfoField label="Transportista" value={shipment.carriers?.name} />
+              <InfoField label="Destino" value={shipment.destinations ? `${shipment.destinations.city} (${shipment.destinations.country_code})` : null} />
+              <InfoField label="Agente destino" value={shipment.agencies?.name} />
+              <InfoField label="Remitente" value={shipment.shipper_name} />
+              <InfoField label="Consignatario" value={shipment.consignee_name} />
+              <InfoField label="Piezas" value={shipment.total_pieces} />
+              <InfoField label="Peso" value={shipment.total_weight_lb ? `${shipment.total_weight_lb} lb` : null} />
+            </div>
+
+            {/* Air fields */}
+            {shipment.modality === "air" && (
+              <div className="border-t pt-4">
+                <h3 className="mb-3 text-sm font-medium text-gray-900">Datos Aereos</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <InfoField label="AWB" value={shipment.awb_number} />
+                  <InfoField label="Booking" value={shipment.booking_number} />
+                  <InfoField label="Vuelo" value={shipment.flight_number} />
+                  <InfoField label="Aeropuerto origen" value={shipment.departure_airport} />
+                  <InfoField label="Aeropuerto destino" value={shipment.arrival_airport} />
+                  <InfoField label="Fecha salida" value={shipment.departure_date} />
+                  <InfoField label="Fecha llegada" value={shipment.arrival_date} />
+                </div>
+              </div>
+            )}
+
+            {/* Ocean fields */}
+            {shipment.modality === "ocean" && (
+              <div className="border-t pt-4">
+                <h3 className="mb-3 text-sm font-medium text-gray-900">Datos Maritimos</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <InfoField label="BOL" value={shipment.bol_number} />
+                  <InfoField label="Puerto de carga" value={shipment.port_of_loading} />
+                  <InfoField label="Buque" value={shipment.vessel_name} />
+                  <InfoField label="Viaje" value={shipment.voyage_id} />
+                  <InfoField label="Puerto de descarga" value={shipment.port_of_unloading} />
+                  <InfoField label="Flete" value={shipment.freight_terms === "prepaid" ? "Prepagado" : shipment.freight_terms === "collect" ? "Por Cobrar" : null} />
+                </div>
+              </div>
+            )}
+
+            {/* Ground fields */}
+            {shipment.modality === "ground" && (
+              <div className="border-t pt-4">
+                <h3 className="mb-3 text-sm font-medium text-gray-900">Datos Terrestres</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <InfoField label="Ruta" value={shipment.route_number} />
+                  <InfoField label="Terminal origen" value={shipment.origin_terminal} />
+                  <InfoField label="Terminal destino" value={shipment.destination_terminal} />
+                  <InfoField label="Placa" value={shipment.truck_plate} />
+                  <InfoField label="Conductor" value={shipment.driver_name} />
+                  <InfoField label="Telefono conductor" value={shipment.driver_phone} />
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            {shipment.notes && (
+              <div className="border-t pt-4">
+                <InfoField label="Notas" value={shipment.notes} />
+              </div>
+            )}
+
+            {/* House bills */}
+            <div className="border-t pt-4">
+              <h3 className="mb-3 text-sm font-medium text-gray-900">House Bills</h3>
+              {shipment.hawbs.length === 0 ? (
+                <p className="text-sm text-gray-500">No hay house bills asignados.</p>
+              ) : (
+                <div className="overflow-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        <th className="px-3 py-2">#</th>
+                        <th className="px-3 py-2">SI</th>
+                        <th className="px-3 py-2">Agencia</th>
+                        <th className="px-3 py-2">Pzas</th>
+                        <th className="px-3 py-2">Peso</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {shipment.hawbs.map((h) => (
+                        <tr key={h.id}>
+                          <td className="px-3 py-2 font-mono text-xs">{h.hawb_number}</td>
+                          <td className="px-3 py-2 text-xs">{h.shipping_instructions?.si_number ?? "\u2014"}</td>
+                          <td className="px-3 py-2 text-xs">{h.shipping_instructions?.agencies?.name ?? "\u2014"}</td>
+                          <td className="px-3 py-2 text-xs">{h.pieces ?? "\u2014"}</td>
+                          <td className="px-3 py-2 text-xs">{h.weight_lb ? `${h.weight_lb} lb` : "\u2014"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Containers (ocean only) */}
+            {shipment.modality === "ocean" && shipment.shipment_containers.length > 0 && (
+              <div className="border-t pt-4">
+                <h3 className="mb-3 text-sm font-medium text-gray-900">Contenedores</h3>
+                <div className="overflow-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                        <th className="px-3 py-2">Contenedor</th>
+                        <th className="px-3 py-2">Sello</th>
+                        <th className="px-3 py-2">Tipo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {shipment.shipment_containers.map((c) => (
+                        <tr key={c.id}>
+                          <td className="px-3 py-2 font-mono text-xs">{c.container_number}</td>
+                          <td className="px-3 py-2 text-xs">{c.seal_number ?? "\u2014"}</td>
+                          <td className="px-3 py-2 text-xs uppercase">{c.container_type}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </SheetBody>
+    </Sheet>
+  );
+}

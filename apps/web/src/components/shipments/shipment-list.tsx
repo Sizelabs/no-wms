@@ -5,13 +5,15 @@ import type { ShipmentModality, ShipmentStatus } from "@no-wms/shared/constants/
 import { SHIPMENT_STATUS_FLOW, SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import type { ShipmentSheetData } from "@/components/shipments/shipment-detail-sheet";
+import { ShipmentDetailSheet } from "@/components/shipments/shipment-detail-sheet";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
-import { updateShipmentStatus } from "@/lib/actions/shipments";
+import { getShipment, updateShipmentStatus } from "@/lib/actions/shipments";
 
 const MODALITY_LABELS: Record<string, string> = {
   air: "Aéreo",
@@ -63,6 +65,17 @@ export function ShipmentList({ data }: ShipmentListProps) {
   const [modalityFilter, setModalityFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetData, setSheetData] = useState<ShipmentSheetData | null>(null);
+  const [sheetLoading, setSheetLoading] = useState(false);
+
+  const handleRowClick = useCallback(async (id: string) => {
+    setSheetOpen(true);
+    setSheetLoading(true);
+    const { data: full } = await getShipment(id);
+    setSheetData(full as ShipmentSheetData | null);
+    setSheetLoading(false);
+  }, []);
 
   const hasActions = data.some((s) => {
     const flow = SHIPMENT_STATUS_FLOW[s.modality as ShipmentModality];
@@ -156,9 +169,9 @@ export function ShipmentList({ data }: ShipmentListProps) {
               const nextStatus = flow?.[s.status as ShipmentStatus];
               const documentNumber = s.awb_number || s.bol_number || s.route_number || "—";
               return (
-                <tr key={s.id} className="border-t border-gray-100 hover:bg-gray-50">
+                <tr key={s.id} className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => handleRowClick(s.id)}>
                   <td className="px-3 py-2.5">
-                    <Link href={`/${locale}/shipments/${s.id}`} className="font-mono text-xs font-medium text-gray-900 hover:underline">
+                    <Link href={`/${locale}/shipments/${s.id}`} onClick={(e) => e.stopPropagation()} className="font-mono text-xs font-medium text-gray-900 hover:underline">
                       {s.shipment_number}
                     </Link>
                   </td>
