@@ -7,6 +7,8 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
+import { ConsigneeModal } from "@/components/consignees/consignee-modal";
+import { InviteAgencyUserModal } from "@/components/users/invite-agency-user-modal";
 import { UserList } from "@/components/users/user-list";
 
 interface Consignee {
@@ -39,6 +41,7 @@ interface TariffSchedule {
 
 interface AgencyDetailProps {
   agencyId: string;
+  organizationId: string;
   consignees: Consignee[];
   users: AgencyUser[];
   tariffs: TariffSchedule[];
@@ -49,8 +52,10 @@ type Tab = "info" | "consignees" | "tariffs" | "users";
 
 const USER_TAB_ROLES: Role[] = ["super_admin", "forwarder_admin", "destination_admin"];
 
-export function AgencyDetail({ agencyId, consignees, users, tariffs, children }: AgencyDetailProps) {
+export function AgencyDetail({ agencyId, organizationId, consignees, users, tariffs, children }: AgencyDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("info");
+  const [consigneeModalOpen, setConsigneeModalOpen] = useState(false);
+  const [inviteUserModalOpen, setInviteUserModalOpen] = useState(false);
   const { locale } = useParams<{ locale: string }>();
   const userRoles = useUserRoles();
 
@@ -89,20 +94,20 @@ export function AgencyDetail({ agencyId, consignees, users, tariffs, children }:
             ))}
           </nav>
           {activeTab === "consignees" && (
-            <Link
-              href={`/${locale}/consignees/new?agency_id=${agencyId}`}
+            <button
+              onClick={() => setConsigneeModalOpen(true)}
               className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
               + Nuevo Consignatario
-            </Link>
+            </button>
           )}
           {activeTab === "users" && showUsersTab && (
-            <Link
-              href={`/${locale}/agencies/${agencyId}/users/new`}
+            <button
+              onClick={() => setInviteUserModalOpen(true)}
               className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
               + Invitar Usuario
-            </Link>
+            </button>
           )}
         </div>
       </div>
@@ -218,6 +223,19 @@ export function AgencyDetail({ agencyId, consignees, users, tariffs, children }:
       {activeTab === "users" && (
         <UserList users={users} allowedRoles={USER_TAB_ROLES} />
       )}
+
+      <ConsigneeModal
+        open={consigneeModalOpen}
+        onClose={() => setConsigneeModalOpen(false)}
+        defaultAgencyId={agencyId}
+      />
+
+      <InviteAgencyUserModal
+        open={inviteUserModalOpen}
+        onClose={() => setInviteUserModalOpen(false)}
+        organizationId={organizationId}
+        agencyId={agencyId}
+      />
     </div>
   );
 }

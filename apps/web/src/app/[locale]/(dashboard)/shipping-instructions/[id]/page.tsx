@@ -175,7 +175,7 @@ export default async function ShippingDetailPage({
                     </span>
                   </div>
                   <Link
-                    href={`/${locale}/shipping-instructions/${id}/hawb/print`}
+                    href={`/api/print/hawb/${id}`}
                     target="_blank"
                     className="text-xs font-medium text-blue-600 hover:text-blue-800"
                   >

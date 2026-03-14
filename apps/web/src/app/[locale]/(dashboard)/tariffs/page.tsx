@@ -39,16 +39,8 @@ export default async function TariffsPage({
         >
           Modalidades
         </Link>
-        {canCreate && (
-          <Link
-            href="tariffs/new"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nueva Tarifa
-          </Link>
-        )}
       </PageHeader>
-      <TariffList data={data ?? []} warehouses={warehousesResult.data ?? []} />
+      <TariffList data={data ?? []} warehouses={warehousesResult.data ?? []} canCreate={canCreate} />
     </div>
   );
 }

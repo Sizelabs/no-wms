@@ -48,7 +48,7 @@ export default async function AgencyDetailPage({
         >
           Volver a agencias
         </Link>
-        <AgencyDetailActions agencyId={agency.id} />
+        <AgencyDetailActions agency={agency} />
       </PageHeader>
 
       {/* Key info cards */}
@@ -93,7 +93,7 @@ export default async function AgencyDetailPage({
         </InfoCard>
       </div>
 
-      <AgencyDetail agencyId={agency.id} consignees={consigneesResult.data ?? []} users={usersResult.data ?? []} tariffs={allTariffs}>
+      <AgencyDetail agencyId={agency.id} organizationId={agency.organization_id} consignees={consigneesResult.data ?? []} users={usersResult.data ?? []} tariffs={allTariffs}>
         {/* Details grid — original info tab content */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Left column */}

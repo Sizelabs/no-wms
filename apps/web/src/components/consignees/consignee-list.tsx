@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { ConsigneeModal } from "@/components/consignees/consignee-modal";
+import { getConsignee } from "@/lib/actions/consignees";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface Consignee {
@@ -23,6 +26,8 @@ interface Consignee {
 
 interface ConsigneeListProps {
   consignees: Consignee[];
+  canCreate?: boolean;
+  canUpdate?: boolean;
 }
 
 function getAgencyName(agencies: unknown): string {
@@ -31,9 +36,10 @@ function getAgencyName(agencies: unknown): string {
   return (agencies as { name: string }).name ?? "—";
 }
 
-export function ConsigneeList({ consignees }: ConsigneeListProps) {
+export function ConsigneeList({ consignees, canCreate = false, canUpdate = false }: ConsigneeListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
+  const modal = useModalState<Consignee>();
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
@@ -57,8 +63,37 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
+  const [detailData, setDetailData] = useState<{
+    email: string | null;
+    phone: string | null;
+    address_line1: string | null;
+    address_line2: string | null;
+    province: string | null;
+    postal_code: string | null;
+  } | null>(null);
+  const fetchNonce = useRef(0);
+
+  useEffect(() => {
+    if (!selectedId) { setDetailData(null); return; }
+    const nonce = ++fetchNonce.current;
+    getConsignee(selectedId).then(({ data }) => {
+      if (fetchNonce.current !== nonce) return;
+      setDetailData(data as typeof detailData);
+    });
+  }, [selectedId]);
+
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nuevo Consignatario
+          </button>
+        </div>
+      )}
       {/* Search + status row */}
       <div className="flex flex-wrap gap-2">
         <input
@@ -142,18 +177,52 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
         onClose={closeSheet}
         title={selectedItem?.full_name ?? ""}
         detailHref={selectedItem ? `/${locale}/consignees/${selectedItem.id}` : undefined}
+        editAction={canUpdate && selectedItem && detailData ? () => {
+          closeSheet();
+          modal.openEdit({ ...selectedItem, ...detailData } as Consignee & typeof detailData);
+        } : undefined}
       >
         {selectedItem && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <InfoField label="Casillero" value={selectedItem.casillero} />
-            <InfoField label="Nombre" value={selectedItem.full_name} />
-            <InfoField label="Cédula/RUC" value={selectedItem.cedula_ruc} />
-            <InfoField label="Agencia" value={getAgencyName(selectedItem.agencies)} />
-            <InfoField label="Ciudad" value={selectedItem.city} />
-            <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
-          </div>
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InfoField label="Casillero" value={selectedItem.casillero} />
+              <InfoField label="Nombre" value={selectedItem.full_name} />
+              <InfoField label="Cédula/RUC" value={selectedItem.cedula_ruc} />
+              <InfoField label="Agencia" value={getAgencyName(selectedItem.agencies)} />
+              <InfoField label="Ciudad" value={selectedItem.city} />
+              <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
+            </div>
+            {detailData && (
+              <>
+                <div className="border-t pt-4">
+                  <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">Información de contacto</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <InfoField label="Email" value={detailData.email} />
+                    <InfoField label="Teléfono" value={detailData.phone} />
+                  </div>
+                </div>
+                <div className="border-t pt-4">
+                  <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">Dirección</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <InfoField label="Dirección" value={detailData.address_line1} />
+                    <InfoField label="Línea 2" value={detailData.address_line2} />
+                    <InfoField label="Ciudad" value={selectedItem.city} />
+                    <InfoField label="Provincia" value={detailData.province} />
+                    <InfoField label="Código postal" value={detailData.postal_code} />
+                  </div>
+                </div>
+              </>
+            )}
+          </>
         )}
       </DetailSheet>
+
+      <ConsigneeModal
+        key={modal.editItem?.id ?? "create"}
+        open={modal.createOpen || !!modal.editItem}
+        onClose={modal.close}
+        consignee={modal.editItem as Parameters<typeof ConsigneeModal>[0]["consignee"]}
+      />
     </div>
   );
 }

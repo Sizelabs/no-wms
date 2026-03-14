@@ -4,7 +4,7 @@ import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
 import type { Role } from "@no-wms/shared/constants/roles";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
@@ -14,10 +14,12 @@ import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { useSheetState } from "@/hooks/use-sheet-state";
 import {
+  getUser,
   resendInvite,
   resetUserPassword,
   toggleUserActive,
 } from "@/lib/actions/users";
+import { formatDate } from "@/lib/format";
 
 interface UserRole {
   id: string;
@@ -83,6 +85,23 @@ export function UserList({ users, allowedRoles }: UserListProps) {
   });
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
+
+  const [detailData, setDetailData] = useState<{
+    email: string | null;
+    phone: string | null;
+    created_at: string;
+    user_roles: { id: string; role: string; warehouse_id: string | null; courier_id: string | null; destination_id: string | null; agency_id: string | null }[];
+  } | null>(null);
+  const fetchNonce = useRef(0);
+
+  useEffect(() => {
+    if (!selectedId) { setDetailData(null); return; }
+    const nonce = ++fetchNonce.current;
+    getUser(selectedId).then(({ data }) => {
+      if (fetchNonce.current !== nonce) return;
+      setDetailData(data as typeof detailData);
+    });
+  }, [selectedId]);
 
   return (
     <div className="space-y-3">
@@ -222,23 +241,48 @@ export function UserList({ users, allowedRoles }: UserListProps) {
         detailHref={selectedItem ? `/${locale}/settings/users/${selectedItem.id}` : undefined}
       >
         {selectedItem && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <InfoField label="Nombre" value={selectedItem.full_name} />
-            <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
-            <div className="sm:col-span-2">
-              <p className="text-xs text-gray-500">Roles</p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {selectedItem.user_roles.map((r) => (
-                  <span
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InfoField label="Nombre" value={selectedItem.full_name} />
+              <InfoField label="Email" value={detailData?.email} />
+              <InfoField label="Teléfono" value={detailData?.phone} />
+              <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
+              <InfoField label="Registrado" value={detailData ? formatDate(detailData.created_at) : null} />
+            </div>
+            <div className="border-t pt-4">
+              <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">
+                Roles ({(detailData?.user_roles ?? selectedItem.user_roles).length})
+              </h3>
+              <div className="space-y-2">
+                {(detailData?.user_roles ?? selectedItem.user_roles).map((r) => (
+                  <div
                     key={r.id}
-                    className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+                    className="flex items-center justify-between rounded-md border p-2 text-sm"
                   >
-                    {ROLE_LABELS[r.role as Role] ?? r.role}
-                  </span>
+                    <span className="font-medium text-gray-900">
+                      {ROLE_LABELS[r.role as Role] ?? r.role}
+                    </span>
+                    {"warehouse_id" in r && (
+                      <div className="flex gap-2 text-xs text-gray-500">
+                        {"warehouse_id" in r && !!(r as Record<string, unknown>).warehouse_id && (
+                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700">Bodega</span>
+                        )}
+                        {"destination_id" in r && !!(r as Record<string, unknown>).destination_id && (
+                          <span className="rounded bg-purple-50 px-1.5 py-0.5 text-purple-700">Destino</span>
+                        )}
+                        {"courier_id" in r && !!(r as Record<string, unknown>).courier_id && (
+                          <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-indigo-700">Courier</span>
+                        )}
+                        {"agency_id" in r && !!(r as Record<string, unknown>).agency_id && (
+                          <span className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-700">Agencia</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
-          </div>
+          </>
         )}
       </DetailSheet>
     </div>

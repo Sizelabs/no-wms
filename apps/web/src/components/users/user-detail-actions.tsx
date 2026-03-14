@@ -1,30 +1,32 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
 import { DetailActions } from "@/components/ui/detail-actions";
 import type { DetailAction } from "@/components/ui/detail-actions";
+import { UserEditModal } from "@/components/users/user-edit-modal";
 import {
   resendInvite,
   resetUserPassword,
   toggleUserActive,
 } from "@/lib/actions/users";
 
-export function UserDetailActions({
-  userId,
-  isActive,
-}: {
-  userId: string;
-  isActive: boolean;
-}) {
-  const { locale } = useParams<{ locale: string }>();
+interface UserData {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  is_active: boolean;
+}
+
+export function UserDetailActions({ user }: { user: UserData }) {
   const router = useRouter();
   const { notify } = useNotification();
   const [, startTransition] = useTransition();
   const roles = useUserRoles();
+  const [editOpen, setEditOpen] = useState(false);
 
   function handleAction(
     action: () => Promise<{ error: string } | null>,
@@ -44,7 +46,7 @@ export function UserDetailActions({
   const actions: DetailAction[] = [
     {
       label: "Editar perfil",
-      href: `/${locale}/settings/users/${userId}/edit`,
+      onClick: () => setEditOpen(true),
       roles: ["super_admin", "forwarder_admin"],
     },
     {
@@ -52,7 +54,7 @@ export function UserDetailActions({
       roles: ["super_admin", "forwarder_admin"],
       onClick: () =>
         handleAction(
-          () => resendInvite(userId),
+          () => resendInvite(user.id),
           "Invitación reenviada",
         ),
     },
@@ -61,21 +63,31 @@ export function UserDetailActions({
       roles: ["super_admin", "forwarder_admin"],
       onClick: () =>
         handleAction(
-          () => resetUserPassword(userId),
+          () => resetUserPassword(user.id),
           "Email de recuperación enviado",
         ),
     },
     {
-      label: isActive ? "Desactivar" : "Activar",
-      variant: isActive ? "danger" : "default",
+      label: user.is_active ? "Desactivar" : "Activar",
+      variant: user.is_active ? "danger" : "default",
       roles: ["super_admin", "forwarder_admin"],
       onClick: () =>
         handleAction(
-          () => toggleUserActive(userId, !isActive),
-          isActive ? "Usuario desactivado" : "Usuario activado",
+          () => toggleUserActive(user.id, !user.is_active),
+          user.is_active ? "Usuario desactivado" : "Usuario activado",
         ),
     },
   ];
 
-  return <DetailActions actions={actions} userRoles={roles} />;
+  return (
+    <>
+      <DetailActions actions={actions} userRoles={roles} />
+      <UserEditModal
+        key={user.id}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        user={user}
+      />
+    </>
+  );
 }

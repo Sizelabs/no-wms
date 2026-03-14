@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { DestinationModal } from "@/components/settings/destination-modal";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useModalState } from "@/hooks/use-modal-state";
 import { upsertCourierDestination } from "@/lib/actions/couriers";
 import { deleteDestination } from "@/lib/actions/destinations";
 
@@ -35,6 +35,7 @@ interface CourierWithDestinations {
 
 interface DestinationListProps {
   data: DestinationRow[];
+  canCreate?: boolean;
   canUpdate?: boolean;
   canDelete?: boolean;
   couriers?: CourierWithDestinations[];
@@ -45,11 +46,11 @@ function formatLocation(d: DestinationRow): string {
   return [d.city, d.state, d.country_name ?? d.country_code].filter(Boolean).join(", ");
 }
 
-export function DestinationList({ data, canUpdate = false, canDelete = false, couriers = [], modalities = [] }: DestinationListProps) {
+export function DestinationList({ data, canCreate = false, canUpdate = false, canDelete = false, couriers = [], modalities = [] }: DestinationListProps) {
   const hasActions = canUpdate || canDelete;
-  const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
+  const modal = useModalState<DestinationRow>();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
@@ -90,6 +91,16 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
 
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nuevo Destino
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <input
           type="text"
@@ -188,12 +199,12 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     {canUpdate && (
-                      <Link
-                        href={`/${locale}/settings/destinations/${d.id}/edit`}
+                      <button
+                        onClick={() => modal.openEdit(d)}
                         className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                       >
                         Editar
-                      </Link>
+                      </button>
                     )}
                     {canDelete && d.is_active && (
                       <button
@@ -212,6 +223,13 @@ export function DestinationList({ data, canUpdate = false, canDelete = false, co
           />
         </table>
       </div>
+
+      <DestinationModal
+        key={modal.editItem?.id ?? "create"}
+        open={modal.createOpen || !!modal.editItem}
+        onClose={modal.close}
+        destination={modal.editItem}
+      />
     </div>
   );
 }

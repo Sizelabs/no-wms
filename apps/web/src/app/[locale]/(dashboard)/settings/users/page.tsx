@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { AllUsersList } from "@/components/users/all-users-list";
+import { InviteUserButton } from "@/components/users/invite-user-button";
 import { UserList } from "@/components/users/user-list";
 import { getOrganizationUsers } from "@/lib/actions/organizations";
 import { getAllUsersGrouped } from "@/lib/actions/users";
@@ -22,26 +22,6 @@ export default async function UsersPage({
 
   const canCreate = permissions.users.create;
 
-  if (isSuperAdmin) {
-    const { data: allUsers } = await getAllUsersGrouped();
-
-    return (
-      <div className="space-y-6">
-        <PageHeader title={t("users")}>
-          {canCreate && (
-            <Link
-              href={`/${locale}/settings/users/new`}
-              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              + Invitar Usuario
-            </Link>
-          )}
-        </PageHeader>
-        <AllUsersList users={allUsers ?? []} />
-      </div>
-    );
-  }
-
   const supabase = await createClient();
   const {
     data: { user },
@@ -56,6 +36,19 @@ export default async function UsersPage({
 
   if (!profile) redirect(`/${locale}/login`);
 
+  if (isSuperAdmin) {
+    const { data: allUsers } = await getAllUsersGrouped();
+
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t("users")}>
+          {canCreate && <InviteUserButton organizationId={profile.organization_id} />}
+        </PageHeader>
+        <AllUsersList users={allUsers ?? []} />
+      </div>
+    );
+  }
+
   const { data: users } = await getOrganizationUsers(
     profile.organization_id,
   );
@@ -69,14 +62,7 @@ export default async function UsersPage({
   return (
     <div className="space-y-6">
       <PageHeader title={t("users")}>
-        {canCreate && (
-          <Link
-            href={`/${locale}/settings/users/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Invitar Usuario
-          </Link>
-        )}
+        {canCreate && <InviteUserButton organizationId={profile.organization_id} />}
       </PageHeader>
       <UserList users={filteredUsers} />
     </div>

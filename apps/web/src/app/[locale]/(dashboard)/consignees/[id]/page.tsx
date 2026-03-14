@@ -31,7 +31,7 @@ export default async function ConsigneeDetailPage({
         >
           Volver a consignatarios
         </Link>
-        <ConsigneeDetailActions consigneeId={consignee.id} />
+        <ConsigneeDetailActions consignee={consignee} />
       </PageHeader>
 
       {/* Key info cards */}

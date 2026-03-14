@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -51,16 +50,7 @@ export default async function ModalitiesPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Modalidades">
-        {canCreate && !effectiveCourierId && (
-          <Link
-            href="modalities/new"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nueva Modalidad
-          </Link>
-        )}
-      </PageHeader>
+      <PageHeader title="Modalidades" />
       <CourierFilter
         couriers={couriers}
         selectedCourierId={effectiveCourierId}
@@ -69,6 +59,7 @@ export default async function ModalitiesPage({
       <ModalityList
         data={data ?? []}
         selectedCourierId={effectiveCourierId}
+        canCreate={canCreate && !effectiveCourierId}
         canUpdate={canUpdate}
         canDelete={canDelete}
       />

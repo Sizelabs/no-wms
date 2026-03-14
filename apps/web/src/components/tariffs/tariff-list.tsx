@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useNotification } from "@/components/layout/notification";
+import { TariffScheduleModal } from "@/components/tariffs/tariff-schedule-modal";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
@@ -43,11 +44,14 @@ interface Warehouse {
 interface TariffListProps {
   data: TariffSchedule[];
   warehouses: Warehouse[];
+  canCreate?: boolean;
 }
 
-export function TariffList({ data, warehouses }: TariffListProps) {
+export function TariffList({ data, warehouses, canCreate = false }: TariffListProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editSchedule, setEditSchedule] = useState<TariffSchedule | null>(null);
   const [search, setSearch] = useState("");
   const [warehouseFilter, setWarehouseFilter] = useState<string[]>([]);
   const [viewFilter, setViewFilter] = useState<string[]>([]);
@@ -94,6 +98,16 @@ export function TariffList({ data, warehouses }: TariffListProps) {
 
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva Tarifa
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <input
           type="text"
@@ -206,12 +220,12 @@ export function TariffList({ data, warehouses }: TariffListProps) {
                       >
                         Ver
                       </Link>
-                      <Link
-                        href={`tariffs/${t.id}/edit`}
+                      <button
+                        onClick={() => setEditSchedule(t)}
                         className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                       >
                         Editar
-                      </Link>
+                      </button>
                       {t.is_active && (
                         <button
                           onClick={() => handleDeactivate(t.id)}
@@ -252,6 +266,13 @@ export function TariffList({ data, warehouses }: TariffListProps) {
           </div>
         )}
       </DetailSheet>
+
+      <TariffScheduleModal
+        key={editSchedule?.id ?? "create"}
+        open={createOpen || !!editSchedule}
+        onClose={() => { setCreateOpen(false); setEditSchedule(null); }}
+        schedule={editSchedule}
+      />
     </div>
   );
 }

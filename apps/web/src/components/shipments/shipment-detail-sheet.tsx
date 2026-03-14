@@ -41,7 +41,7 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
               <div className="flex items-center gap-2">
                 {shipment.modality === "air" && shipment.awb_number && (
                   <Link
-                    href={`/${locale}/shipments/${shipment.id}/mawb/print`}
+                    href={`/api/print/mawb/${shipment.id}`}
                     target="_blank"
                     className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
@@ -142,6 +142,7 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
                     <thead>
                       <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                         <th className="px-3 py-2">#</th>
+                        <th className="px-3 py-2">Tipo</th>
                         <th className="px-3 py-2">SI</th>
                         <th className="px-3 py-2">Agencia</th>
                         <th className="px-3 py-2">Pzas</th>
@@ -152,6 +153,7 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
                       {shipment.hawbs.map((h) => (
                         <tr key={h.id}>
                           <td className="px-3 py-2 font-mono text-xs">{h.hawb_number}</td>
+                          <td className="px-3 py-2 text-xs uppercase">{h.document_type}</td>
                           <td className="px-3 py-2 text-xs">{h.shipping_instructions?.si_number ?? "\u2014"}</td>
                           <td className="px-3 py-2 text-xs">{h.shipping_instructions?.agencies?.name ?? "\u2014"}</td>
                           <td className="px-3 py-2 text-xs">{h.pieces ?? "\u2014"}</td>

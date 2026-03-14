@@ -11,7 +11,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { createShipmentWithSIs } from "@/lib/actions/shipments";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 import type { SelectedSI } from "@/lib/shipping-utils";
-import { getShipmentModality } from "@/lib/shipping-utils";
+import { getShipmentModality, SHIPMENT_MODALITY_TO_CODES } from "@/lib/shipping-utils";
 
 interface Warehouse {
   id: string;
@@ -29,7 +29,7 @@ interface Carrier {
   id: string;
   code: string;
   name: string;
-  modality: string;
+  modalities: { id: string; code: string; name: string }[];
 }
 
 interface Agency {
@@ -68,7 +68,10 @@ export function CreateShipmentModal({
 
   // Derive modality from SI modality code
   const modality = getShipmentModality(selectedSIs[0]?.modality_code ?? "");
-  const filteredCarriers = carriers.filter((c) => c.modality === modality);
+  const matchingCodes = SHIPMENT_MODALITY_TO_CODES[modality] ?? [];
+  const filteredCarriers = carriers.filter((c) =>
+    c.modalities.some((m) => matchingCodes.includes(m.code)),
+  );
 
   // Derive defaults from selected SIs
   const commonAgencyId = selectedSIs.every((si) => si.agency_id && si.agency_id === selectedSIs[0]?.agency_id)

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -28,20 +27,17 @@ export default async function TicketsPage({
   }
 
   const canCreate = permissions.tickets.create;
+  const agencyId = agencyScope?.length === 1 ? agencyScope[0] : undefined;
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("title")}>
-        {canCreate && (
-          <Link
-            href="/tickets/new"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + {t("new")}
-          </Link>
-        )}
-      </PageHeader>
-      <TicketList data={tickets as never[]} agencies={agencies} />
+      <PageHeader title={t("title")} />
+      <TicketList
+        data={tickets as never[]}
+        agencies={agencies}
+        canCreate={canCreate}
+        agencyId={agencyId}
+      />
     </div>
   );
 }

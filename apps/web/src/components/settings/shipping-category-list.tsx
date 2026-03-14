@@ -2,16 +2,18 @@
 
 import { CARGO_TYPE_LABELS, CUSTOMS_DECLARATION_LABELS } from "@no-wms/shared/constants/shipping-categories";
 import type { CargoType, CustomsDeclarationType } from "@no-wms/shared/constants/shipping-categories";
-import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { ShippingCategoryModal } from "@/components/settings/shipping-category-modal";
+import { useModalState } from "@/hooks/use-modal-state";
 import { deleteShippingCategory } from "@/lib/actions/shipping-categories";
 
 interface RequiredDoc {
   id: string;
   document_type: string;
   label: string;
+  description: string | null;
   is_required: boolean;
 }
 
@@ -20,11 +22,17 @@ interface ShippingCategoryRow {
   code: string;
   name: string;
   country_code: string;
+  modality_id: string;
+  description: string | null;
   cargo_type: string;
   max_weight_kg: number | null;
   min_declared_value_usd: number | null;
   max_declared_value_usd: number | null;
   customs_declaration_type: string;
+  allows_dgr: boolean;
+  requires_cedula: boolean;
+  requires_ruc: boolean;
+  country_specific_rules: Record<string, unknown>;
   is_active: boolean;
   display_order: number;
   modalities: { id: string; name: string; code: string } | null;
@@ -33,12 +41,14 @@ interface ShippingCategoryRow {
 
 interface ShippingCategoryListProps {
   data: ShippingCategoryRow[];
+  canCreate?: boolean;
   canUpdate: boolean;
   canDelete: boolean;
 }
 
-export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCategoryListProps) {
+export function ShippingCategoryList({ data, canCreate = false, canUpdate, canDelete }: ShippingCategoryListProps) {
   const [search, setSearch] = useState("");
+  const modal = useModalState<ShippingCategoryRow>();
   const [countryFilter, setCountryFilter] = useState("");
   const [modalityFilter, setModalityFilter] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -69,6 +79,16 @@ export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCat
 
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva Categoría
+          </button>
+        </div>
+      )}
       <div className="flex gap-3">
         <input
           type="text"
@@ -156,12 +176,13 @@ export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCat
                     <td className="px-4 py-2">
                       <div className="flex gap-2">
                         {canUpdate && (
-                          <Link
-                            href={`shipping-categories/${cat.id}/edit`}
+                          <button
+                            type="button"
+                            onClick={() => modal.openEdit(cat)}
                             className="text-xs text-gray-600 hover:text-gray-900"
                           >
                             Editar
-                          </Link>
+                          </button>
                         )}
                         {canDelete && cat.is_active && (
                           <button
@@ -182,6 +203,13 @@ export function ShippingCategoryList({ data, canUpdate, canDelete }: ShippingCat
           </tbody>
         </table>
       </div>
+
+      <ShippingCategoryModal
+        key={modal.editItem?.id ?? "create"}
+        open={modal.createOpen || !!modal.editItem}
+        onClose={modal.close}
+        item={modal.editItem}
+      />
     </div>
   );
 }

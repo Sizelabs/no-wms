@@ -9,9 +9,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
+import { CourierModal } from "@/components/couriers/courier-modal";
 import { useNotification } from "@/components/layout/notification";
 import { DetailActions } from "@/components/ui/detail-actions";
 import type { DetailAction } from "@/components/ui/detail-actions";
+import { InviteCourierUserModal } from "@/components/users/invite-courier-user-modal";
 import { UserList } from "@/components/users/user-list";
 import { deleteCourier, upsertCourierDestination } from "@/lib/actions/couriers";
 import { formatDate } from "@/lib/format";
@@ -94,6 +96,8 @@ const USER_TAB_ROLES: Role[] = ["super_admin", "forwarder_admin", "destination_a
 
 export function CourierDetail({ courier, users, tariffs, destinations }: CourierDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("info");
+  const [editOpen, setEditOpen] = useState(false);
+  const [inviteUserOpen, setInviteUserOpen] = useState(false);
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const { notify } = useNotification();
@@ -116,7 +120,7 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
   const detailActions: DetailAction[] = [
     {
       label: "Editar",
-      href: `/${locale}/settings/couriers/${courier.id}/edit`,
+      onClick: () => setEditOpen(true),
       roles: ["super_admin", "forwarder_admin", "destination_admin"],
     },
     {
@@ -460,17 +464,29 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
         <div className="space-y-4">
           {userRoles.some((r) => USER_TAB_ROLES.includes(r)) && (
             <div className="flex justify-end">
-              <Link
-                href={`/${locale}/settings/couriers/${courier.id}/users/new`}
+              <button
+                onClick={() => setInviteUserOpen(true)}
                 className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
               >
                 + Invitar Usuario
-              </Link>
+              </button>
             </div>
           )}
           <UserList users={users} allowedRoles={USER_TAB_ROLES} />
         </div>
       )}
+      <CourierModal
+        key={courier.id}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        courier={courier}
+      />
+      <InviteCourierUserModal
+        open={inviteUserOpen}
+        onClose={() => setInviteUserOpen(false)}
+        organizationId={courier.organization_id}
+        courierId={courier.id}
+      />
     </div>
   );
 }

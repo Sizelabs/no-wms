@@ -1,13 +1,13 @@
 "use client";
 
 import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { HandlingCostModal } from "@/components/tariffs/handling-cost-modal";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useModalState } from "@/hooks/use-modal-state";
 import {
   deleteHandlingCost,
   resetCourierTariff,
@@ -30,14 +30,15 @@ interface HandlingCostRow {
 interface HandlingCostListProps {
   data: HandlingCostRow[];
   selectedCourierId?: string;
+  canCreate?: boolean;
   canUpdate?: boolean;
   canDelete?: boolean;
 }
 
-export function HandlingCostList({ data, selectedCourierId, canUpdate = false, canDelete = false }: HandlingCostListProps) {
+export function HandlingCostList({ data, selectedCourierId, canCreate = false, canUpdate = false, canDelete = false }: HandlingCostListProps) {
   const hasActions = canUpdate || canDelete;
-  const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
+  const modal = useModalState<{ id: string; name: string; description: string | null; is_active: boolean; base_rate: number; base_rate_unit: string; base_minimum_charge: number | null }>();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -129,6 +130,16 @@ export function HandlingCostList({ data, selectedCourierId, canUpdate = false, c
 
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nuevo Costo de Manejo
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <input
           type="text"
@@ -271,12 +282,20 @@ export function HandlingCostList({ data, selectedCourierId, canUpdate = false, c
                           </button>
                         )}
                         {canUpdate && !selectedCourierId && (
-                          <Link
-                            href={`/${locale}/settings/handling-costs/${hc.id}/edit`}
+                          <button
+                            onClick={() => modal.openEdit({
+                              id: hc.id,
+                              name: hc.name,
+                              description: hc.description,
+                              is_active: hc.is_active,
+                              base_rate: hc.rate,
+                              base_rate_unit: hc.rate_unit,
+                              base_minimum_charge: hc.minimum_charge,
+                            })}
                             className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                           >
                             Editar
-                          </Link>
+                          </button>
                         )}
                         {canDelete && !selectedCourierId && hc.is_active && (
                           <button
@@ -297,6 +316,13 @@ export function HandlingCostList({ data, selectedCourierId, canUpdate = false, c
           />
         </table>
       </div>
+
+      <HandlingCostModal
+        key={modal.editItem?.id ?? "create"}
+        open={modal.createOpen || !!modal.editItem}
+        onClose={modal.close}
+        handlingCost={modal.editItem}
+      />
     </div>
   );
 }

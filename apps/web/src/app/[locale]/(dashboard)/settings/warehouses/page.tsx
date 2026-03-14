@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -18,20 +17,12 @@ export default async function WarehousesPage({
   const { data: warehouses } = await getWarehouses();
 
   const canCreate = permissions.warehouses.create;
+  const canUpdate = permissions.warehouses.update;
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("warehouses")}>
-        {canCreate && (
-          <Link
-            href={`/${locale}/settings/warehouses/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nueva Bodega
-          </Link>
-        )}
-      </PageHeader>
-      <WarehouseList warehouses={warehouses ?? []} />
+      <PageHeader title={t("warehouses")} />
+      <WarehouseList warehouses={warehouses ?? []} canCreate={canCreate} canUpdate={canUpdate} />
     </div>
   );
 }

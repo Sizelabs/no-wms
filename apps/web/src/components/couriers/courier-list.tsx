@@ -4,13 +4,17 @@ import { COURIER_TYPE_LABELS } from "@no-wms/shared/constants/courier-types";
 import type { CourierType } from "@no-wms/shared/constants/courier-types";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { CourierModal } from "@/components/couriers/courier-modal";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
+import { getCourier } from "@/lib/actions/couriers";
+import { formatDate } from "@/lib/format";
 
 interface CourierDestination {
   id: string;
@@ -30,11 +34,14 @@ interface Courier {
 
 interface CourierListProps {
   couriers: Courier[];
+  canCreate?: boolean;
+  canUpdate?: boolean;
 }
 
-export function CourierList({ couriers }: CourierListProps) {
+export function CourierList({ couriers, canCreate = false, canUpdate = false }: CourierListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
+  const modal = useModalState<Courier>();
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
@@ -70,8 +77,38 @@ export function CourierList({ couriers }: CourierListProps) {
       ]
     : [];
 
+  const [detailData, setDetailData] = useState<{
+    ruc: string | null;
+    address: string | null;
+    city: string | null;
+    country: string | null;
+    phone: string | null;
+    email: string | null;
+    created_at: string;
+  } | null>(null);
+  const fetchNonce = useRef(0);
+
+  useEffect(() => {
+    if (!selectedId) { setDetailData(null); return; }
+    const nonce = ++fetchNonce.current;
+    getCourier(selectedId).then(({ data }) => {
+      if (fetchNonce.current !== nonce) return;
+      setDetailData(data as typeof detailData);
+    });
+  }, [selectedId]);
+
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nuevo Courier
+          </button>
+        </div>
+      )}
       {/* Search + status row */}
       <div className="flex flex-wrap gap-2">
         <input
@@ -171,17 +208,44 @@ export function CourierList({ couriers }: CourierListProps) {
       onClose={closeSheet}
       title={selectedItem?.name ?? ""}
       detailHref={selectedItem ? `/${locale}/settings/couriers/${selectedItem.id}` : undefined}
+      editAction={canUpdate && selectedItem && detailData ? () => {
+        closeSheet();
+        modal.openEdit({ ...selectedItem, ...detailData } as Courier & typeof detailData);
+      } : undefined}
     >
       {selectedItem && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <InfoField label="Código" value={selectedItem.code} />
-          <InfoField label="Nombre" value={selectedItem.name} />
-          <InfoField label="Tipo" value={COURIER_TYPE_LABELS[selectedItem.type as CourierType] ?? selectedItem.type} />
-          <InfoField label="Destinos" value={selectedDestinations.length > 0 ? selectedDestinations.join(", ") : null} />
-          <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
-        </div>
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoField label="Código" value={selectedItem.code} />
+            <InfoField label="Nombre" value={selectedItem.name} />
+            <InfoField label="Tipo" value={COURIER_TYPE_LABELS[selectedItem.type as CourierType] ?? selectedItem.type} />
+            <InfoField label="Destinos" value={selectedDestinations.length > 0 ? selectedDestinations.join(", ") : null} />
+            <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
+          </div>
+          {detailData && (
+            <div className="border-t pt-4">
+              <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">Información de contacto</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <InfoField label="RUC" value={detailData.ruc} />
+                <InfoField label="Teléfono" value={detailData.phone} />
+                <InfoField label="Email" value={detailData.email} />
+                <InfoField label="Dirección" value={detailData.address} />
+                <InfoField label="Ciudad" value={detailData.city} />
+                <InfoField label="País" value={detailData.country} />
+                <InfoField label="Creado" value={formatDate(detailData.created_at)} />
+              </div>
+            </div>
+          )}
+        </>
       )}
     </DetailSheet>
+
+    <CourierModal
+      key={modal.editItem?.id ?? "create"}
+      open={modal.createOpen || !!modal.editItem}
+      onClose={modal.close}
+      courier={modal.editItem as Parameters<typeof CourierModal>[0]["courier"]}
+    />
     </div>
   );
 }

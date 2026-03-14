@@ -3,15 +3,16 @@
 import { WO_PRIORITY_LABELS, WO_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-types";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { WoCreateModal } from "@/components/work-orders/wo-create-modal";
 import { useSheetState } from "@/hooks/use-sheet-state";
-import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
+import { getWorkOrder, updateWorkOrderStatus } from "@/lib/actions/work-orders";
 import { formatDate } from "@/lib/format";
 
 interface WorkOrder {
@@ -31,6 +32,7 @@ interface WoListProps {
   data: WorkOrder[];
   locale: string;
   canUpdate?: boolean;
+  canCreate?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -48,8 +50,9 @@ const PRIORITY_BADGE: Record<string, string> = {
   low: "bg-gray-100 text-gray-500",
 };
 
-export function WoList({ data, locale, canUpdate = false }: WoListProps) {
+export function WoList({ data, locale, canUpdate = false, canCreate = false }: WoListProps) {
   const [isPending, startTransition] = useTransition();
+  const [createOpen, setCreateOpen] = useState(false);
   const { notify } = useNotification();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState({ status: ["requested", "approved", "in_progress"] as string[], type: [] as string[] });
@@ -72,6 +75,28 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
   });
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
+
+  const [detailData, setDetailData] = useState<{
+    result_notes: string | null;
+    cancellation_reason: string | null;
+    completed_at: string | null;
+    pickup_date: string | null;
+    pickup_time: string | null;
+    pickup_location: string | null;
+    pickup_authorized_person: string | null;
+    pickup_contact_info: string | null;
+    work_order_items: { warehouse_receipt_id: string; warehouse_receipts: { wr_number: string; packages: { tracking_number: string }[] } | null }[];
+  } | null>(null);
+  const fetchNonce = useRef(0);
+
+  useEffect(() => {
+    if (!selectedId) { setDetailData(null); return; }
+    const nonce = ++fetchNonce.current;
+    getWorkOrder(selectedId).then(({ data }) => {
+      if (fetchNonce.current !== nonce) return;
+      setDetailData(data as typeof detailData);
+    });
+  }, [selectedId]);
 
   const hasActions = canUpdate && data.some((wo) => !["completed", "cancelled"].includes(wo.status));
 
@@ -108,6 +133,16 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
 
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva OT
+          </button>
+        </div>
+      )}
       {/* Search + primary filter row */}
       <div className="flex flex-wrap gap-2">
         <input
@@ -277,19 +312,82 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
         detailHref={selectedItem ? `/${locale}/work-orders/${selectedItem.id}` : undefined}
       >
         {selectedItem && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <InfoField label="OT #" value={selectedItem.wo_number} />
-            <InfoField label="Tipo" value={WORK_ORDER_TYPE_LABELS[selectedItem.type as keyof typeof WORK_ORDER_TYPE_LABELS] ?? selectedItem.type} />
-            <InfoField label="Estado" value={WO_STATUS_LABELS[selectedItem.status as keyof typeof WO_STATUS_LABELS] ?? selectedItem.status} />
-            <InfoField label="Prioridad" value={WO_PRIORITY_LABELS[selectedItem.priority] ?? selectedItem.priority} />
-            <InfoField label="Agencia" value={selectedItem.agencies?.name} />
-            <InfoField label="Responsable" value={selectedItem.profiles?.full_name} />
-            <InfoField label="WRs" value={selectedItem.work_order_items.length} />
-            <InfoField label="Instrucciones" value={selectedItem.instructions} />
-            <InfoField label="Fecha" value={formatDate(selectedItem.created_at)} />
-          </div>
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InfoField label="OT #" value={selectedItem.wo_number} />
+              <InfoField label="Tipo" value={WORK_ORDER_TYPE_LABELS[selectedItem.type as keyof typeof WORK_ORDER_TYPE_LABELS] ?? selectedItem.type} />
+              <InfoField label="Estado" value={WO_STATUS_LABELS[selectedItem.status as keyof typeof WO_STATUS_LABELS] ?? selectedItem.status} />
+              <InfoField label="Prioridad" value={WO_PRIORITY_LABELS[selectedItem.priority] ?? selectedItem.priority} />
+              <InfoField label="Agencia" value={selectedItem.agencies?.name} />
+              <InfoField label="Responsable" value={selectedItem.profiles?.full_name} />
+              <InfoField label="Fecha" value={formatDate(selectedItem.created_at)} />
+              {detailData?.completed_at && (
+                <InfoField label="Completado" value={formatDate(detailData.completed_at)} />
+              )}
+            </div>
+            {selectedItem.instructions && (
+              <div className="border-t pt-4">
+                <h3 className="mb-2 text-xs font-medium uppercase text-gray-500">Instrucciones</h3>
+                <p className="rounded bg-gray-50 p-2 text-sm text-gray-700">{selectedItem.instructions}</p>
+              </div>
+            )}
+            {detailData?.result_notes && (
+              <div className="border-t pt-4">
+                <h3 className="mb-2 text-xs font-medium uppercase text-gray-500">Notas de resultado</h3>
+                <p className="rounded bg-green-50 p-2 text-sm text-green-700">{detailData.result_notes}</p>
+              </div>
+            )}
+            {detailData?.cancellation_reason && (
+              <div className="border-t pt-4">
+                <h3 className="mb-2 text-xs font-medium uppercase text-gray-500">Razón de cancelación</h3>
+                <p className="rounded bg-red-50 p-2 text-sm text-red-700">{detailData.cancellation_reason}</p>
+              </div>
+            )}
+            {detailData && selectedItem.type === "authorize_pickup" && detailData.pickup_date && (
+              <div className="border-t pt-4">
+                <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">Datos de retiro</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <InfoField label="Fecha" value={detailData.pickup_date} />
+                  {detailData.pickup_time && <InfoField label="Hora" value={detailData.pickup_time} />}
+                  {detailData.pickup_location && <InfoField label="Ubicación" value={detailData.pickup_location} />}
+                  {detailData.pickup_authorized_person && <InfoField label="Persona autorizada" value={detailData.pickup_authorized_person} />}
+                  {detailData.pickup_contact_info && <InfoField label="Contacto" value={detailData.pickup_contact_info} />}
+                </div>
+              </div>
+            )}
+            <div className="border-t pt-4">
+              <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">
+                Warehouse Receipts ({(detailData?.work_order_items ?? selectedItem.work_order_items).length})
+              </h3>
+              {detailData?.work_order_items ? (
+                <div className="space-y-1">
+                  {detailData.work_order_items.map((item) => (
+                    <Link
+                      key={item.warehouse_receipt_id}
+                      href={`/${locale}/warehouse-receipts/${item.warehouse_receipt_id}/edit`}
+                      className="flex items-center justify-between rounded-md border p-2 text-sm hover:bg-gray-50"
+                    >
+                      <span className="font-mono text-xs font-medium">
+                        {item.warehouse_receipts?.wr_number ?? "—"}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {item.warehouse_receipts?.packages?.[0]?.tracking_number ?? ""}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">{selectedItem.work_order_items.length} WR(s)</p>
+              )}
+            </div>
+          </>
         )}
       </DetailSheet>
+
+      <WoCreateModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </div>
   );
 }

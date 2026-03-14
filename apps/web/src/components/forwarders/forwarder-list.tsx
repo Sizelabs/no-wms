@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { ForwarderModal } from "@/components/forwarders/forwarder-modal";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
+import { formatDate } from "@/lib/format";
 
 interface Organization {
   id: string;
@@ -20,11 +23,14 @@ interface Organization {
 interface ForwarderListProps {
   forwarders: Organization[];
   counts: Record<string, { warehouses: number; agencies: number; users: number }>;
+  canCreate?: boolean;
+  canUpdate?: boolean;
 }
 
-export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
+export function ForwarderList({ forwarders, counts, canCreate = false, canUpdate = false }: ForwarderListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
+  const modal = useModalState<Organization>();
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   const filtered = forwarders.filter((f) => {
@@ -39,6 +45,16 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
 
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nuevo Freight Forwarder
+          </button>
+        </div>
+      )}
       {/* Search row */}
       <div className="flex flex-wrap gap-2">
         <input
@@ -110,17 +126,26 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
       onClose={closeSheet}
       title={selectedItem?.name ?? ""}
       detailHref={selectedItem ? `/${locale}/settings/forwarders/${selectedItem.id}` : undefined}
+      editAction={canUpdate && selectedItem ? () => { closeSheet(); modal.openEdit(selectedItem); } : undefined}
     >
       {selectedItem && (
         <div className="grid gap-3 sm:grid-cols-2">
           <InfoField label="Nombre" value={selectedItem.name} />
           <InfoField label="Slug" value={selectedItem.slug} />
+          <InfoField label="Creada" value={formatDate(selectedItem.created_at)} />
           <InfoField label="Bodegas" value={counts[selectedItem.id]?.warehouses ?? 0} />
           <InfoField label="Agencias" value={counts[selectedItem.id]?.agencies ?? 0} />
           <InfoField label="Usuarios" value={counts[selectedItem.id]?.users ?? 0} />
         </div>
       )}
     </DetailSheet>
+
+    <ForwarderModal
+      key={modal.editItem?.id ?? "create"}
+      open={modal.createOpen || !!modal.editItem}
+      onClose={modal.close}
+      forwarder={modal.editItem}
+    />
     </div>
   );
 }

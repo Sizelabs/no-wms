@@ -1,13 +1,18 @@
 "use client";
 
 import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useState } from "react";
 
+import { TariffScheduleModal } from "@/components/tariffs/tariff-schedule-modal";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 interface TariffSchedule {
   id: string;
+  warehouse_id: string;
+  handling_cost_id: string;
+  destination_id: string | null;
+  agency_id: string | null;
+  courier_id: string | null;
   rate: number;
   rate_unit: string;
   minimum_charge: number | null;
@@ -28,7 +33,7 @@ interface TariffDetailProps {
 }
 
 export function TariffDetail({ schedule }: TariffDetailProps) {
-  const { locale } = useParams<{ locale: string }>();
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -50,12 +55,12 @@ export function TariffDetail({ schedule }: TariffDetailProps) {
               </span>
             )}
           </div>
-          <Link
-            href={`/${locale}/tariffs/${schedule.id}/edit`}
+          <button
+            onClick={() => setEditOpen(true)}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Editar
-          </Link>
+          </button>
         </div>
 
         <dl className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -129,6 +134,13 @@ export function TariffDetail({ schedule }: TariffDetailProps) {
           )}
         </dl>
       </div>
+
+      <TariffScheduleModal
+        key={schedule.id}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        schedule={schedule}
+      />
     </div>
   );
 }

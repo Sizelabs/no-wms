@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -20,17 +19,8 @@ export default async function WorkOrdersPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("workOrders")}>
-        {canCreate && (
-          <Link
-            href="work-orders/new"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nueva OT
-          </Link>
-        )}
-      </PageHeader>
-      <WoList data={data ?? []} locale={locale} canUpdate={permissions.work_orders.update} />
+      <PageHeader title={t("workOrders")} />
+      <WoList data={data ?? []} locale={locale} canUpdate={permissions.work_orders.update} canCreate={canCreate} />
     </div>
   );
 }

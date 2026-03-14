@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { ShippingCategoryList } from "@/components/settings/shipping-category-list";
 import { getShippingCategoriesList } from "@/lib/actions/shipping-categories";
@@ -21,18 +19,10 @@ export default async function ShippingCategoriesPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Categorías de Envío">
-        {canCreate && (
-          <Link
-            href="shipping-categories/new"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nueva Categoría
-          </Link>
-        )}
-      </PageHeader>
+      <PageHeader title="Categorías de Envío" />
       <ShippingCategoryList
         data={data ?? []}
+        canCreate={canCreate}
         canUpdate={canUpdate}
         canDelete={canDelete}
       />

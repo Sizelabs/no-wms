@@ -4,18 +4,25 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { CarrierModal } from "@/components/carriers/carrier-modal";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
-import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
+
+interface Modality {
+  id: string;
+  name: string;
+  code: string;
+}
 
 interface Carrier {
   id: string;
   code: string;
   name: string;
-  modality: string;
+  modalities: Modality[];
   contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;
@@ -24,13 +31,17 @@ interface Carrier {
 
 interface CarrierListProps {
   carriers: Carrier[];
+  modalities: Modality[];
+  canCreate?: boolean;
+  canUpdate?: boolean;
 }
 
-export function CarrierList({ carriers }: CarrierListProps) {
+export function CarrierList({ carriers, modalities, canCreate = false, canUpdate = false }: CarrierListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
   const [modalityFilter, setModalityFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
+  const modal = useModalState<Carrier>();
 
   const filtered = carriers.filter((c) => {
     if (search) {
@@ -41,7 +52,10 @@ export function CarrierList({ carriers }: CarrierListProps) {
         c.contact_name?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (modalityFilter.length > 0 && !modalityFilter.includes(c.modality)) return false;
+    if (modalityFilter.length > 0) {
+      const carrierModalityIds = c.modalities.map((m) => m.id);
+      if (!modalityFilter.some((fid) => carrierModalityIds.includes(fid))) return false;
+    }
     return true;
   });
 
@@ -49,6 +63,16 @@ export function CarrierList({ carriers }: CarrierListProps) {
 
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nuevo Transportista
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <input
           type="text"
@@ -59,11 +83,7 @@ export function CarrierList({ carriers }: CarrierListProps) {
         />
         <MultiSelectFilter
           label="Todas las modalidades"
-          options={[
-            { value: "air", label: "Aéreo" },
-            { value: "ocean", label: "Marítimo" },
-            { value: "ground", label: "Terrestre" },
-          ]}
+          options={modalities.map((m) => ({ value: m.id, label: m.name }))}
           selected={modalityFilter}
           onChange={setModalityFilter}
         />
@@ -75,7 +95,7 @@ export function CarrierList({ carriers }: CarrierListProps) {
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
               <th className="px-4 py-3">Código</th>
               <th className="px-4 py-3">Nombre</th>
-              <th className="px-4 py-3">Modalidad</th>
+              <th className="px-4 py-3">Modalidades</th>
               <th className="px-4 py-3">Contacto</th>
               <th className="px-4 py-3">Estado</th>
             </tr>
@@ -104,9 +124,19 @@ export function CarrierList({ carriers }: CarrierListProps) {
                   </Link>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${MODALITY_COLORS[carrier.modality] ?? ""}`}>
-                    {MODALITY_LABELS[carrier.modality] ?? carrier.modality}
-                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {carrier.modalities.map((m) => (
+                      <span
+                        key={m.id}
+                        className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+                      >
+                        {m.name}
+                      </span>
+                    ))}
+                    {carrier.modalities.length === 0 && (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-500">
                   {carrier.contact_name ?? "—"}
@@ -128,12 +158,16 @@ export function CarrierList({ carriers }: CarrierListProps) {
         onClose={closeSheet}
         title={selectedItem ? `Transportista ${selectedItem.name}` : "Detalle"}
         detailHref={selectedItem ? `/${locale}/settings/carriers/${selectedItem.id}` : undefined}
+        editAction={canUpdate && selectedItem ? () => { closeSheet(); modal.openEdit(selectedItem); } : undefined}
       >
         {selectedItem && (
           <div className="grid gap-3 sm:grid-cols-2">
             <InfoField label="Código" value={selectedItem.code} />
             <InfoField label="Nombre" value={selectedItem.name} />
-            <InfoField label="Modalidad" value={MODALITY_LABELS[selectedItem.modality] ?? selectedItem.modality} />
+            <InfoField
+              label="Modalidades"
+              value={selectedItem.modalities.map((m) => m.name).join(", ") || "—"}
+            />
             <InfoField label="Contacto" value={selectedItem.contact_name ?? "—"} />
             <InfoField label="Teléfono" value={selectedItem.contact_phone ?? "—"} />
             <InfoField label="Email" value={selectedItem.contact_email ?? "—"} />
@@ -141,6 +175,14 @@ export function CarrierList({ carriers }: CarrierListProps) {
           </div>
         )}
       </DetailSheet>
+
+      <CarrierModal
+        key={modal.editItem?.id ?? "create"}
+        open={modal.createOpen || !!modal.editItem}
+        onClose={modal.close}
+        carrier={modal.editItem}
+        modalities={modalities}
+      />
     </div>
   );
 }

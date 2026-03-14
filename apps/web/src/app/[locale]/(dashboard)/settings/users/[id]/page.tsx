@@ -41,10 +41,7 @@ export default async function UserDetailPage({
         >
           Volver a usuarios
         </Link>
-        <UserDetailActions
-          userId={user.id}
-          isActive={user.is_active}
-        />
+        <UserDetailActions user={user} />
       </PageHeader>
 
       {/* Key info cards */}

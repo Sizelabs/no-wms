@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { ForwarderList } from "@/components/forwarders/forwarder-list";
@@ -30,20 +29,12 @@ export default async function ForwardersPage({
   const counts = Object.fromEntries(countsEntries);
 
   const canCreate = permissions.forwarders.create;
+  const canUpdate = permissions.forwarders.update;
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("forwarders")}>
-        {canCreate && (
-          <Link
-            href={`/${locale}/settings/forwarders/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nuevo Freight Forwarder
-          </Link>
-        )}
-      </PageHeader>
-      <ForwarderList forwarders={orgs} counts={counts} />
+      <PageHeader title={t("forwarders")} />
+      <ForwarderList forwarders={orgs} counts={counts} canCreate={canCreate} canUpdate={canUpdate} />
     </div>
   );
 }

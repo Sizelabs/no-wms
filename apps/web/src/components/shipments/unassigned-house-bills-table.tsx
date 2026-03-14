@@ -44,7 +44,7 @@ interface Carrier {
   id: string;
   code: string;
   name: string;
-  modality: string;
+  modalities: { id: string; code: string; name: string }[];
 }
 
 interface Agency {

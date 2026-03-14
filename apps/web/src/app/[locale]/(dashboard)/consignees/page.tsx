@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { ConsigneeList } from "@/components/consignees/consignee-list";
@@ -18,20 +17,12 @@ export default async function ConsigneesPage({
   const { data: consignees } = await getConsignees();
 
   const canCreate = permissions.consignees.create;
+  const canUpdate = permissions.consignees.update;
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("consignees")}>
-        {canCreate && (
-          <Link
-            href={`/${locale}/consignees/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nuevo Consignatario
-          </Link>
-        )}
-      </PageHeader>
-      <ConsigneeList consignees={consignees ?? []} />
+      <PageHeader title={t("consignees")} />
+      <ConsigneeList consignees={consignees ?? []} canCreate={canCreate} canUpdate={canUpdate} />
     </div>
   );
 }

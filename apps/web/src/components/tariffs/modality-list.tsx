@@ -1,13 +1,13 @@
 "use client";
 
 import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { ModalityModal } from "@/components/tariffs/modality-modal";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useModalState } from "@/hooks/use-modal-state";
 import {
   deleteModality,
   resetCourierModalityTariff,
@@ -31,14 +31,15 @@ interface ModalityRow {
 interface ModalityListProps {
   data: ModalityRow[];
   selectedCourierId?: string;
+  canCreate?: boolean;
   canUpdate?: boolean;
   canDelete?: boolean;
 }
 
-export function ModalityList({ data, selectedCourierId, canUpdate = false, canDelete = false }: ModalityListProps) {
+export function ModalityList({ data, selectedCourierId, canCreate = false, canUpdate = false, canDelete = false }: ModalityListProps) {
   const hasActions = canUpdate || canDelete;
-  const { locale } = useParams<{ locale: string }>();
   const { notify } = useNotification();
+  const modal = useModalState<{ id: string; name: string; code: string; description: string | null; is_active: boolean; base_rate: number; base_rate_unit: string; base_minimum_charge: number | null }>();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -134,6 +135,16 @@ export function ModalityList({ data, selectedCourierId, canUpdate = false, canDe
 
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva Modalidad
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <input
           type="text"
@@ -277,12 +288,21 @@ export function ModalityList({ data, selectedCourierId, canUpdate = false, canDe
                           </button>
                         )}
                         {canUpdate && !selectedCourierId && (
-                          <Link
-                            href={`/${locale}/settings/modalities/${m.id}/edit`}
+                          <button
+                            onClick={() => modal.openEdit({
+                              id: m.id,
+                              name: m.name,
+                              code: m.code,
+                              description: m.description,
+                              is_active: m.is_active,
+                              base_rate: m.rate,
+                              base_rate_unit: m.rate_unit,
+                              base_minimum_charge: m.minimum_charge,
+                            })}
                             className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                           >
                             Editar
-                          </Link>
+                          </button>
                         )}
                         {canDelete && !selectedCourierId && m.is_active && (
                           <button
@@ -303,6 +323,13 @@ export function ModalityList({ data, selectedCourierId, canUpdate = false, canDe
           />
         </table>
       </div>
+
+      <ModalityModal
+        key={modal.editItem?.id ?? "create"}
+        open={modal.createOpen || !!modal.editItem}
+        onClose={modal.close}
+        modality={modal.editItem}
+      />
     </div>
   );
 }

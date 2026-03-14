@@ -7,10 +7,13 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
+import { ForwarderModal } from "@/components/forwarders/forwarder-modal";
 import { useNotification } from "@/components/layout/notification";
 import { DetailActions } from "@/components/ui/detail-actions";
 import type { DetailAction } from "@/components/ui/detail-actions";
+import { InviteUserModal } from "@/components/users/invite-user-modal";
 import { UserList } from "@/components/users/user-list";
+import { WarehouseModal } from "@/components/warehouses/warehouse-modal";
 import { deleteOrganization } from "@/lib/actions/organizations";
 import { formatDate } from "@/lib/format";
 
@@ -78,6 +81,9 @@ export function ForwarderDetail({
   users,
 }: ForwarderDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("warehouses");
+  const [editOpen, setEditOpen] = useState(false);
+  const [warehouseModalOpen, setWarehouseModalOpen] = useState(false);
+  const [inviteUserOpen, setInviteUserOpen] = useState(false);
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const { notify } = useNotification();
@@ -100,7 +106,7 @@ export function ForwarderDetail({
   const detailActions: DetailAction[] = [
     {
       label: "Editar",
-      href: `/${locale}/settings/forwarders/${forwarder.id}/edit`,
+      onClick: () => setEditOpen(true),
       roles: ["super_admin", "forwarder_admin"],
     },
     {
@@ -176,36 +182,20 @@ export function ForwarderDetail({
             ))}
           </nav>
           {activeTab === "warehouses" && (
-            <Link
-              href={`/${locale}/settings/forwarders/${forwarder.id}/warehouses/new`}
+            <button
+              onClick={() => setWarehouseModalOpen(true)}
               className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
               + Nueva Bodega
-            </Link>
-          )}
-          {activeTab === "couriers" && (
-            <Link
-              href={`/${locale}/settings/couriers/new`}
-              className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              + Nuevo Courier
-            </Link>
-          )}
-          {activeTab === "agencies" && (
-            <Link
-              href={`/${locale}/agencies/new`}
-              className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              + Nueva Agencia
-            </Link>
+            </button>
           )}
           {activeTab === "users" && (
-            <Link
-              href={`/${locale}/settings/forwarders/${forwarder.id}/users/new`}
+            <button
+              onClick={() => setInviteUserOpen(true)}
               className="mb-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
             >
               + Invitar Usuario
-            </Link>
+            </button>
           )}
         </div>
       </div>
@@ -380,6 +370,22 @@ export function ForwarderDetail({
       )}
 
       {activeTab === "users" && <UserList users={users} />}
+
+      <ForwarderModal
+        key={forwarder.id}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        forwarder={forwarder}
+      />
+      <WarehouseModal
+        open={warehouseModalOpen}
+        onClose={() => setWarehouseModalOpen(false)}
+      />
+      <InviteUserModal
+        open={inviteUserOpen}
+        onClose={() => setInviteUserOpen(false)}
+        organizationId={forwarder.id}
+      />
     </div>
   );
 }

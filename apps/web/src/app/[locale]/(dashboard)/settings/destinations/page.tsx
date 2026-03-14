@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { DestinationList } from "@/components/settings/destination-list";
 import { getCouriers } from "@/lib/actions/couriers";
@@ -40,18 +38,10 @@ export default async function DestinationsPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Destinos">
-        {canCreate && (
-          <Link
-            href="destinations/new"
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + Nuevo Destino
-          </Link>
-        )}
-      </PageHeader>
+      <PageHeader title="Destinos" />
       <DestinationList
         data={data ?? []}
+        canCreate={canCreate}
         canUpdate={canUpdate}
         canDelete={canDelete}
         couriers={courierData}

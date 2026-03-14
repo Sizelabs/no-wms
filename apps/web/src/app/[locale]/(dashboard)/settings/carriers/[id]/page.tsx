@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CarrierEditButton } from "@/components/carriers/carrier-edit-button";
 import { AwbBatchPanel } from "@/components/carriers/awb-batch-panel";
 import { PageHeader } from "@/components/layout/page-header";
 import { getCarrier } from "@/lib/actions/carriers";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { MODALITY_LABELS } from "@/lib/constants/modalities";
 
 export default async function CarrierDetailPage({
   params,
@@ -19,18 +18,14 @@ export default async function CarrierDetailPage({
   if (!carrier) notFound();
 
   const canEdit = permissions.carriers.update;
+  const hasAirModality = carrier.modalities.some(
+    (m: { code: string }) => m.code === "aerea",
+  );
 
   return (
     <div className="space-y-6">
       <PageHeader title={carrier.name}>
-        {canEdit && (
-          <Link
-            href={`/${locale}/settings/carriers/${id}/edit`}
-            className="rounded-md border px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Editar
-          </Link>
-        )}
+        {canEdit && <CarrierEditButton carrier={carrier} />}
       </PageHeader>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -39,8 +34,20 @@ export default async function CarrierDetailPage({
           <p className="font-mono text-sm">{carrier.code}</p>
         </div>
         <div>
-          <p className="text-xs text-gray-500">Modalidad</p>
-          <p className="text-sm">{MODALITY_LABELS[carrier.modality] ?? carrier.modality}</p>
+          <p className="text-xs text-gray-500">Modalidades</p>
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {carrier.modalities.map((m: { id: string; name: string }) => (
+              <span
+                key={m.id}
+                className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+              >
+                {m.name}
+              </span>
+            ))}
+            {carrier.modalities.length === 0 && (
+              <span className="text-sm text-gray-400">—</span>
+            )}
+          </div>
         </div>
         <div>
           <p className="text-xs text-gray-500">Estado</p>
@@ -68,8 +75,8 @@ export default async function CarrierDetailPage({
         )}
       </div>
 
-      {/* AWB batch panel for air carriers only */}
-      {carrier.modality === "air" && (
+      {/* AWB batch panel for air carriers */}
+      {hasAirModality && (
         <div className="border-t pt-6">
           <AwbBatchPanel carrierId={id} batches={carrier.awb_batches ?? []} />
         </div>

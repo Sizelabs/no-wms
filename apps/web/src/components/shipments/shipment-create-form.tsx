@@ -9,7 +9,7 @@ import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
 import { inputClass } from "@/components/ui/form-section";
 import { createShipment, createShipmentWithSIs } from "@/lib/actions/shipments";
-import { extractModalityCode, getDocumentType, SHIPMENT_MODALITY_TO_DOC_TYPE } from "@/lib/shipping-utils";
+import { extractModalityCode, getDocumentType, SHIPMENT_MODALITY_TO_CODES, SHIPMENT_MODALITY_TO_DOC_TYPE } from "@/lib/shipping-utils";
 
 interface Warehouse {
   id: string;
@@ -27,7 +27,7 @@ interface Carrier {
   id: string;
   code: string;
   name: string;
-  modality: string;
+  modalities: { id: string; code: string; name: string }[];
 }
 
 interface Agency {
@@ -101,7 +101,10 @@ export function ShipmentCreateForm({ warehouses, destinations, carriers, agencie
   // SI selection
   const [selectedSiIds, setSelectedSiIds] = useState<Set<string>>(new Set());
 
-  const filteredCarriers = carriers.filter((c) => c.modality === modality);
+  const matchingCodes = SHIPMENT_MODALITY_TO_CODES[modality] ?? [];
+  const filteredCarriers = carriers.filter((c) =>
+    c.modalities.some((m) => matchingCodes.includes(m.code)),
+  );
 
   // Filter SIs by current modality
   const filteredSIs = useMemo(() => {

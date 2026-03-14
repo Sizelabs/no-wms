@@ -4,12 +4,15 @@ import type { AgencyType } from "@no-wms/shared/constants/agency-types";
 import { AGENCY_TYPE_LABELS } from "@no-wms/shared/constants/agency-types";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { AgencyModal } from "@/components/agencies/agency-modal";
 import { DetailSheet } from "@/components/ui/detail-sheet";
+import { getAgency } from "@/lib/actions/agencies";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface Agency {
@@ -26,6 +29,8 @@ interface Agency {
 
 interface AgencyListProps {
   agencies: Agency[];
+  canCreate?: boolean;
+  canUpdate?: boolean;
 }
 
 function getHomeDestination(agency: Agency): string {
@@ -33,9 +38,10 @@ function getHomeDestination(agency: Agency): string {
   return home ? `${home.city}, ${home.country_code}` : "\u2014";
 }
 
-export function AgencyList({ agencies }: AgencyListProps) {
+export function AgencyList({ agencies, canCreate = false, canUpdate = false }: AgencyListProps) {
   const { locale } = useParams<{ locale: string }>();
   const [search, setSearch] = useState("");
+  const modal = useModalState<Agency>();
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
@@ -61,8 +67,39 @@ export function AgencyList({ agencies }: AgencyListProps) {
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
+  // Fetch full detail for drawer
+  const [detailData, setDetailData] = useState<{
+    ruc: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    allow_multi_package: boolean;
+    couriers: { name: string; code: string } | null;
+    agency_contacts: { id: string; name: string; phone: string | null; email: string | null; role: string | null }[];
+  } | null>(null);
+  const fetchNonce = useRef(0);
+
+  useEffect(() => {
+    if (!selectedId) { setDetailData(null); return; }
+    const nonce = ++fetchNonce.current;
+    getAgency(selectedId).then(({ data }) => {
+      if (fetchNonce.current !== nonce) return;
+      setDetailData(data as typeof detailData);
+    });
+  }, [selectedId]);
+
   return (
     <div className="space-y-3">
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={modal.openCreate}
+            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            + Nueva Agencia
+          </button>
+        </div>
+      )}
       {/* Search + status row */}
       <div className="flex flex-wrap gap-2">
         <input
@@ -144,12 +181,12 @@ export function AgencyList({ agencies }: AgencyListProps) {
                 </span>
               </td>
               <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
+                <Link
+                  href={`/${locale}/agencies/${agency.id}`}
                   className="text-xs font-medium text-gray-600 hover:text-gray-900"
                 >
-                  Editar
-                </button>
+                  Ver detalle
+                </Link>
               </td>
             </tr>
             );
@@ -163,17 +200,69 @@ export function AgencyList({ agencies }: AgencyListProps) {
         onClose={closeSheet}
         title={selectedItem ? `Agencia ${selectedItem.name}` : "Detalle"}
         detailHref={selectedItem ? `/${locale}/agencies/${selectedItem.id}` : undefined}
+        editAction={canUpdate && selectedItem && detailData ? () => {
+          closeSheet();
+          modal.openEdit({ ...selectedItem, ...detailData } as Agency & typeof detailData);
+        } : undefined}
       >
         {selectedItem && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <InfoField label="Código" value={selectedItem.code} />
-            <InfoField label="Nombre" value={selectedItem.name} />
-            <InfoField label="Tipo" value={AGENCY_TYPE_LABELS[selectedItem.type]} />
-            <InfoField label="País Destino" value={getHomeDestination(selectedItem)} />
-            <InfoField label="Estado" value={selectedItem.is_active ? "Activa" : "Inactiva"} />
-          </div>
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InfoField label="Código" value={selectedItem.code} />
+              <InfoField label="Nombre" value={selectedItem.name} />
+              <InfoField label="Tipo" value={AGENCY_TYPE_LABELS[selectedItem.type]} />
+              <InfoField label="Courier" value={detailData?.couriers ? `${detailData.couriers.name} (${detailData.couriers.code})` : null} />
+              <InfoField label="País Destino" value={getHomeDestination(selectedItem)} />
+              <InfoField label="Estado" value={selectedItem.is_active ? "Activa" : "Inactiva"} />
+            </div>
+            {detailData && (
+              <>
+                <div className="border-t pt-4">
+                  <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">Información de contacto</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <InfoField label="RUC" value={detailData.ruc} />
+                    <InfoField label="Teléfono" value={detailData.phone} />
+                    <InfoField label="Email" value={detailData.email} />
+                    <InfoField label="Dirección" value={detailData.address} />
+                  </div>
+                </div>
+                <div className="border-t pt-4">
+                  <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">Configuración</h3>
+                  <InfoField label="Múltiples paquetes por recibo" value={detailData.allow_multi_package ? "Sí" : "No"} />
+                </div>
+                {detailData.agency_contacts && detailData.agency_contacts.length > 0 && (
+                  <div className="border-t pt-4">
+                    <h3 className="mb-3 text-xs font-medium uppercase text-gray-500">
+                      Contactos ({detailData.agency_contacts.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {detailData.agency_contacts.map((contact) => (
+                        <div key={contact.id} className="rounded-md border p-2 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-900">{contact.name}</span>
+                            {contact.role && <span className="text-xs text-gray-500">{contact.role}</span>}
+                          </div>
+                          <div className="mt-1 flex gap-3 text-xs text-gray-500">
+                            {contact.phone && <span>{contact.phone}</span>}
+                            {contact.email && <span>{contact.email}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
       </DetailSheet>
+
+      <AgencyModal
+        key={modal.editItem?.id ?? "create"}
+        open={modal.createOpen || !!modal.editItem}
+        onClose={modal.close}
+        agency={modal.editItem as Parameters<typeof AgencyModal>[0]["agency"]}
+      />
     </div>
   );
 }

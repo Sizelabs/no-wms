@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -26,20 +25,12 @@ export default async function CouriersPage({
   const { data: couriers } = await getCouriers();
 
   const canCreate = permissions.couriers.create;
+  const canUpdate = permissions.couriers.update;
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("title")}>
-        {canCreate && (
-          <Link
-            href={`/${locale}/settings/couriers/new`}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            + {t("new")}
-          </Link>
-        )}
-      </PageHeader>
-      <CourierList couriers={couriers ?? []} />
+      <PageHeader title={t("title")} />
+      <CourierList couriers={couriers ?? []} canCreate={canCreate} canUpdate={canUpdate} />
     </div>
   );
 }

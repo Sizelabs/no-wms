@@ -18,6 +18,13 @@ export const SHIPMENT_MODALITY_TO_DOC_TYPE: Record<string, "hawb" | "hbl" | "hwb
   ground: "hwb",
 };
 
+/** Map legacy shipment modality to modality dimension codes for carrier filtering */
+export const SHIPMENT_MODALITY_TO_CODES: Record<string, string[]> = {
+  air: ["aerea", "courier"],
+  ocean: ["maritima"],
+  ground: ["terrestre"],
+};
+
 /** Map an SI modality code to a shipment modality (air, ocean, ground) */
 export function getShipmentModality(modalityCode: string): "air" | "ocean" | "ground" {
   const docType = getDocumentType(modalityCode);

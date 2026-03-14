@@ -50,7 +50,7 @@ export default async function WarehouseDetailPage({
         >
           Volver a bodegas
         </Link>
-        <WarehouseDetailActions warehouseId={warehouse.id} />
+        <WarehouseDetailActions warehouse={warehouse} />
       </PageHeader>
 
       {/* Key info cards */}

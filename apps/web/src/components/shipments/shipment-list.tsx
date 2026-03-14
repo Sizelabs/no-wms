@@ -209,7 +209,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
                       <div className="flex items-center gap-1.5">
                         {s.modality === "air" && s.awb_number && (
                           <Link
-                            href={`/${locale}/shipments/${s.id}/mawb/print`}
+                            href={`/api/print/mawb/${s.id}`}
                             target="_blank"
                             onClick={(e) => e.stopPropagation()}
                             className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
