@@ -82,7 +82,7 @@ export function SiActionBar({
       {/* Mixed type warning */}
       {isMixed && (
         <div className="fixed bottom-[68px] left-60 right-0 z-40 flex justify-center px-6">
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 shadow-sm">
             Las SIs seleccionadas tienen modalidades mixtas. Seleccione solo una modalidad para crear un embarque.
           </div>
         </div>
@@ -90,12 +90,12 @@ export function SiActionBar({
 
       {/* Floating action bar */}
       <div
-        className={`fixed bottom-0 left-60 right-0 z-40 transition-transform duration-300 ease-out ${
+        className={`fixed bottom-0 left-60 right-0 z-40 p-4 transition-transform duration-300 ease-out ${
           mounted && !showModal ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="border-t bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-          <div className="flex items-center gap-3 px-6 py-3.5">
+        <div className="rounded-lg border border-gray-200 bg-white shadow-lg">
+          <div className="flex items-center gap-3 px-4 py-2.5">
             {/* Left: Selection count */}
             <div className="flex shrink-0 items-center gap-1.5">
               <span className="text-sm font-bold text-gray-900">{count}</span>
