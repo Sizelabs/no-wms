@@ -3,45 +3,18 @@
 import { SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ShipmentDetailSheet } from "@/components/shipments/shipment-detail-sheet";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { getNextShipmentStatus, getShipmentStatusLabel, useAdvanceShipmentStatus } from "@/hooks/use-advance-shipment-status";
-import { getShipment } from "@/lib/actions/shipments";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
-import type { ShipmentDetail as ShipmentDetailData } from "@/lib/types/shipments";
-
-interface HouseBill {
-  id: string;
-  hawb_number: string;
-  document_type: string;
-  shipping_instruction_id: string;
-}
-
-interface Shipment {
-  id: string;
-  shipment_number: string;
-  modality: string;
-  status: string;
-  awb_number: string | null;
-  bol_number: string | null;
-  route_number: string | null;
-  flight_number: string | null;
-  vessel_name: string | null;
-  departure_date: string | null;
-  total_pieces: number | null;
-  total_weight_lb: number | null;
-  created_at: string;
-  carriers: { name: string; code: string } | null;
-  destinations: { city: string; country_code: string } | null;
-  hawbs: HouseBill[];
-}
+import type { ShipmentDetail } from "@/lib/types/shipments";
 
 interface ShipmentListProps {
-  data: Shipment[];
+  data: ShipmentDetail[];
 }
 
 export function ShipmentList({ data }: ShipmentListProps) {
@@ -52,11 +25,8 @@ export function ShipmentList({ data }: ShipmentListProps) {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sheetData, setSheetData] = useState<ShipmentDetailData | null>(null);
-  const fetchNonce = useRef(0);
 
   const sheetOpen = selectedId !== null;
-  const sheetLoading = sheetOpen && sheetData?.id !== selectedId;
 
   const hasActions = data.some((s) => getNextShipmentStatus(s.modality, s.status) !== undefined);
 
@@ -77,13 +47,9 @@ export function ShipmentList({ data }: ShipmentListProps) {
     return true;
   }), [data, search, modalityFilter, statusFilter]);
 
-  const openSheet = useCallback(async (id: string) => {
-    setSelectedId(id);
-    const nonce = ++fetchNonce.current;
-    const { data: full } = await getShipment(id);
-    if (fetchNonce.current !== nonce) return; // stale response
-    setSheetData(full as ShipmentDetailData | null);
-  }, []);
+  const selectedShipment = sheetOpen
+    ? filtered.find((s) => s.id === selectedId) ?? data.find((s) => s.id === selectedId) ?? null
+    : null;
 
   const closeSheet = useCallback(() => {
     setSelectedId(null);
@@ -102,12 +68,11 @@ export function ShipmentList({ data }: ShipmentListProps) {
         : Math.max(idx - 1, 0);
       if (nextIdx === idx) return;
       const next = filtered[nextIdx];
-      if (next) openSheet(next.id);
+      if (next) setSelectedId(next.id);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [sheetOpen, selectedId, filtered, openSheet]);
-
+  }, [sheetOpen, selectedId, filtered]);
 
   return (
     <div className="space-y-3">
@@ -168,7 +133,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
                 <tr
                   key={s.id}
                   className={`border-t border-gray-100 cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
-                  onClick={() => openSheet(s.id)}
+                  onClick={() => setSelectedId(s.id)}
                 >
                   <td className="px-3 py-2.5">
                     <Link href={`/${locale}/shipments/${s.id}`} onClick={(e) => e.stopPropagation()} className="font-mono text-xs font-medium text-gray-900 hover:underline">
@@ -197,15 +162,27 @@ export function ShipmentList({ data }: ShipmentListProps) {
                   </td>
                   {hasActions && (
                     <td className="px-3 py-2.5">
-                      {nextStatus && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); advance(s.id, s.modality, s.status); }}
-                          disabled={isPending}
-                          className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
-                        >
-                          {getShipmentStatusLabel(nextStatus!)}
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {s.modality === "air" && s.awb_number && (
+                          <Link
+                            href={`/${locale}/shipments/${s.id}/mawb/print`}
+                            target="_blank"
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                          >
+                            MAWB
+                          </Link>
+                        )}
+                        {nextStatus && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); advance(s.id, s.modality, s.status); }}
+                            disabled={isPending}
+                            className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                          >
+                            {getShipmentStatusLabel(nextStatus!)}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -218,8 +195,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
       <ShipmentDetailSheet
         open={sheetOpen}
         onClose={closeSheet}
-        shipment={sheetData}
-        loading={sheetLoading}
+        shipment={selectedShipment}
       />
     </div>
   );

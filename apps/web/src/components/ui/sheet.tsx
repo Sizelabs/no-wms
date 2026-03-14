@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
+
 interface SheetProps {
   open: boolean;
   onClose: () => void;
@@ -33,20 +35,15 @@ export function Sheet({ open, onClose, children }: SheetProps) {
     setVisible(true);
   }, [mounted, open]);
 
+  useLockBodyScroll(open);
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", handler);
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow = "hidden";
-    document.body.style.paddingRight = `${scrollbarWidth}px`;
-    return () => {
-      document.removeEventListener("keydown", handler);
-      document.body.style.overflow = "";
-      document.body.style.paddingRight = "";
-    };
+    return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
   if (!mounted) return null;

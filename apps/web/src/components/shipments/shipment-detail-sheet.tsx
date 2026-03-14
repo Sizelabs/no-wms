@@ -14,10 +14,9 @@ interface ShipmentDetailSheetProps {
   open: boolean;
   onClose: () => void;
   shipment: ShipmentDetail | null;
-  loading?: boolean;
 }
 
-export function ShipmentDetailSheet({ open, onClose, shipment, loading }: ShipmentDetailSheetProps) {
+export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailSheetProps) {
   const { locale } = useParams<{ locale: string }>();
   const { advance, isPending } = useAdvanceShipmentStatus();
 
@@ -26,16 +25,10 @@ export function ShipmentDetailSheet({ open, onClose, shipment, loading }: Shipme
   return (
     <Sheet open={open} onClose={onClose}>
       <SheetHeader onClose={onClose}>
-        {loading ? "Cargando..." : shipment ? `Embarque ${shipment.shipment_number}` : "Detalle"}
+        {shipment ? `Embarque ${shipment.shipment_number}` : "Detalle"}
       </SheetHeader>
       <SheetBody>
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="size-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
-          </div>
-        )}
-
-        {!loading && shipment && (
+        {shipment && (
           <div className="space-y-5">
             {/* Status + actions bar */}
             <div className="flex items-center justify-between">
@@ -46,6 +39,15 @@ export function ShipmentDetailSheet({ open, onClose, shipment, loading }: Shipme
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                {shipment.modality === "air" && shipment.awb_number && (
+                  <Link
+                    href={`/${locale}/shipments/${shipment.id}/mawb/print`}
+                    target="_blank"
+                    className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Imprimir MAWB
+                  </Link>
+                )}
                 {nextStatus && (
                   <button
                     onClick={() => shipment && advance(shipment.id, shipment.modality, shipment.status)}
