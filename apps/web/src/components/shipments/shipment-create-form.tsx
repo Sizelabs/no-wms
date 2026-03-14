@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
 import { inputClass } from "@/components/ui/form-section";
-import { createShipment } from "@/lib/actions/shipments";
+import { createShipment, createShipmentWithSIs } from "@/lib/actions/shipments";
+import { extractModalityCode, getDocumentType, SHIPMENT_MODALITY_TO_DOC_TYPE } from "@/lib/shipping-utils";
 
 interface Warehouse {
   id: string;
@@ -35,14 +36,28 @@ interface Agency {
   code: string;
 }
 
+interface UnassignedSI {
+  id: string;
+  si_number: string;
+  modality: string | null;
+  modalities: unknown;
+  agency_id: string;
+  agencies: { name: string; code: string } | { name: string; code: string }[] | null;
+  destination_id: string | null;
+  total_pieces: number | null;
+  total_billable_weight_lb: number | null;
+  created_at: string;
+}
+
 interface ShipmentCreateFormProps {
   warehouses: Warehouse[];
   destinations: Destination[];
   carriers: Carrier[];
   agencies: Agency[];
+  unassignedSIs: UnassignedSI[];
 }
 
-export function ShipmentCreateForm({ warehouses, destinations, carriers, agencies }: ShipmentCreateFormProps) {
+export function ShipmentCreateForm({ warehouses, destinations, carriers, agencies, unassignedSIs }: ShipmentCreateFormProps) {
   const { notify } = useNotification();
   const locale = useLocale();
   const router = useRouter();
@@ -83,7 +98,43 @@ export function ShipmentCreateForm({ warehouses, destinations, carriers, agencie
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
 
+  // SI selection
+  const [selectedSiIds, setSelectedSiIds] = useState<Set<string>>(new Set());
+
   const filteredCarriers = carriers.filter((c) => c.modality === modality);
+
+  // Filter SIs by current modality
+  const filteredSIs = useMemo(() => {
+    const expectedDocType = SHIPMENT_MODALITY_TO_DOC_TYPE[modality];
+    return unassignedSIs.filter((si) => {
+      const code = extractModalityCode(si);
+      return getDocumentType(code) === expectedDocType;
+    });
+  }, [unassignedSIs, modality]);
+
+  // Clear SI selections that don't match when modality changes
+  const handleModalityChange = (m: "air" | "ocean" | "ground") => {
+    setModality(m);
+    setCarrierId("");
+    setSelectedSiIds(new Set());
+  };
+
+  const toggleSi = (id: string) => {
+    setSelectedSiIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedSiIds.size === filteredSIs.length) {
+      setSelectedSiIds(new Set());
+    } else {
+      setSelectedSiIds(new Set(filteredSIs.map((si) => si.id)));
+    }
+  };
 
   const handleSubmit = () => {
     if (!warehouseId) return;
@@ -130,17 +181,22 @@ export function ShipmentCreateForm({ warehouses, destinations, carriers, agencie
         if (driverPhone) fd.set("driver_phone", driverPhone);
       }
 
-      const res = await createShipment(fd);
+      const siIds = [...selectedSiIds];
+      const res = siIds.length > 0
+        ? await createShipmentWithSIs(fd, siIds)
+        : await createShipment(fd);
+
       if ("error" in res) {
         notify(res.error, "error");
       } else {
+        const siCount = siIds.length;
         notify(
           <span>
             Embarque{" "}
             <Link href={`/${locale}/shipments/${res.id}`} className="font-medium underline hover:text-gray-600">
               {res.shipment_number}
             </Link>{" "}
-            creado
+            creado{siCount > 0 ? ` con ${siCount} SI${siCount > 1 ? "s" : ""}` : ""}
           </span>,
           "success",
         );
@@ -156,7 +212,7 @@ export function ShipmentCreateForm({ warehouses, destinations, carriers, agencie
         {(["air", "ocean", "ground"] as const).map((m) => (
           <button
             key={m}
-            onClick={() => { setModality(m); setCarrierId(""); }}
+            onClick={() => handleModalityChange(m)}
             className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               modality === m
                 ? "bg-gray-900 text-white"
@@ -336,6 +392,81 @@ export function ShipmentCreateForm({ warehouses, destinations, carriers, agencie
       <div>
         <label className="block text-sm font-medium text-gray-700">Notas</label>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={`mt-1 ${inputClass}`} />
+      </div>
+
+      {/* SI selection */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-900">
+            SIs a cargar
+            {selectedSiIds.size > 0 && (
+              <span className="ml-2 inline-flex min-w-[20px] items-center justify-center rounded-full bg-gray-900 px-1.5 text-[10px] font-bold text-white">
+                {selectedSiIds.size}
+              </span>
+            )}
+          </h3>
+          {filteredSIs.length > 0 && (
+            <span className="text-xs text-gray-500">
+              {filteredSIs.length} SI{filteredSIs.length !== 1 ? "s" : ""} disponible{filteredSIs.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+        {filteredSIs.length === 0 ? (
+          <p className="text-sm text-gray-500">No hay SIs finalizadas disponibles para esta modalidad.</p>
+        ) : (
+          <div className="overflow-auto rounded-lg border max-h-72">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-gray-50">
+                <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-3 py-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedSiIds.size === filteredSIs.length}
+                      onChange={toggleAll}
+                      className="rounded border-gray-300"
+                    />
+                  </th>
+                  <th className="px-3 py-2">SI #</th>
+                  <th className="px-3 py-2">Agencia</th>
+                  <th className="px-3 py-2 text-right">Pzas</th>
+                  <th className="px-3 py-2 text-right">Peso (lb)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filteredSIs.map((si) => (
+                  <tr
+                    key={si.id}
+                    onClick={() => toggleSi(si.id)}
+                    className={`cursor-pointer transition-colors ${
+                      selectedSiIds.has(si.id)
+                        ? "bg-blue-50"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedSiIds.has(si.id)}
+                        onChange={() => toggleSi(si.id)}
+                        className="rounded border-gray-300"
+                      />
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">{si.si_number}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {(Array.isArray(si.agencies) ? si.agencies[0]?.name : si.agencies?.name) ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-right">{si.total_pieces ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs text-right">
+                      {si.total_billable_weight_lb
+                        ? Number(si.total_billable_weight_lb).toFixed(1)
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end">
