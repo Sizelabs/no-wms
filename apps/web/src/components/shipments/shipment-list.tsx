@@ -1,18 +1,16 @@
 "use client";
 
-import type { ShipmentModality, ShipmentStatus } from "@no-wms/shared/constants/statuses";
-
-import { SHIPMENT_STATUS_FLOW, SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import { SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useNotification } from "@/components/layout/notification";
 import { ShipmentDetailSheet } from "@/components/shipments/shipment-detail-sheet";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
-import { getShipment, updateShipmentStatus } from "@/lib/actions/shipments";
+import { getNextShipmentStatus, getShipmentStatusLabel, useAdvanceShipmentStatus } from "@/hooks/use-advance-shipment-status";
+import { getShipment } from "@/lib/actions/shipments";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 import type { ShipmentDetail as ShipmentDetailData } from "@/lib/types/shipments";
 
@@ -48,8 +46,7 @@ interface ShipmentListProps {
 
 export function ShipmentList({ data }: ShipmentListProps) {
   const { locale } = useParams<{ locale: string }>();
-  const [isPending, startTransition] = useTransition();
-  const { notify } = useNotification();
+  const { advance, isPending } = useAdvanceShipmentStatus();
   const [search, setSearch] = useState("");
   const [modalityFilter, setModalityFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -61,10 +58,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
   const sheetOpen = selectedId !== null;
   const sheetLoading = sheetOpen && sheetData?.id !== selectedId;
 
-  const hasActions = data.some((s) => {
-    const flow = SHIPMENT_STATUS_FLOW[s.modality as ShipmentModality];
-    return flow && flow[s.status as ShipmentStatus] !== undefined;
-  });
+  const hasActions = data.some((s) => getNextShipmentStatus(s.modality, s.status) !== undefined);
 
   const filtered = useMemo(() => data.filter((s) => {
     if (search) {
@@ -114,19 +108,6 @@ export function ShipmentList({ data }: ShipmentListProps) {
     return () => document.removeEventListener("keydown", handler);
   }, [sheetOpen, selectedId, filtered, openSheet]);
 
-  const handleAdvance = (id: string, modality: string, currentStatus: string) => {
-    const flow = SHIPMENT_STATUS_FLOW[modality as ShipmentModality];
-    const next = flow?.[currentStatus as ShipmentStatus];
-    if (!next) return;
-    startTransition(async () => {
-      const res = await updateShipmentStatus(id, next);
-      if (res.error) {
-        notify(res.error, "error");
-      } else {
-        notify(`Embarque actualizado a ${SHIPMENT_STATUS_LABELS[next] ?? next}`, "success");
-      }
-    });
-  };
 
   return (
     <div className="space-y-3">
@@ -180,8 +161,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
             colSpan={hasActions ? 10 : 9}
             emptyMessage="No hay embarques"
             renderRow={(s) => {
-              const flow = SHIPMENT_STATUS_FLOW[s.modality as ShipmentModality];
-              const nextStatus = flow?.[s.status as ShipmentStatus];
+              const nextStatus = getNextShipmentStatus(s.modality, s.status);
               const documentNumber = s.awb_number || s.bol_number || s.route_number || "\u2014";
               const isSelected = sheetOpen && s.id === selectedId;
               return (
@@ -219,11 +199,11 @@ export function ShipmentList({ data }: ShipmentListProps) {
                     <td className="px-3 py-2.5">
                       {nextStatus && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleAdvance(s.id, s.modality, s.status); }}
+                          onClick={(e) => { e.stopPropagation(); advance(s.id, s.modality, s.status); }}
                           disabled={isPending}
                           className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                         >
-                          {SHIPMENT_STATUS_LABELS[nextStatus] ?? nextStatus}
+                          {getShipmentStatusLabel(nextStatus!)}
                         </button>
                       )}
                     </td>

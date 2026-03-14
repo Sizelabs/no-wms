@@ -1,17 +1,12 @@
 "use client";
 
-import type { ShipmentModality, ShipmentStatus } from "@no-wms/shared/constants/statuses";
-
-import { SHIPMENT_STATUS_FLOW, SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useTransition } from "react";
 
-import { useNotification } from "@/components/layout/notification";
 import { InfoField } from "@/components/shipments/info-field";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
-import { updateShipmentStatus } from "@/lib/actions/shipments";
+import { getNextShipmentStatus, getShipmentStatusLabel, useAdvanceShipmentStatus } from "@/hooks/use-advance-shipment-status";
 import { MODALITY_LABELS } from "@/lib/constants/modalities";
 import type { ShipmentDetail } from "@/lib/types/shipments";
 
@@ -24,23 +19,9 @@ interface ShipmentDetailSheetProps {
 
 export function ShipmentDetailSheet({ open, onClose, shipment, loading }: ShipmentDetailSheetProps) {
   const { locale } = useParams<{ locale: string }>();
-  const { notify } = useNotification();
-  const [isPending, startTransition] = useTransition();
+  const { advance, isPending } = useAdvanceShipmentStatus();
 
-  const flow = shipment ? SHIPMENT_STATUS_FLOW[shipment.modality as ShipmentModality] : undefined;
-  const nextStatus = shipment && flow ? flow[shipment.status as ShipmentStatus] : undefined;
-
-  const handleAdvance = () => {
-    if (!shipment || !nextStatus) return;
-    startTransition(async () => {
-      const res = await updateShipmentStatus(shipment.id, nextStatus);
-      if (res.error) {
-        notify(res.error, "error");
-      } else {
-        notify(`Embarque actualizado a ${SHIPMENT_STATUS_LABELS[nextStatus] ?? nextStatus}`, "success");
-      }
-    });
-  };
+  const nextStatus = shipment ? getNextShipmentStatus(shipment.modality, shipment.status) : undefined;
 
   return (
     <Sheet open={open} onClose={onClose}>
@@ -67,11 +48,11 @@ export function ShipmentDetailSheet({ open, onClose, shipment, loading }: Shipme
               <div className="flex items-center gap-2">
                 {nextStatus && (
                   <button
-                    onClick={handleAdvance}
+                    onClick={() => shipment && advance(shipment.id, shipment.modality, shipment.status)}
                     disabled={isPending}
                     className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
                   >
-                    {isPending ? "..." : `Avanzar a: ${SHIPMENT_STATUS_LABELS[nextStatus] ?? nextStatus}`}
+                    {isPending ? "..." : `Avanzar a: ${getShipmentStatusLabel(nextStatus!)}`}
                   </button>
                 )}
                 <Link
