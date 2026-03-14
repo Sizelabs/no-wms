@@ -3,7 +3,7 @@
 import { WO_PRIORITY_LABELS, WO_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-types";
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { DetailSheet } from "@/components/ui/detail-sheet";
@@ -11,6 +11,7 @@ import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { WoCreateModal } from "@/components/work-orders/wo-create-modal";
+import { useDetailFetch } from "@/hooks/use-detail-fetch";
 import { useSheetState } from "@/hooks/use-sheet-state";
 import { getWorkOrder, updateWorkOrderStatus } from "@/lib/actions/work-orders";
 import { formatDate } from "@/lib/format";
@@ -76,27 +77,7 @@ export function WoList({ data, locale, canUpdate = false, canCreate = false }: W
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
-  const [detailData, setDetailData] = useState<{
-    result_notes: string | null;
-    cancellation_reason: string | null;
-    completed_at: string | null;
-    pickup_date: string | null;
-    pickup_time: string | null;
-    pickup_location: string | null;
-    pickup_authorized_person: string | null;
-    pickup_contact_info: string | null;
-    work_order_items: { warehouse_receipt_id: string; warehouse_receipts: { wr_number: string; packages: { tracking_number: string }[] } | null }[];
-  } | null>(null);
-  const fetchNonce = useRef(0);
-
-  useEffect(() => {
-    if (!selectedId) { setDetailData(null); return; }
-    const nonce = ++fetchNonce.current;
-    getWorkOrder(selectedId).then(({ data }) => {
-      if (fetchNonce.current !== nonce) return;
-      setDetailData(data as typeof detailData);
-    });
-  }, [selectedId]);
+  const detailData = useDetailFetch(selectedId, getWorkOrder);
 
   const hasActions = canUpdate && data.some((wo) => !["completed", "cancelled"].includes(wo.status));
 
@@ -361,7 +342,7 @@ export function WoList({ data, locale, canUpdate = false, canCreate = false }: W
               </h3>
               {detailData?.work_order_items ? (
                 <div className="space-y-1">
-                  {detailData.work_order_items.map((item) => (
+                  {detailData.work_order_items.map((item: { warehouse_receipt_id: string; warehouse_receipts: { wr_number: string; packages: { tracking_number: string }[] } | null }) => (
                     <Link
                       key={item.warehouse_receipt_id}
                       href={`/${locale}/warehouse-receipts/${item.warehouse_receipt_id}/edit`}

@@ -4,7 +4,7 @@ import { ROLE_LABELS } from "@no-wms/shared/constants/roles";
 import type { Role } from "@no-wms/shared/constants/roles";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
@@ -12,6 +12,7 @@ import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useDetailFetch } from "@/hooks/use-detail-fetch";
 import { useSheetState } from "@/hooks/use-sheet-state";
 import {
   getUser,
@@ -86,22 +87,7 @@ export function UserList({ users, allowedRoles }: UserListProps) {
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
-  const [detailData, setDetailData] = useState<{
-    email: string | null;
-    phone: string | null;
-    created_at: string;
-    user_roles: { id: string; role: string; warehouse_id: string | null; courier_id: string | null; destination_id: string | null; agency_id: string | null }[];
-  } | null>(null);
-  const fetchNonce = useRef(0);
-
-  useEffect(() => {
-    if (!selectedId) { setDetailData(null); return; }
-    const nonce = ++fetchNonce.current;
-    getUser(selectedId).then(({ data }) => {
-      if (fetchNonce.current !== nonce) return;
-      setDetailData(data as typeof detailData);
-    });
-  }, [selectedId]);
+  const detailData = useDetailFetch(selectedId, getUser);
 
   return (
     <div className="space-y-3">
@@ -254,7 +240,7 @@ export function UserList({ users, allowedRoles }: UserListProps) {
                 Roles ({(detailData?.user_roles ?? selectedItem.user_roles).length})
               </h3>
               <div className="space-y-2">
-                {(detailData?.user_roles ?? selectedItem.user_roles).map((r) => (
+                {(detailData?.user_roles ?? selectedItem.user_roles).map((r: { id: string; role: string; warehouse_id?: string | null; destination_id?: string | null; courier_id?: string | null; agency_id?: string | null }) => (
                   <div
                     key={r.id}
                     className="flex items-center justify-between rounded-md border p-2 text-sm"
@@ -262,18 +248,18 @@ export function UserList({ users, allowedRoles }: UserListProps) {
                     <span className="font-medium text-gray-900">
                       {ROLE_LABELS[r.role as Role] ?? r.role}
                     </span>
-                    {"warehouse_id" in r && (
+                    {(r.warehouse_id || r.destination_id || r.courier_id || r.agency_id) && (
                       <div className="flex gap-2 text-xs text-gray-500">
-                        {"warehouse_id" in r && !!(r as Record<string, unknown>).warehouse_id && (
+                        {r.warehouse_id && (
                           <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700">Bodega</span>
                         )}
-                        {"destination_id" in r && !!(r as Record<string, unknown>).destination_id && (
+                        {r.destination_id && (
                           <span className="rounded bg-purple-50 px-1.5 py-0.5 text-purple-700">Destino</span>
                         )}
-                        {"courier_id" in r && !!(r as Record<string, unknown>).courier_id && (
+                        {r.courier_id && (
                           <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-indigo-700">Courier</span>
                         )}
-                        {"agency_id" in r && !!(r as Record<string, unknown>).agency_id && (
+                        {r.agency_id && (
                           <span className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-700">Agencia</span>
                         )}
                       </div>

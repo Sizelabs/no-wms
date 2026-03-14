@@ -4,16 +4,17 @@ import type { AgencyType } from "@no-wms/shared/constants/agency-types";
 import { AGENCY_TYPE_LABELS } from "@no-wms/shared/constants/agency-types";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { AgencyModal } from "@/components/agencies/agency-modal";
 import { DetailSheet } from "@/components/ui/detail-sheet";
-import { getAgency } from "@/lib/actions/agencies";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useDetailFetch } from "@/hooks/use-detail-fetch";
 import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
+import { getAgency } from "@/lib/actions/agencies";
 
 interface Agency {
   id: string;
@@ -67,26 +68,7 @@ export function AgencyList({ agencies, canCreate = false, canUpdate = false }: A
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
-  // Fetch full detail for drawer
-  const [detailData, setDetailData] = useState<{
-    ruc: string | null;
-    phone: string | null;
-    email: string | null;
-    address: string | null;
-    allow_multi_package: boolean;
-    couriers: { name: string; code: string } | null;
-    agency_contacts: { id: string; name: string; phone: string | null; email: string | null; role: string | null }[];
-  } | null>(null);
-  const fetchNonce = useRef(0);
-
-  useEffect(() => {
-    if (!selectedId) { setDetailData(null); return; }
-    const nonce = ++fetchNonce.current;
-    getAgency(selectedId).then(({ data }) => {
-      if (fetchNonce.current !== nonce) return;
-      setDetailData(data as typeof detailData);
-    });
-  }, [selectedId]);
+  const detailData = useDetailFetch(selectedId, getAgency);
 
   return (
     <div className="space-y-3">
@@ -236,7 +218,7 @@ export function AgencyList({ agencies, canCreate = false, canUpdate = false }: A
                       Contactos ({detailData.agency_contacts.length})
                     </h3>
                     <div className="space-y-2">
-                      {detailData.agency_contacts.map((contact) => (
+                      {detailData.agency_contacts.map((contact: { id: string; name: string; phone: string | null; email: string | null; role: string | null }) => (
                         <div key={contact.id} className="rounded-md border p-2 text-sm">
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-gray-900">{contact.name}</span>

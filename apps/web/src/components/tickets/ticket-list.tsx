@@ -2,7 +2,7 @@
 
 import { TICKET_STATUSES } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { TicketModal } from "@/components/tickets/ticket-modal";
 import { TicketPriorityBadge } from "@/components/tickets/ticket-priority-badge";
@@ -11,6 +11,7 @@ import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useDetailFetch } from "@/hooks/use-detail-fetch";
 import { useSheetState } from "@/hooks/use-sheet-state";
 import { getTicket } from "@/lib/actions/tickets";
 import { formatDate } from "@/lib/format";
@@ -62,24 +63,7 @@ export function TicketList({ data, agencies, canCreate = false, agencyId }: Tick
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
-  const [detailData, setDetailData] = useState<{
-    description: string;
-    assigned_to: string | null;
-    resolved_at: string | null;
-    closed_at: string | null;
-    assignee: { full_name: string } | null;
-    warehouse_receipts: { id: string; wr_number: string; packages: { tracking_number: string }[] }[];
-  } | null>(null);
-  const fetchNonce = useRef(0);
-
-  useEffect(() => {
-    if (!selectedId) { setDetailData(null); return; }
-    const nonce = ++fetchNonce.current;
-    getTicket(selectedId).then(({ data }) => {
-      if (fetchNonce.current !== nonce) return;
-      setDetailData(data as typeof detailData);
-    });
-  }, [selectedId]);
+  const detailData = useDetailFetch(selectedId, getTicket);
 
   const activeFilterCount = [priorityFilter, agencyFilter].filter((f) => f.length > 0).length;
 
@@ -234,7 +218,7 @@ export function TicketList({ data, agencies, canCreate = false, agencyId }: Tick
               <InfoField label="Categoría" value={selectedItem.category} />
               <InfoField label="Agencia" value={selectedItem.agencies?.name} />
               <InfoField label="Creado por" value={selectedItem.creator?.full_name} />
-              <InfoField label="Asignado a" value={detailData?.assignee?.full_name ?? selectedItem.assigned_to} />
+              <InfoField label="Asignado a" value={(detailData?.assignee as unknown as { full_name: string } | null)?.full_name ?? selectedItem.assigned_to} />
               <InfoField label="Fecha" value={formatDate(selectedItem.created_at)} />
               {detailData?.resolved_at && (
                 <InfoField label="Resuelto" value={formatDate(detailData.resolved_at)} />
@@ -253,7 +237,7 @@ export function TicketList({ data, agencies, canCreate = false, agencyId }: Tick
               <div className="border-t pt-4">
                 <h3 className="mb-2 text-xs font-medium uppercase text-gray-500">WRs Relacionados</h3>
                 <div className="flex flex-wrap gap-2">
-                  {detailData.warehouse_receipts.map((wr) => (
+                  {(detailData.warehouse_receipts as unknown as { id: string; wr_number: string; packages: { tracking_number: string }[] }[]).map((wr) => (
                     <span
                       key={wr.id}
                       className="inline-flex items-center gap-1 rounded border bg-gray-50 px-2 py-0.5 font-mono text-xs"

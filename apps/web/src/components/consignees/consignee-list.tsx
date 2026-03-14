@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { ConsigneeModal } from "@/components/consignees/consignee-modal";
-import { getConsignee } from "@/lib/actions/consignees";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useDetailFetch } from "@/hooks/use-detail-fetch";
 import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
+import { getConsignee } from "@/lib/actions/consignees";
 
 interface Consignee {
   id: string;
@@ -63,24 +64,7 @@ export function ConsigneeList({ consignees, canCreate = false, canUpdate = false
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
-  const [detailData, setDetailData] = useState<{
-    email: string | null;
-    phone: string | null;
-    address_line1: string | null;
-    address_line2: string | null;
-    province: string | null;
-    postal_code: string | null;
-  } | null>(null);
-  const fetchNonce = useRef(0);
-
-  useEffect(() => {
-    if (!selectedId) { setDetailData(null); return; }
-    const nonce = ++fetchNonce.current;
-    getConsignee(selectedId).then(({ data }) => {
-      if (fetchNonce.current !== nonce) return;
-      setDetailData(data as typeof detailData);
-    });
-  }, [selectedId]);
+  const detailData = useDetailFetch(selectedId, getConsignee);
 
   return (
     <div className="space-y-3">

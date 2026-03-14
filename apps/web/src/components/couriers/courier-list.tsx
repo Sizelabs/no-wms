@@ -4,13 +4,14 @@ import { COURIER_TYPE_LABELS } from "@no-wms/shared/constants/courier-types";
 import type { CourierType } from "@no-wms/shared/constants/courier-types";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { CourierModal } from "@/components/couriers/courier-modal";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useDetailFetch } from "@/hooks/use-detail-fetch";
 import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
 import { getCourier } from "@/lib/actions/couriers";
@@ -77,25 +78,7 @@ export function CourierList({ couriers, canCreate = false, canUpdate = false }: 
       ]
     : [];
 
-  const [detailData, setDetailData] = useState<{
-    ruc: string | null;
-    address: string | null;
-    city: string | null;
-    country: string | null;
-    phone: string | null;
-    email: string | null;
-    created_at: string;
-  } | null>(null);
-  const fetchNonce = useRef(0);
-
-  useEffect(() => {
-    if (!selectedId) { setDetailData(null); return; }
-    const nonce = ++fetchNonce.current;
-    getCourier(selectedId).then(({ data }) => {
-      if (fetchNonce.current !== nonce) return;
-      setDetailData(data as typeof detailData);
-    });
-  }, [selectedId]);
+  const detailData = useDetailFetch(selectedId, getCourier);
 
   return (
     <div className="space-y-3">

@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { DetailSheet } from "@/components/ui/detail-sheet";
-import { getWarehouse } from "@/lib/actions/warehouses";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { WarehouseModal } from "@/components/warehouses/warehouse-modal";
+import { useDetailFetch } from "@/hooks/use-detail-fetch";
 import { useModalState } from "@/hooks/use-modal-state";
 import { useSheetState } from "@/hooks/use-sheet-state";
+import { getWarehouse } from "@/lib/actions/warehouses";
 
 interface Warehouse {
   id: string;
@@ -57,19 +58,7 @@ export function WarehouseList({ warehouses, canCreate = false, canUpdate = false
 
   const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
-  const [detailData, setDetailData] = useState<{
-    warehouse_zones: { id: string; name: string; code: string; warehouse_locations?: { id: string; label: string; barcode: string }[] }[] | null;
-  } | null>(null);
-  const fetchNonce = useRef(0);
-
-  useEffect(() => {
-    if (!selectedId) { setDetailData(null); return; }
-    const nonce = ++fetchNonce.current;
-    getWarehouse(selectedId).then(({ data }) => {
-      if (fetchNonce.current !== nonce) return;
-      setDetailData(data as typeof detailData);
-    });
-  }, [selectedId]);
+  const detailData = useDetailFetch(selectedId, getWarehouse);
 
   return (
     <div className="space-y-3">
@@ -182,7 +171,7 @@ export function WarehouseList({ warehouses, canCreate = false, canUpdate = false
                 Zonas ({detailData.warehouse_zones.length})
               </h3>
               <div className="space-y-2">
-                {detailData.warehouse_zones.map((zone) => (
+                {detailData.warehouse_zones.map((zone: { id: string; name: string; code: string; warehouse_locations?: { id: string; label: string; barcode: string }[] }) => (
                   <div key={zone.id} className="rounded-md border p-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-900">{zone.name}</span>
@@ -190,7 +179,7 @@ export function WarehouseList({ warehouses, canCreate = false, canUpdate = false
                     </div>
                     {zone.warehouse_locations && zone.warehouse_locations.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1">
-                        {zone.warehouse_locations.map((loc) => (
+                        {zone.warehouse_locations.map((loc: { id: string; label: string; barcode: string }) => (
                           <span
                             key={loc.id}
                             className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
