@@ -20,6 +20,7 @@ import {
   getRouteModalities,
   getShippingCategories,
 } from "@/lib/actions/shipping-instructions";
+import { patchWrDeclaredValues } from "@/lib/actions/warehouse-receipts";
 
 interface ShipFlowProps {
   open: boolean;
@@ -92,6 +93,17 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
   // Reset uploaded files when category changes
   useEffect(() => { setDocUploads({}); }, [selectedCategoryId]);
 
+  // Track WRs with missing declared values — user fills them in before submission
+  const wrsNeedingDeclaredValue = useMemo(
+    () => wrs.filter((wr) => wr.total_declared_value_usd == null || wr.total_declared_value_usd <= 0),
+    [wrs],
+  );
+  const [declaredValueOverrides, setDeclaredValueOverrides] = useState<Record<string, string>>({});
+  const hasMissingData = wrsNeedingDeclaredValue.length > 0;
+  const allMissingFilled = wrsNeedingDeclaredValue.every(
+    (wr) => declaredValueOverrides[wr.id] && Number(declaredValueOverrides[wr.id]) > 0,
+  );
+
   const [insureCargo, setInsureCargo] = useState(false);
   const [isDgr, setIsDgr] = useState(() => wrs.some((wr) => wr.has_dgr_package));
   const [specialInstructions, setSpecialInstructions] = useState("");
@@ -155,12 +167,26 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
     }
   }, [agencyId, newConsigneeName, notify]);
 
-  const canSubmit = destinationId !== "" && modalityId !== "" && selectedConsignee !== null && selectedCategoryId !== "";
+  const canSubmit = destinationId !== "" && modalityId !== "" && selectedConsignee !== null && selectedCategoryId !== "" && (!hasMissingData || allMissingFilled);
 
   function handleSubmit() {
     if (!selectedConsignee) return;
     const dest = destinations.find((d) => d.id === destinationId);
     startTransition(async () => {
+      // Patch missing declared values if user filled them in
+      if (wrsNeedingDeclaredValue.length > 0) {
+        const patches = wrsNeedingDeclaredValue
+          .filter((wr) => declaredValueOverrides[wr.id])
+          .map((wr) => ({ wrId: wr.id, declaredValueUsd: Number(declaredValueOverrides[wr.id]) }));
+        if (patches.length > 0) {
+          const patchResult = await patchWrDeclaredValues(patches);
+          if (patchResult.error) {
+            notify(patchResult.error, "error");
+            return;
+          }
+        }
+      }
+
       // Collect already-uploaded document metadata
       const uploadedDocs = Object.entries(docUploads).flatMap(([docType, files]) =>
         files.map((f) => ({ document_type: docType, storage_path: f.storagePath, file_name: f.fileName, content_type: "", file_size: 0 })),
@@ -212,6 +238,37 @@ export function ShipFlow({ open, onClose, onSuccess, wrs, warehouseId, agencyId 
       submitting={isPending}
       onSubmit={handleSubmit}
     >
+      {/* Missing data warning */}
+      {hasMissingData && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
+          <p className="text-sm font-medium text-amber-800">
+            {wrsNeedingDeclaredValue.length === 1
+              ? "1 recibo no tiene valor declarado"
+              : `${wrsNeedingDeclaredValue.length} recibos no tienen valor declarado`}
+          </p>
+          <p className="text-xs text-amber-600">Ingrese el valor declarado (USD) para cada recibo antes de continuar.</p>
+          <div className="space-y-2">
+            {wrsNeedingDeclaredValue.map((wr) => (
+              <div key={wr.id} className="flex items-center gap-3">
+                <span className="shrink-0 font-mono text-xs font-medium text-amber-900">{wr.wr_number}</span>
+                <div className="relative flex-1">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs text-amber-400">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    value={declaredValueOverrides[wr.id] ?? ""}
+                    onChange={(e) => setDeclaredValueOverrides((prev) => ({ ...prev, [wr.id]: e.target.value }))}
+                    className="h-8 w-full rounded-md border border-amber-300 bg-white pl-6 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Destination */}
       <fieldset className="space-y-3">
         <legend className="text-xs font-medium uppercase tracking-wider text-gray-400">Destino</legend>

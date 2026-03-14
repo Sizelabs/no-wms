@@ -1462,3 +1462,43 @@ export async function getWarehouseReceiptsForHistory(filters?: {
 
   return { data, error: null, count: count ?? 0 };
 }
+
+/**
+ * Patch missing declared values on multiple WRs at once.
+ * For each WR, distributes the total value evenly across its packages.
+ */
+export async function patchWrDeclaredValues(
+  patches: Array<{ wrId: string; declaredValueUsd: number }>,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  for (const { wrId, declaredValueUsd } of patches) {
+    const { data: packages } = await supabase
+      .from("packages")
+      .select("id")
+      .eq("warehouse_receipt_id", wrId);
+
+    if (!packages || packages.length === 0) continue;
+
+    const perPackage = Math.round((declaredValueUsd / packages.length) * 100) / 100;
+    const remainder = Math.round((declaredValueUsd - perPackage * packages.length) * 100) / 100;
+
+    for (let i = 0; i < packages.length; i++) {
+      const value = i === 0 ? perPackage + remainder : perPackage;
+      await supabase
+        .from("packages")
+        .update({ declared_value_usd: value })
+        .eq("id", packages[i]!.id);
+    }
+
+    await supabase
+      .from("warehouse_receipts")
+      .update({ total_declared_value_usd: declaredValueUsd })
+      .eq("id", wrId);
+  }
+
+  revalidatePath("/warehouse-receipts");
+  return {};
+}
