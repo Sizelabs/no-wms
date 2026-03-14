@@ -78,7 +78,7 @@ export function SiActionBar({
   const isMixed = modalities.size > 1;
 
   return (
-    <>
+    <div className="contents">
       {/* Mixed type warning */}
       {isMixed && (
         <div className="fixed bottom-[68px] left-60 right-0 z-40 flex justify-center px-6">
@@ -143,6 +143,6 @@ export function SiActionBar({
           orgName={orgName}
         />
       )}
-    </>
+    </div>
   );
 }

@@ -30,12 +30,15 @@ export function Modal({ open, onClose, size = "md", children }: ModalProps) {
       if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", handler);
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
     // Focus trap: focus the content on open
     contentRef.current?.focus();
     return () => {
       document.removeEventListener("keydown", handler);
       document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
     };
   }, [open]);
 

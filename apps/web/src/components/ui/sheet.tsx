@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 interface SheetProps {
   open: boolean;
@@ -10,8 +10,28 @@ interface SheetProps {
 
 export function Sheet({ open, onClose, children }: SheetProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+    } else if (mounted) {
+      setVisible(false);
+    }
+  }, [open, mounted]);
+
+  // Once mounted, force a layout read then trigger the animation
+  useEffect(() => {
+    if (!mounted || !open) return;
+    // Force reflow so the browser registers the initial translate-x-full state
+    panelRef.current?.getBoundingClientRect();
+    setVisible(true);
+  }, [mounted, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -19,25 +39,52 @@ export function Sheet({ open, onClose, children }: SheetProps) {
       if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", handler);
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
     return () => {
       document.removeEventListener("keydown", handler);
       document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
     };
   }, [open]);
+
+  if (!mounted) return null;
 
   return (
     <div
       ref={overlayRef}
-      className={`fixed inset-0 z-50 transition-opacity duration-200 ${open ? "pointer-events-auto bg-black/40 opacity-100" : "pointer-events-none opacity-0"}`}
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 50,
+        backgroundColor: visible ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0)",
+        transition: "background-color 200ms ease-out",
+      }}
     >
       <div
-        className={`absolute inset-y-0 right-0 w-full max-w-2xl transform bg-white shadow-xl transition-transform duration-200 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}
+        ref={panelRef}
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          maxWidth: "42rem",
+          transform: visible ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 200ms ease-out",
+        }}
+        className="flex flex-col bg-white shadow-2xl"
+        onTransitionEnd={(e) => {
+          if (e.propertyName === "transform" && !open) {
+            setMounted(false);
+          }
+        }}
       >
-        {open && children}
+        {children}
       </div>
     </div>
   );
@@ -45,8 +92,8 @@ export function Sheet({ open, onClose, children }: SheetProps) {
 
 export function SheetHeader({ children, onClose }: { children: ReactNode; onClose?: () => void }) {
   return (
-    <div className="flex items-center justify-between border-b px-5 py-4">
-      <h2 className="text-base font-semibold text-gray-900">{children}</h2>
+    <div className="flex h-14 shrink-0 items-center justify-between border-b bg-white px-5">
+      <h2 className="text-lg font-semibold text-gray-900">{children}</h2>
       {onClose && (
         <button
           type="button"
@@ -63,5 +110,5 @@ export function SheetHeader({ children, onClose }: { children: ReactNode; onClos
 }
 
 export function SheetBody({ children }: { children: ReactNode }) {
-  return <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: "calc(100vh - 65px)" }}>{children}</div>;
+  return <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>;
 }

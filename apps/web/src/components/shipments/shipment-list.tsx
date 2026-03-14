@@ -5,7 +5,7 @@ import type { ShipmentModality, ShipmentStatus } from "@no-wms/shared/constants/
 import { SHIPMENT_STATUS_FLOW, SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import type { ShipmentSheetData } from "@/components/shipments/shipment-detail-sheet";
@@ -68,14 +68,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetData, setSheetData] = useState<ShipmentSheetData | null>(null);
   const [sheetLoading, setSheetLoading] = useState(false);
-
-  const handleRowClick = useCallback(async (id: string) => {
-    setSheetOpen(true);
-    setSheetLoading(true);
-    const { data: full } = await getShipment(id);
-    setSheetData(full as ShipmentSheetData | null);
-    setSheetLoading(false);
-  }, []);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const hasActions = data.some((s) => {
     const flow = SHIPMENT_STATUS_FLOW[s.modality as ShipmentModality];
@@ -98,6 +91,39 @@ export function ShipmentList({ data }: ShipmentListProps) {
     if (statusFilter.length > 0 && !statusFilter.includes(s.status)) return false;
     return true;
   });
+
+  const openSheet = useCallback(async (id: string) => {
+    setSelectedId(id);
+    setSheetOpen(true);
+    setSheetLoading(true);
+    const { data: full } = await getShipment(id);
+    setSheetData(full as ShipmentSheetData | null);
+    setSheetLoading(false);
+  }, []);
+
+  const closeSheet = useCallback(() => {
+    setSheetOpen(false);
+    setSelectedId(null);
+  }, []);
+
+  // Arrow key navigation between rows while sheet is open
+  useEffect(() => {
+    if (!sheetOpen || !selectedId) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      const idx = filtered.findIndex((s) => s.id === selectedId);
+      if (idx === -1) return;
+      const nextIdx = e.key === "ArrowDown"
+        ? Math.min(idx + 1, filtered.length - 1)
+        : Math.max(idx - 1, 0);
+      if (nextIdx === idx) return;
+      const next = filtered[nextIdx];
+      if (next) openSheet(next.id);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [sheetOpen, selectedId, filtered, openSheet]);
 
   const handleAdvance = (id: string, modality: string, currentStatus: string) => {
     const flow = SHIPMENT_STATUS_FLOW[modality as ShipmentModality];
@@ -167,9 +193,14 @@ export function ShipmentList({ data }: ShipmentListProps) {
             renderRow={(s) => {
               const flow = SHIPMENT_STATUS_FLOW[s.modality as ShipmentModality];
               const nextStatus = flow?.[s.status as ShipmentStatus];
-              const documentNumber = s.awb_number || s.bol_number || s.route_number || "—";
+              const documentNumber = s.awb_number || s.bol_number || s.route_number || "\u2014";
+              const isSelected = sheetOpen && s.id === selectedId;
               return (
-                <tr key={s.id} className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => handleRowClick(s.id)}>
+                <tr
+                  key={s.id}
+                  className={`border-t border-gray-100 cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                  onClick={() => openSheet(s.id)}
+                >
                   <td className="px-3 py-2.5">
                     <Link href={`/${locale}/shipments/${s.id}`} onClick={(e) => e.stopPropagation()} className="font-mono text-xs font-medium text-gray-900 hover:underline">
                       {s.shipment_number}
@@ -180,17 +211,17 @@ export function ShipmentList({ data }: ShipmentListProps) {
                       {MODALITY_LABELS[s.modality] ?? s.modality}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-xs">{s.carriers?.name ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-xs">{s.carriers?.name ?? "\u2014"}</td>
                   <td className="px-3 py-2.5 font-mono text-xs text-gray-600">{documentNumber}</td>
-                  <td className="px-3 py-2.5 text-xs">{s.destinations?.city ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-xs">{s.destinations?.city ?? "\u2014"}</td>
                   <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
                     {s.hawbs.length > 0
                       ? s.hawbs.map((h) => h.hawb_number).join(", ")
-                      : "—"}
+                      : "\u2014"}
                   </td>
-                  <td className="px-3 py-2.5 text-xs">{s.total_pieces ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-xs">{s.total_pieces ?? "\u2014"}</td>
                   <td className="px-3 py-2.5 text-xs">
-                    {s.total_weight_lb ? `${s.total_weight_lb} lb` : "—"}
+                    {s.total_weight_lb ? `${s.total_weight_lb} lb` : "\u2014"}
                   </td>
                   <td className="px-3 py-2.5">
                     <ShipmentStatusBadge status={s.status} />
@@ -217,7 +248,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
 
       <ShipmentDetailSheet
         open={sheetOpen}
-        onClose={() => { setSheetOpen(false); setSheetData(null); }}
+        onClose={closeSheet}
         shipment={sheetData}
         loading={sheetLoading}
       />
