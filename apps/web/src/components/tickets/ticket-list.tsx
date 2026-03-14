@@ -11,6 +11,7 @@ import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { useSheetState } from "@/hooks/use-sheet-state";
+import { formatDate } from "@/lib/format";
 
 interface TicketRow {
   id: string;
@@ -171,7 +172,7 @@ export function TicketList({ data, agencies }: TicketListProps) {
                     <TicketStatusBadge status={ticket.status} />
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {new Date(ticket.created_at).toLocaleDateString("es")}
+                    {formatDate(ticket.created_at)}
                   </td>
                 </tr>
               );
@@ -201,7 +202,7 @@ export function TicketList({ data, agencies }: TicketListProps) {
               <InfoField label="Creado por" value={selectedItem.creator?.full_name} />
               <InfoField
                 label="Fecha"
-                value={new Date(selectedItem.created_at).toLocaleDateString("es")}
+                value={formatDate(selectedItem.created_at)}
               />
             </div>
           </>

@@ -4,6 +4,8 @@ import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { formatCurrency, formatDate } from "@/lib/format";
+
 interface TariffSchedule {
   id: string;
   rate: number;
@@ -88,7 +90,7 @@ export function TariffDetail({ schedule }: TariffDetailProps) {
             <dt className="text-xs font-medium uppercase text-gray-500">Cargo Mínimo</dt>
             <dd className="mt-1 text-sm text-gray-600">
               {schedule.minimum_charge != null
-                ? `$${Number(schedule.minimum_charge).toFixed(2)}`
+                ? formatCurrency(schedule.minimum_charge)
                 : "—"}
             </dd>
           </div>
@@ -115,8 +117,8 @@ export function TariffDetail({ schedule }: TariffDetailProps) {
           <div>
             <dt className="text-xs font-medium uppercase text-gray-500">Vigencia</dt>
             <dd className="mt-1 text-sm text-gray-600">
-              {new Date(schedule.effective_from).toLocaleDateString("es")}
-              {schedule.effective_to && ` — ${new Date(schedule.effective_to).toLocaleDateString("es")}`}
+              {formatDate(schedule.effective_from)}
+              {schedule.effective_to && ` — ${formatDate(schedule.effective_to)}`}
             </dd>
           </div>
           {schedule.notes && (

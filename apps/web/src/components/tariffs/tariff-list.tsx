@@ -4,6 +4,7 @@ import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
+import { formatCurrency, formatDate } from "@/lib/format";
 import { useNotification } from "@/components/layout/notification";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
@@ -164,13 +165,13 @@ export function TariffList({ data, warehouses }: TariffListProps) {
                     {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}
                   </td>
                   <td className="px-4 py-3 text-xs font-mono">
-                    ${Number(t.rate).toFixed(2)}{" "}
+                    {formatCurrency(t.rate)}{" "}
                     <span className="text-gray-400">
                       {RATE_UNIT_LABELS[t.rate_unit as RateUnit] ?? t.rate_unit}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {t.minimum_charge != null ? `$${Number(t.minimum_charge).toFixed(2)}` : "—"}
+                    {t.minimum_charge != null ? formatCurrency(t.minimum_charge) : "—"}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {t.couriers ? t.couriers.code : "—"}
@@ -194,8 +195,8 @@ export function TariffList({ data, warehouses }: TariffListProps) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {new Date(t.effective_from).toLocaleDateString("es")}
-                    {t.effective_to && ` — ${new Date(t.effective_to).toLocaleDateString("es")}`}
+                    {formatDate(t.effective_from)}
+                    {t.effective_to && ` — ${formatDate(t.effective_to)}`}
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-1">
@@ -240,13 +241,13 @@ export function TariffList({ data, warehouses }: TariffListProps) {
             <InfoField label="Costo de Manejo" value={selectedItem.handling_costs?.name} />
             <InfoField label="Bodega" value={selectedItem.warehouses?.name} />
             <InfoField label="Destino" value={selectedItem.destinations ? `${selectedItem.destinations.city} (${selectedItem.destinations.country_code})` : "Todos"} />
-            <InfoField label="Tarifa" value={`$${Number(selectedItem.rate).toFixed(2)} ${RATE_UNIT_LABELS[selectedItem.rate_unit as RateUnit] ?? selectedItem.rate_unit}`} />
-            <InfoField label="Mínimo" value={selectedItem.minimum_charge != null ? `$${Number(selectedItem.minimum_charge).toFixed(2)}` : null} />
+            <InfoField label="Tarifa" value={`${formatCurrency(selectedItem.rate)} ${RATE_UNIT_LABELS[selectedItem.rate_unit as RateUnit] ?? selectedItem.rate_unit}`} />
+            <InfoField label="Mínimo" value={selectedItem.minimum_charge != null ? formatCurrency(selectedItem.minimum_charge) : null} />
             <InfoField label="Moneda" value={selectedItem.currency} />
             <InfoField label="Courier" value={selectedItem.couriers?.code} />
             <InfoField label="Agencia" value={selectedItem.agencies?.name} />
             <InfoField label="Estado" value={selectedItem.is_active ? "Activa" : "Inactiva"} />
-            <InfoField label="Vigencia" value={`${new Date(selectedItem.effective_from).toLocaleDateString("es")}${selectedItem.effective_to ? ` — ${new Date(selectedItem.effective_to).toLocaleDateString("es")}` : ""}`} />
+            <InfoField label="Vigencia" value={`${formatDate(selectedItem.effective_from)}${selectedItem.effective_to ? ` — ${formatDate(selectedItem.effective_to)}` : ""}`} />
             <InfoField label="Notas" value={selectedItem.notes} />
           </div>
         )}

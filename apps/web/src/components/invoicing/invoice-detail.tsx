@@ -9,6 +9,7 @@ import { useTransition } from "react";
 import { InvoiceStatusBadge } from "@/components/invoicing/invoice-status-badge";
 import { useNotification } from "@/components/layout/notification";
 import { updateInvoiceStatus, voidInvoice } from "@/lib/actions/invoices";
+import { formatDate } from "@/lib/format";
 
 interface LineItem {
   id: string;
@@ -110,26 +111,26 @@ export function InvoiceDetail({ invoice }: InvoiceDetailProps) {
           <div>
             <dt className="font-medium text-gray-500">Periodo</dt>
             <dd className="mt-0.5 text-gray-900">
-              {new Date(invoice.period_start).toLocaleDateString("es")} —{" "}
-              {new Date(invoice.period_end).toLocaleDateString("es")}
+              {formatDate(invoice.period_start)} —{" "}
+              {formatDate(invoice.period_end)}
             </dd>
           </div>
           <div>
             <dt className="font-medium text-gray-500">Creada</dt>
             <dd className="mt-0.5 text-gray-900">
-              {new Date(invoice.created_at).toLocaleDateString("es")}
+              {formatDate(invoice.created_at)}
             </dd>
           </div>
           <div>
             <dt className="font-medium text-gray-500">Vencimiento</dt>
             <dd className="mt-0.5 text-gray-900">
-              {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString("es") : "—"}
+              {invoice.due_date ? formatDate(invoice.due_date) : "—"}
             </dd>
           </div>
           <div>
             <dt className="font-medium text-gray-500">Pagada</dt>
             <dd className="mt-0.5 text-gray-900">
-              {invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString("es") : "—"}
+              {invoice.paid_at ? formatDate(invoice.paid_at) : "—"}
             </dd>
           </div>
         </dl>

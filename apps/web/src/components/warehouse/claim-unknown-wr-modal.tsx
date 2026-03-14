@@ -6,6 +6,7 @@ import { useNotification } from "@/components/layout/notification";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { createUnknownWrClaimTicket } from "@/lib/actions/unknown-wrs";
+import { formatDate } from "@/lib/format";
 
 interface WrSummary {
   id: string;
@@ -87,7 +88,7 @@ export function ClaimUnknownWrModal({ wr, onClose }: ClaimUnknownWrModalProps) {
                 </div>
                 <div>
                   <span className="text-gray-500">Fecha:</span>{" "}
-                  {new Date(wr.received_at).toLocaleDateString("es")}
+                  {formatDate(wr.received_at)}
                 </div>
               </div>
             </div>

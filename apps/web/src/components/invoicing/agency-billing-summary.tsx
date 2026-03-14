@@ -1,6 +1,7 @@
 "use client";
 
 import { InvoiceStatusBadge } from "@/components/invoicing/invoice-status-badge";
+import { formatDate } from "@/lib/format";
 
 interface BillingData {
   outstandingBalance: number;
@@ -71,7 +72,7 @@ export function AgencyBillingSummary({ data }: AgencyBillingSummaryProps) {
                 <div>
                   <span className="font-mono text-xs">{inv.invoice_number}</span>
                   <span className="ml-2 text-xs text-gray-500">
-                    {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("es") : ""}
+                    {inv.paid_at ? formatDate(inv.paid_at) : ""}
                   </span>
                 </div>
                 <span className="font-medium text-green-700">${Number(inv.total).toFixed(2)}</span>

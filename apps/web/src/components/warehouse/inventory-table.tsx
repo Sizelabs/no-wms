@@ -10,6 +10,7 @@ import { usePermissions } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
+import { formatDate } from "@/lib/format";
 
 interface PackageRow {
   id: string;
@@ -419,7 +420,7 @@ export function InventoryTable({ data, count, locale, agencies = [], warehouses 
                           {days}d
                         </td>
                         <td className="px-3 py-2.5 text-xs text-gray-400">
-                          {new Date(wr.received_at).toLocaleDateString("es")}
+                          {formatDate(wr.received_at)}
                         </td>
                       </tr>
                     );

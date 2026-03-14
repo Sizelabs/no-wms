@@ -8,6 +8,7 @@ import { DtDd, InfoCard, Section } from "@/components/ui/detail-page";
 import { UserDetailActions } from "@/components/users/user-detail-actions";
 import { getUser } from "@/lib/actions/users";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { formatDate } from "@/lib/format";
 
 export default async function UserDetailPage({
   params,
@@ -95,7 +96,7 @@ export default async function UserDetailPage({
               />
               <DtDd
                 label="Registrado"
-                value={new Date(user.created_at).toLocaleDateString("es")}
+                value={formatDate(user.created_at)}
               />
             </dl>
           </Section>

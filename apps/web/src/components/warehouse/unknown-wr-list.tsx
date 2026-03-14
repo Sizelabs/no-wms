@@ -7,6 +7,7 @@ import { useNotification } from "@/components/layout/notification";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { ClaimUnknownWrModal } from "@/components/warehouse/claim-unknown-wr-modal";
 import { claimUnknownWr } from "@/lib/actions/unknown-wrs";
+import { formatDate } from "@/lib/format";
 
 interface ClaimRecord {
   id: string;
@@ -142,7 +143,7 @@ export function UnknownWrList({ data, isAgencyRole, trackingMasked }: UnknownWrL
                 {item.packages?.[0]?.carrier ?? "—"}
               </td>
               <td className="px-4 py-2.5 text-xs text-gray-400">
-                {new Date(item.received_at).toLocaleDateString("es")}
+                {formatDate(item.received_at)}
               </td>
               {isAgencyRole && (
                 <td className="px-4 py-2.5">

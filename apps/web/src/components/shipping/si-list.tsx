@@ -17,6 +17,7 @@ import {
   finalizeShippingInstruction,
   rejectShippingInstruction,
 } from "@/lib/actions/shipping-instructions";
+import { formatDate } from "@/lib/format";
 
 interface HouseBill {
   id: string;
@@ -344,7 +345,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-gray-500">
-                    {new Date(si.created_at).toLocaleDateString("es")}
+                    {formatDate(si.created_at)}
                   </td>
                   {hasActions && (
                   <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>

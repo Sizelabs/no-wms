@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useState, useTransition } from "react";
 
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 interface WrPackage {
   tracking_number: string;
@@ -307,15 +308,15 @@ export function HistoryWrTable({ data, count, locale, agencies = [], warehouses 
                           </td>
                           <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
                             {wr.total_declared_value_usd != null
-                              ? `$${Number(wr.total_declared_value_usd).toFixed(2)}`
+                              ? formatCurrency(wr.total_declared_value_usd)
                               : "—"}
                           </td>
                           <td className="px-3 py-2.5 text-xs text-gray-400">
-                            {new Date(wr.received_at).toLocaleDateString("es")}
+                            {formatDate(wr.received_at)}
                           </td>
                           <td className="px-3 py-2.5 text-xs text-gray-400">
                             {lastChange
-                              ? new Date(lastChange).toLocaleDateString("es")
+                              ? formatDate(lastChange)
                               : "—"}
                           </td>
                           <td className="px-3 py-2.5">

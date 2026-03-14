@@ -1,6 +1,6 @@
 "use client";
 
-import { WO_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import { WO_PRIORITY_LABELS, WO_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-types";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -12,6 +12,7 @@ import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { useSheetState } from "@/hooks/use-sheet-state";
 import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
+import { formatDate } from "@/lib/format";
 
 interface WorkOrder {
   id: string;
@@ -199,7 +200,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                 </td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[wo.priority] ?? ""}`}>
-                    {wo.priority === "high" ? "Alta" : wo.priority === "low" ? "Baja" : "Normal"}
+                    {WO_PRIORITY_LABELS[wo.priority] ?? wo.priority}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-xs">{wo.work_order_items.length}</td>
@@ -209,7 +210,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-500">
-                  {new Date(wo.created_at).toLocaleDateString("es")}
+                  {formatDate(wo.created_at)}
                 </td>
                 {hasActions && (
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -280,12 +281,12 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
             <InfoField label="OT #" value={selectedItem.wo_number} />
             <InfoField label="Tipo" value={WORK_ORDER_TYPE_LABELS[selectedItem.type as keyof typeof WORK_ORDER_TYPE_LABELS] ?? selectedItem.type} />
             <InfoField label="Estado" value={WO_STATUS_LABELS[selectedItem.status as keyof typeof WO_STATUS_LABELS] ?? selectedItem.status} />
-            <InfoField label="Prioridad" value={selectedItem.priority === "high" ? "Alta" : selectedItem.priority === "low" ? "Baja" : "Normal"} />
+            <InfoField label="Prioridad" value={WO_PRIORITY_LABELS[selectedItem.priority] ?? selectedItem.priority} />
             <InfoField label="Agencia" value={selectedItem.agencies?.name} />
             <InfoField label="Responsable" value={selectedItem.profiles?.full_name} />
             <InfoField label="WRs" value={selectedItem.work_order_items.length} />
             <InfoField label="Instrucciones" value={selectedItem.instructions} />
-            <InfoField label="Fecha" value={new Date(selectedItem.created_at).toLocaleDateString("es")} />
+            <InfoField label="Fecha" value={formatDate(selectedItem.created_at)} />
           </div>
         )}
       </DetailSheet>

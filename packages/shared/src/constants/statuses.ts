@@ -42,6 +42,12 @@ export const WO_STATUS_LABELS: Record<WoStatus, string> = {
   pending: "Pendiente",
 };
 
+export const WO_PRIORITY_LABELS: Record<string, string> = {
+  high: "Alta",
+  normal: "Normal",
+  low: "Baja",
+};
+
 // ── Shipping Instruction statuses ──
 export const SI_STATUSES = {
   REQUESTED: "requested",

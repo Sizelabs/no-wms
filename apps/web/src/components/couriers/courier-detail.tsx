@@ -1,5 +1,7 @@
 "use client";
 
+import { COURIER_TYPE_LABELS } from "@no-wms/shared/constants/courier-types";
+import type { CourierType } from "@no-wms/shared/constants/courier-types";
 import type { Role } from "@no-wms/shared/constants/roles";
 import { RATE_UNIT_LABELS, type RateUnit } from "@no-wms/shared/constants/tariff";
 import Link from "next/link";
@@ -12,6 +14,7 @@ import { DetailActions } from "@/components/ui/detail-actions";
 import type { DetailAction } from "@/components/ui/detail-actions";
 import { UserList } from "@/components/users/user-list";
 import { deleteCourier, upsertCourierDestination } from "@/lib/actions/couriers";
+import { formatDate } from "@/lib/format";
 
 interface CourierDestination {
   id: string;
@@ -152,7 +155,7 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
             <div>
               <dt className="text-xs font-medium uppercase text-gray-500">Tipo</dt>
               <dd className="mt-1 text-sm text-gray-600">
-                {courier.type === "corporativo" ? "Corporativo" : "Box"}
+                {COURIER_TYPE_LABELS[courier.type as CourierType] ?? courier.type}
               </dd>
             </div>
           </dl>
@@ -241,7 +244,7 @@ export function CourierDetail({ courier, users, tariffs, destinations }: Courier
             <div>
               <dt className="text-xs font-medium uppercase text-gray-500">Creado</dt>
               <dd className="mt-1 text-sm text-gray-600">
-                {new Date(courier.created_at).toLocaleDateString("es")}
+                {formatDate(courier.created_at)}
               </dd>
             </div>
           </dl>

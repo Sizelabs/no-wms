@@ -2,6 +2,8 @@
 
 import { SI_STATUS_LABELS, type SiStatus } from "@no-wms/shared/constants/statuses";
 
+import { formatDate } from "@/lib/format";
+
 interface ShippingRow {
   id: string;
   si_number: string;
@@ -80,7 +82,7 @@ export function ShippingReportTable({ data, summary }: ShippingReportTableProps)
                 <td className="px-4 py-2 text-right text-xs">{Number(row.total_weight_lb ?? 0).toFixed(2)}</td>
                 <td className="px-4 py-2 text-right text-xs">{row.total_pieces ?? 0}</td>
                 <td className="px-4 py-2 text-xs text-gray-500">
-                  {new Date(row.created_at).toLocaleDateString("es")}
+                  {formatDate(row.created_at)}
                 </td>
               </tr>
             ))}

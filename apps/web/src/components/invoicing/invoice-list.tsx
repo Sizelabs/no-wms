@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { InvoiceStatusBadge } from "@/components/invoicing/invoice-status-badge";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { DetailSheet } from "@/components/ui/detail-sheet";
 import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
@@ -138,22 +139,22 @@ export function InvoiceList({ data }: InvoiceListProps) {
                     {inv.agencies ? `${inv.agencies.name} (${inv.agencies.code})` : "—"}
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {new Date(inv.period_start).toLocaleDateString("es")} —{" "}
-                    {new Date(inv.period_end).toLocaleDateString("es")}
+                    {formatDate(inv.period_start)} —{" "}
+                    {formatDate(inv.period_end)}
                   </td>
-                  <td className="px-4 py-3 text-right text-xs">${Number(inv.subtotal).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right text-xs">${Number(inv.tax).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-xs">{formatCurrency(inv.subtotal)}</td>
+                  <td className="px-4 py-3 text-right text-xs">{formatCurrency(inv.tax)}</td>
                   <td className="px-4 py-3 text-right text-xs font-medium">
-                    ${Number(inv.total).toFixed(2)}
+                    {formatCurrency(inv.total)}
                   </td>
                   <td className="px-4 py-3">
                     <InvoiceStatusBadge status={inv.status} />
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {inv.due_date ? new Date(inv.due_date).toLocaleDateString("es") : "—"}
+                    {inv.due_date ? formatDate(inv.due_date) : "—"}
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("es") : "—"}
+                    {inv.paid_at ? formatDate(inv.paid_at) : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <Link
@@ -194,16 +195,16 @@ export function InvoiceList({ data }: InvoiceListProps) {
               />
               <InfoField
                 label="Periodo"
-                value={`${new Date(selectedItem.period_start).toLocaleDateString("es")} — ${new Date(selectedItem.period_end).toLocaleDateString("es")}`}
+                value={`${formatDate(selectedItem.period_start)} — ${formatDate(selectedItem.period_end)}`}
               />
-              <InfoField label="Subtotal" value={`$${Number(selectedItem.subtotal).toFixed(2)}`} />
-              <InfoField label="Impuesto" value={`$${Number(selectedItem.tax).toFixed(2)}`} />
-              <InfoField label="Total" value={`$${Number(selectedItem.total).toFixed(2)}`} />
+              <InfoField label="Subtotal" value={formatCurrency(selectedItem.subtotal)} />
+              <InfoField label="Impuesto" value={formatCurrency(selectedItem.tax)} />
+              <InfoField label="Total" value={formatCurrency(selectedItem.total)} />
               <InfoField
                 label="Vencimiento"
                 value={
                   selectedItem.due_date
-                    ? new Date(selectedItem.due_date).toLocaleDateString("es")
+                    ? formatDate(selectedItem.due_date)
                     : null
                 }
               />
@@ -211,7 +212,7 @@ export function InvoiceList({ data }: InvoiceListProps) {
                 label="Pagada"
                 value={
                   selectedItem.paid_at
-                    ? new Date(selectedItem.paid_at).toLocaleDateString("es")
+                    ? formatDate(selectedItem.paid_at)
                     : null
                 }
               />

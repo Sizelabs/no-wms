@@ -8,6 +8,7 @@ import { TicketMessages } from "@/components/tickets/ticket-messages";
 import { TicketPriorityBadge } from "@/components/tickets/ticket-priority-badge";
 import { TicketStatusBadge } from "@/components/tickets/ticket-status-badge";
 import { updateTicketStatus } from "@/lib/actions/tickets";
+import { formatDate } from "@/lib/format";
 
 interface TicketDetailProps {
   ticket: {
@@ -106,14 +107,14 @@ export function TicketDetail({ ticket, canManage }: TicketDetailProps) {
           <div>
             <dt className="font-medium text-gray-500">Fecha</dt>
             <dd className="mt-0.5 text-gray-900">
-              {new Date(ticket.created_at).toLocaleDateString("es")}
+              {formatDate(ticket.created_at)}
             </dd>
           </div>
           {ticket.resolved_at && (
             <div>
               <dt className="font-medium text-gray-500">Resuelto</dt>
               <dd className="mt-0.5 text-gray-900">
-                {new Date(ticket.resolved_at).toLocaleDateString("es")}
+                {formatDate(ticket.resolved_at)}
               </dd>
             </div>
           )}
@@ -121,7 +122,7 @@ export function TicketDetail({ ticket, canManage }: TicketDetailProps) {
             <div>
               <dt className="font-medium text-gray-500">Cerrado</dt>
               <dd className="mt-0.5 text-gray-900">
-                {new Date(ticket.closed_at).toLocaleDateString("es")}
+                {formatDate(ticket.closed_at)}
               </dd>
             </div>
           )}

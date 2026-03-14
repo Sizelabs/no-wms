@@ -9,6 +9,7 @@ import { WarehouseDetailActions } from "@/components/warehouses/warehouse-detail
 import { getWarehouseReceipts } from "@/lib/actions/warehouse-receipts";
 import { getWarehouse } from "@/lib/actions/warehouses";
 import { requirePermission } from "@/lib/auth/require-permission";
+import { formatDate } from "@/lib/format";
 
 const STATUS_COLORS: Record<string, string> = {
   received: "bg-blue-50 text-blue-700",
@@ -235,7 +236,7 @@ export default async function WarehouseDetailPage({
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-400">
-                      {new Date(wr.received_at).toLocaleDateString("es")}
+                      {formatDate(wr.received_at)}
                     </td>
                   </tr>
                 ),

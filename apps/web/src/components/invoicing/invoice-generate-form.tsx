@@ -7,6 +7,7 @@ import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
 import { inputClass } from "@/components/ui/form-section";
 import { generateInvoice } from "@/lib/actions/invoices";
+import { formatDate } from "@/lib/format";
 
 interface Agency {
   id: string;
@@ -60,8 +61,8 @@ export function InvoiceGenerateForm({ agencies }: InvoiceGenerateFormProps) {
           <div className="flex justify-between">
             <dt className="text-gray-500">Periodo</dt>
             <dd className="font-medium">
-              {new Date(formValues.period_start).toLocaleDateString("es")} —{" "}
-              {new Date(formValues.period_end).toLocaleDateString("es")}
+              {formatDate(formValues.period_start)} —{" "}
+              {formatDate(formValues.period_end)}
             </dd>
           </div>
         </dl>

@@ -2,6 +2,8 @@
 
 import { WR_STATUS_LABELS, type WrStatus } from "@no-wms/shared/constants/statuses";
 
+import { formatDate } from "@/lib/format";
+
 interface InventoryRow {
   id: string;
   wr_number: string;
@@ -79,7 +81,7 @@ export function InventoryReportTable({ data, summary }: InventoryReportTableProp
                 <td className="px-4 py-2 text-right text-xs">{Number(row.weight_lb ?? 0).toFixed(2)}</td>
                 <td className="px-4 py-2 text-right text-xs">{row.pieces ?? 0}</td>
                 <td className="px-4 py-2 text-xs text-gray-500">
-                  {new Date(row.created_at).toLocaleDateString("es")}
+                  {formatDate(row.created_at)}
                 </td>
               </tr>
             ))}

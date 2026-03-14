@@ -1,5 +1,7 @@
 "use client";
 
+import { COURIER_TYPE_LABELS } from "@no-wms/shared/constants/courier-types";
+import type { CourierType } from "@no-wms/shared/constants/courier-types";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -138,7 +140,7 @@ export function CourierList({ couriers }: CourierListProps) {
                         : "bg-gray-100 text-gray-700"
                     }`}
                   >
-                    {courier.type === "corporativo" ? "Corporativo" : "Box"}
+                    {COURIER_TYPE_LABELS[courier.type as CourierType] ?? courier.type}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-500">
@@ -174,7 +176,7 @@ export function CourierList({ couriers }: CourierListProps) {
         <div className="grid gap-3 sm:grid-cols-2">
           <InfoField label="Código" value={selectedItem.code} />
           <InfoField label="Nombre" value={selectedItem.name} />
-          <InfoField label="Tipo" value={selectedItem.type === "corporativo" ? "Corporativo" : "Box"} />
+          <InfoField label="Tipo" value={COURIER_TYPE_LABELS[selectedItem.type as CourierType] ?? selectedItem.type} />
           <InfoField label="Destinos" value={selectedDestinations.length > 0 ? selectedDestinations.join(", ") : null} />
           <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
         </div>

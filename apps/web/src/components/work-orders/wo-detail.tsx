@@ -1,7 +1,7 @@
 "use client";
 
 import type { WoStatus } from "@no-wms/shared/constants/statuses";
-import { WO_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import { WO_PRIORITY_LABELS, WO_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import type { WorkOrderType } from "@no-wms/shared/constants/work-order-types";
 import { WORK_ORDER_TYPE_LABELS } from "@no-wms/shared/constants/work-order-types";
 import Link from "next/link";
@@ -131,7 +131,7 @@ export function WoDetail({ wo, locale, canUpdate = false }: WoDetailProps) {
           <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
             wo.priority === "high" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700"
           }`}>
-            {wo.priority === "high" ? "Alta" : "Normal"}
+            {WO_PRIORITY_LABELS[wo.priority] ?? wo.priority}
           </span>
         </InfoCard>
         <InfoCard label="Agencia">

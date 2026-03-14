@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useState, useTransition } from "react";
 
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
+import { formatDate } from "@/lib/format";
 
 interface PackageRow {
   id: string;
@@ -228,7 +229,7 @@ export function HistoryPackageTable({ data, count, locale, agencies = [], wareho
                       {days}d
                     </td>
                     <td className="px-3 py-2.5 text-xs text-gray-400">
-                      {new Date(wr.received_at).toLocaleDateString("es")}
+                      {formatDate(wr.received_at)}
                     </td>
                   </tr>
                 );

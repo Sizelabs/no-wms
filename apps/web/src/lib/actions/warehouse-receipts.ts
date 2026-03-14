@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getUserAgencyScope, getUserWarehouseScope } from "@/lib/auth/scope";
+import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
 export async function checkDuplicateTracking(trackingNumber: string) {
@@ -183,7 +184,7 @@ export async function createWarehouseReceipt(formData: FormData): Promise<{ id: 
   const duplicate = await checkDuplicateTracking(firstPkg.tracking_number);
   if (duplicate) {
     throw new Error(
-      `Esta guía ya fue recibida el ${new Date(duplicate.received_at).toLocaleDateString("es")}. WR: ${duplicate.wr_number}`,
+      `Esta guía ya fue recibida el ${formatDate(duplicate.received_at)}. WR: ${duplicate.wr_number}`,
     );
   }
 

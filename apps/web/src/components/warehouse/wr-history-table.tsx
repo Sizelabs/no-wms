@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition
 import { usePermissions } from "@/components/auth/role-provider";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { WrActionBar } from "@/components/warehouse/wr-action-bar";
+import { formatCurrency } from "@/lib/format";
 
 interface WrPackage {
   tracking_number: string;
@@ -453,7 +454,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                       </td>
                       <td className="px-3 py-2.5 font-mono text-xs text-gray-600">
                         {wr.total_declared_value_usd != null
-                          ? `$${Number(wr.total_declared_value_usd).toFixed(2)}`
+                          ? formatCurrency(wr.total_declared_value_usd)
                           : "—"}
                       </td>
                       <td className="px-3 py-2.5">

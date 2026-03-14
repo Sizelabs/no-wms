@@ -1,5 +1,7 @@
 "use client";
 
+import { COURIER_TYPE_LABELS } from "@no-wms/shared/constants/courier-types";
+import type { CourierType } from "@no-wms/shared/constants/courier-types";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -10,6 +12,7 @@ import { DetailActions } from "@/components/ui/detail-actions";
 import type { DetailAction } from "@/components/ui/detail-actions";
 import { UserList } from "@/components/users/user-list";
 import { deleteOrganization } from "@/lib/actions/organizations";
+import { formatDate } from "@/lib/format";
 
 interface Organization {
   id: string;
@@ -141,7 +144,7 @@ export function ForwarderDetail({
                 Creada
               </dt>
               <dd className="mt-1 text-sm text-gray-600">
-                {new Date(forwarder.created_at).toLocaleDateString("es")}
+                {formatDate(forwarder.created_at)}
               </dd>
             </div>
           </dl>
@@ -301,7 +304,7 @@ export function ForwarderDetail({
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
-                        {c.type === "corporativo" ? "Corporativo" : "Box"}
+                        {COURIER_TYPE_LABELS[c.type as CourierType] ?? c.type}
                       </td>
                       <td className="px-4 py-3 text-gray-500">
                         {uniqueDestinations.length > 0

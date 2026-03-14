@@ -41,6 +41,7 @@ import {
   createWarehouseReceipt,
   generateWrNumberForWarehouse,
 } from "@/lib/actions/warehouse-receipts";
+import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 
 // ---------------------------------------------------------------------------
@@ -441,7 +442,7 @@ export function WrReceiptForm({
       if (duplicate) {
         setDuplicateInfo(duplicate);
         setError(
-          `Esta guía ya fue recibida el ${new Date(duplicate.received_at).toLocaleDateString("es")}.`,
+          `Esta guía ya fue recibida el ${formatDate(duplicate.received_at)}.`,
         );
         return;
       }

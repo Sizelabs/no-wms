@@ -2,6 +2,8 @@
 
 import { INVOICE_STATUS_LABELS, type InvoiceStatus } from "@no-wms/shared/constants/statuses";
 
+import { formatDate } from "@/lib/format";
+
 interface BillingRow {
   id: string;
   invoice_number: string;
@@ -78,13 +80,13 @@ export function BillingReportTable({ data, summary }: BillingReportTableProps) {
                 <td className="px-4 py-2 text-xs">{INVOICE_STATUS_LABELS[row.status as InvoiceStatus] ?? row.status}</td>
                 <td className="px-4 py-2 text-right text-xs font-medium">${Number(row.total).toFixed(2)}</td>
                 <td className="px-4 py-2 text-xs text-gray-500">
-                  {row.due_date ? new Date(row.due_date).toLocaleDateString("es") : "—"}
+                  {row.due_date ? formatDate(row.due_date) : "—"}
                 </td>
                 <td className="px-4 py-2 text-xs text-gray-500">
-                  {row.paid_at ? new Date(row.paid_at).toLocaleDateString("es") : "—"}
+                  {row.paid_at ? formatDate(row.paid_at) : "—"}
                 </td>
                 <td className="px-4 py-2 text-xs text-gray-500">
-                  {new Date(row.created_at).toLocaleDateString("es")}
+                  {formatDate(row.created_at)}
                 </td>
               </tr>
             ))}

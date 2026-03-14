@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDate } from "@/lib/format";
+
 interface StorageRow {
   id: string;
   wr_number: string;
@@ -67,7 +69,7 @@ export function StorageReportTable({ data }: StorageReportTableProps) {
                   </span>
                 </td>
                 <td className="px-4 py-2 text-xs text-gray-500">
-                  {new Date(row.received_at).toLocaleDateString("es")}
+                  {formatDate(row.received_at)}
                 </td>
               </tr>
             ))}

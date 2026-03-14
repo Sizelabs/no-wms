@@ -6,6 +6,7 @@ import { SiActionBar } from "@/components/shipping/si-action-bar";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
+import { formatDate } from "@/lib/format";
 import { getShipmentModality } from "@/lib/shipping-utils";
 
 function unwrap<T>(val: T | T[] | null): T | null {
@@ -225,7 +226,7 @@ export function UnassignedHouseBillsTable({
                     {si.total_billable_weight_lb ? `${Number(si.total_billable_weight_lb).toFixed(1)} lb` : "—"}
                   </td>
                   <td className="px-3 py-2.5 text-xs text-gray-500">
-                    {new Date(si.created_at).toLocaleDateString("es")}
+                    {formatDate(si.created_at)}
                   </td>
                 </tr>
               );
