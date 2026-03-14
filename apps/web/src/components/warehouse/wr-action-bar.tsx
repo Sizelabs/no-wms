@@ -128,11 +128,6 @@ export function WrActionBar({
     return () => ro.disconnect();
   }, [measure]);
 
-  // Re-measure when selection count changes (bar appears/disappears)
-  useEffect(() => {
-    measure();
-  }, [count, measure]);
-
   const handleCloseFlow = useCallback(() => {
     setActiveFlow(null);
     onClearSelection();
