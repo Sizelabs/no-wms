@@ -3,18 +3,45 @@
 import { SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ShipmentDetailSheet } from "@/components/shipments/shipment-detail-sheet";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { getNextShipmentStatus, getShipmentStatusLabel, useAdvanceShipmentStatus } from "@/hooks/use-advance-shipment-status";
+import { getShipment } from "@/lib/actions/shipments";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
-import type { ShipmentDetail } from "@/lib/types/shipments";
+import type { ShipmentDetail as ShipmentDetailData } from "@/lib/types/shipments";
+
+interface HouseBill {
+  id: string;
+  hawb_number: string;
+  document_type: string;
+  shipping_instruction_id: string;
+}
+
+interface Shipment {
+  id: string;
+  shipment_number: string;
+  modality: string;
+  status: string;
+  awb_number: string | null;
+  bol_number: string | null;
+  route_number: string | null;
+  flight_number: string | null;
+  vessel_name: string | null;
+  departure_date: string | null;
+  total_pieces: number | null;
+  total_weight_lb: number | null;
+  created_at: string;
+  carriers: { name: string; code: string } | null;
+  destinations: { city: string; country_code: string } | null;
+  hawbs: HouseBill[];
+}
 
 interface ShipmentListProps {
-  data: ShipmentDetail[];
+  data: Shipment[];
 }
 
 export function ShipmentList({ data }: ShipmentListProps) {
@@ -25,6 +52,8 @@ export function ShipmentList({ data }: ShipmentListProps) {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sheetData, setSheetData] = useState<ShipmentDetailData | null>(null);
+  const fetchNonce = useRef(0);
 
   const sheetOpen = selectedId !== null;
 
@@ -47,9 +76,24 @@ export function ShipmentList({ data }: ShipmentListProps) {
     return true;
   }), [data, search, modalityFilter, statusFilter]);
 
-  const selectedShipment = sheetOpen
-    ? filtered.find((s) => s.id === selectedId) ?? data.find((s) => s.id === selectedId) ?? null
-    : null;
+  const openSheet = useCallback(async (id: string) => {
+    setSelectedId(id);
+    // Immediately populate sheet with row data (all shipment columns are in `*`)
+    const row = data.find((s) => s.id === id);
+    if (row) {
+      setSheetData({
+        ...(row as unknown as ShipmentDetailData),
+        agencies: null,
+        hawbs: row.hawbs.map((h) => ({ ...h, pieces: null, weight_lb: null, shipping_instructions: null })),
+        shipment_containers: [],
+      });
+    }
+    // Then fetch full detail with relations
+    const nonce = ++fetchNonce.current;
+    const { data: full } = await getShipment(id);
+    if (fetchNonce.current !== nonce) return;
+    setSheetData(full as ShipmentDetailData | null);
+  }, [data]);
 
   const closeSheet = useCallback(() => {
     setSelectedId(null);
@@ -68,11 +112,11 @@ export function ShipmentList({ data }: ShipmentListProps) {
         : Math.max(idx - 1, 0);
       if (nextIdx === idx) return;
       const next = filtered[nextIdx];
-      if (next) setSelectedId(next.id);
+      if (next) openSheet(next.id);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [sheetOpen, selectedId, filtered]);
+  }, [sheetOpen, selectedId, filtered, openSheet]);
 
   return (
     <div className="space-y-3">
@@ -133,7 +177,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
                 <tr
                   key={s.id}
                   className={`border-t border-gray-100 cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
-                  onClick={() => setSelectedId(s.id)}
+                  onClick={() => openSheet(s.id)}
                 >
                   <td className="px-3 py-2.5">
                     <Link href={`/${locale}/shipments/${s.id}`} onClick={(e) => e.stopPropagation()} className="font-mono text-xs font-medium text-gray-900 hover:underline">
@@ -195,7 +239,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
       <ShipmentDetailSheet
         open={sheetOpen}
         onClose={closeSheet}
-        shipment={selectedShipment}
+        shipment={sheetData}
       />
     </div>
   );

@@ -24,10 +24,11 @@ export function Sheet({ open, onClose, children }: SheetProps) {
   useEffect(() => {
     if (open) {
       setState("mounting");
-      // Force reflow then trigger animation
+      // Double-rAF: first frame paints the off-screen position,
+      // second frame triggers the CSS transition
       const raf = requestAnimationFrame(() => {
         panelRef.current?.getBoundingClientRect();
-        setState("open");
+        requestAnimationFrame(() => setState("open"));
       });
       return () => cancelAnimationFrame(raf);
     } else {

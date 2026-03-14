@@ -75,4 +75,7 @@ input[type="radio"] {
 
   /* Scale HAWB document to fit one page */
   .hawb-document { font-size: 90%; }
+
+  /* Scale MAWB document to fit one page */
+  .mawb-document { font-size: 88%; }
 }

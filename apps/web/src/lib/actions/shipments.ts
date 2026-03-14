@@ -199,7 +199,7 @@ export async function getShipments(filters?: { status?: string; modality?: strin
 
   let query = supabase
     .from("shipments")
-    .select("*, carriers(name, code), destinations:destination_id(city, country_code), agencies:destination_agent_id(name, code), hawbs(id, hawb_number, document_type, shipping_instruction_id)")
+    .select("*, carriers(name, code), destinations:destination_id(city, country_code), hawbs(id, hawb_number, document_type, shipping_instruction_id)")
     .order("created_at", { ascending: false });
 
   if (warehouseScope !== null) {

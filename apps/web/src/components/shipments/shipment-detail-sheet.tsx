@@ -165,29 +165,33 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
             </div>
 
             {/* Containers (ocean only) */}
-            {shipment.modality === "ocean" && shipment.shipment_containers.length > 0 && (
+            {shipment.modality === "ocean" && (
               <div className="border-t pt-4">
                 <h3 className="mb-3 text-sm font-medium text-gray-900">Contenedores</h3>
-                <div className="overflow-auto rounded-lg border">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        <th className="px-3 py-2">Contenedor</th>
-                        <th className="px-3 py-2">Sello</th>
-                        <th className="px-3 py-2">Tipo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {shipment.shipment_containers.map((c) => (
-                        <tr key={c.id}>
-                          <td className="px-3 py-2 font-mono text-xs">{c.container_number}</td>
-                          <td className="px-3 py-2 text-xs">{c.seal_number ?? "\u2014"}</td>
-                          <td className="px-3 py-2 text-xs uppercase">{c.container_type}</td>
+                {shipment.shipment_containers.length === 0 ? (
+                  <p className="text-sm text-gray-500">{"\u2014"}</p>
+                ) : (
+                  <div className="overflow-auto rounded-lg border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                          <th className="px-3 py-2">Contenedor</th>
+                          <th className="px-3 py-2">Sello</th>
+                          <th className="px-3 py-2">Tipo</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y">
+                        {shipment.shipment_containers.map((c) => (
+                          <tr key={c.id}>
+                            <td className="px-3 py-2 font-mono text-xs">{c.container_number}</td>
+                            <td className="px-3 py-2 text-xs">{c.seal_number ?? "\u2014"}</td>
+                            <td className="px-3 py-2 text-xs uppercase">{c.container_type}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
