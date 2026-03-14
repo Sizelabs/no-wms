@@ -221,21 +221,25 @@ export function UserList({ users, allowedRoles }: UserListProps) {
         title={selectedItem?.full_name ?? ""}
         detailHref={selectedItem ? `/${locale}/settings/users/${selectedItem.id}` : undefined}
       >
-        <InfoField label="Nombre" value={selectedItem?.full_name} />
-        <div>
-          <p className="text-xs text-gray-500">Roles</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {selectedItem?.user_roles.map((r) => (
-              <span
-                key={r.id}
-                className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
-              >
-                {ROLE_LABELS[r.role as Role] ?? r.role}
-              </span>
-            ))}
+        {selectedItem && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoField label="Nombre" value={selectedItem.full_name} />
+            <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
+            <div className="sm:col-span-2">
+              <p className="text-xs text-gray-500">Roles</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {selectedItem.user_roles.map((r) => (
+                  <span
+                    key={r.id}
+                    className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+                  >
+                    {ROLE_LABELS[r.role as Role] ?? r.role}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-        <InfoField label="Estado" value={selectedItem?.is_active ? "Activo" : "Inactivo"} />
+        )}
       </DetailSheet>
     </div>
   );

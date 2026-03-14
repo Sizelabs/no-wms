@@ -112,13 +112,13 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
       detailHref={selectedItem ? `/${locale}/settings/forwarders/${selectedItem.id}` : undefined}
     >
       {selectedItem && (
-        <>
+        <div className="grid gap-3 sm:grid-cols-2">
           <InfoField label="Nombre" value={selectedItem.name} />
           <InfoField label="Slug" value={selectedItem.slug} />
           <InfoField label="Bodegas" value={counts[selectedItem.id]?.warehouses ?? 0} />
           <InfoField label="Agencias" value={counts[selectedItem.id]?.agencies ?? 0} />
           <InfoField label="Usuarios" value={counts[selectedItem.id]?.users ?? 0} />
-        </>
+        </div>
       )}
     </DetailSheet>
     </div>

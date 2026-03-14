@@ -143,12 +143,16 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
         title={selectedItem?.full_name ?? ""}
         detailHref={selectedItem ? `/${locale}/consignees/${selectedItem.id}` : undefined}
       >
-        <InfoField label="Casillero" value={selectedItem?.casillero} />
-        <InfoField label="Nombre" value={selectedItem?.full_name} />
-        <InfoField label="Cédula/RUC" value={selectedItem?.cedula_ruc} />
-        <InfoField label="Agencia" value={selectedItem ? getAgencyName(selectedItem.agencies) : undefined} />
-        <InfoField label="Ciudad" value={selectedItem?.city} />
-        <InfoField label="Estado" value={selectedItem ? (selectedItem.is_active ? "Activo" : "Inactivo") : undefined} />
+        {selectedItem && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoField label="Casillero" value={selectedItem.casillero} />
+            <InfoField label="Nombre" value={selectedItem.full_name} />
+            <InfoField label="Cédula/RUC" value={selectedItem.cedula_ruc} />
+            <InfoField label="Agencia" value={getAgencyName(selectedItem.agencies)} />
+            <InfoField label="Ciudad" value={selectedItem.city} />
+            <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
+          </div>
+        )}
       </DetailSheet>
     </div>
   );

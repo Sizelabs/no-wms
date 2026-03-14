@@ -201,14 +201,12 @@ export function TariffList({ data, warehouses }: TariffListProps) {
                     <div className="flex gap-1">
                       <Link
                         href={`tariffs/${t.id}`}
-                        onClick={(e) => e.stopPropagation()}
                         className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
                       >
                         Ver
                       </Link>
                       <Link
                         href={`tariffs/${t.id}/edit`}
-                        onClick={(e) => e.stopPropagation()}
                         className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                       >
                         Editar
@@ -238,54 +236,19 @@ export function TariffList({ data, warehouses }: TariffListProps) {
         detailHref={selectedItem ? `tariffs/${selectedItem.id}` : undefined}
       >
         {selectedItem && (
-          <>
-            <InfoField
-              label="Costo de Manejo"
-              value={selectedItem.handling_costs?.name}
-            />
-            <InfoField
-              label="Bodega"
-              value={selectedItem.warehouses?.name}
-            />
-            <InfoField
-              label="Destino"
-              value={
-                selectedItem.destinations
-                  ? `${selectedItem.destinations.city} (${selectedItem.destinations.country_code})`
-                  : "Todos"
-              }
-            />
-            <InfoField
-              label="Tarifa"
-              value={`$${Number(selectedItem.rate).toFixed(2)} ${RATE_UNIT_LABELS[selectedItem.rate_unit as RateUnit] ?? selectedItem.rate_unit}`}
-            />
-            <InfoField
-              label="Mínimo"
-              value={
-                selectedItem.minimum_charge != null
-                  ? `$${Number(selectedItem.minimum_charge).toFixed(2)}`
-                  : null
-              }
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoField label="Costo de Manejo" value={selectedItem.handling_costs?.name} />
+            <InfoField label="Bodega" value={selectedItem.warehouses?.name} />
+            <InfoField label="Destino" value={selectedItem.destinations ? `${selectedItem.destinations.city} (${selectedItem.destinations.country_code})` : "Todos"} />
+            <InfoField label="Tarifa" value={`$${Number(selectedItem.rate).toFixed(2)} ${RATE_UNIT_LABELS[selectedItem.rate_unit as RateUnit] ?? selectedItem.rate_unit}`} />
+            <InfoField label="Mínimo" value={selectedItem.minimum_charge != null ? `$${Number(selectedItem.minimum_charge).toFixed(2)}` : null} />
             <InfoField label="Moneda" value={selectedItem.currency} />
-            <InfoField
-              label="Courier"
-              value={selectedItem.couriers?.code}
-            />
-            <InfoField
-              label="Agencia"
-              value={selectedItem.agencies?.name}
-            />
-            <InfoField
-              label="Estado"
-              value={selectedItem.is_active ? "Activa" : "Inactiva"}
-            />
-            <InfoField
-              label="Vigencia"
-              value={`${new Date(selectedItem.effective_from).toLocaleDateString("es")}${selectedItem.effective_to ? ` — ${new Date(selectedItem.effective_to).toLocaleDateString("es")}` : ""}`}
-            />
+            <InfoField label="Courier" value={selectedItem.couriers?.code} />
+            <InfoField label="Agencia" value={selectedItem.agencies?.name} />
+            <InfoField label="Estado" value={selectedItem.is_active ? "Activa" : "Inactiva"} />
+            <InfoField label="Vigencia" value={`${new Date(selectedItem.effective_from).toLocaleDateString("es")}${selectedItem.effective_to ? ` — ${new Date(selectedItem.effective_to).toLocaleDateString("es")}` : ""}`} />
             <InfoField label="Notas" value={selectedItem.notes} />
-          </>
+          </div>
         )}
       </DetailSheet>
     </div>

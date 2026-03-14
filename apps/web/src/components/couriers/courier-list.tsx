@@ -171,22 +171,13 @@ export function CourierList({ couriers }: CourierListProps) {
       detailHref={selectedItem ? `/${locale}/settings/couriers/${selectedItem.id}` : undefined}
     >
       {selectedItem && (
-        <>
+        <div className="grid gap-3 sm:grid-cols-2">
           <InfoField label="Código" value={selectedItem.code} />
           <InfoField label="Nombre" value={selectedItem.name} />
-          <InfoField
-            label="Tipo"
-            value={selectedItem.type === "corporativo" ? "Corporativo" : "Box"}
-          />
-          <InfoField
-            label="Destinos"
-            value={selectedDestinations.length > 0 ? selectedDestinations.join(", ") : null}
-          />
-          <InfoField
-            label="Estado"
-            value={selectedItem.is_active ? "Activo" : "Inactivo"}
-          />
-        </>
+          <InfoField label="Tipo" value={selectedItem.type === "corporativo" ? "Corporativo" : "Box"} />
+          <InfoField label="Destinos" value={selectedDestinations.length > 0 ? selectedDestinations.join(", ") : null} />
+          <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
+        </div>
       )}
     </DetailSheet>
     </div>

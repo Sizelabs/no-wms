@@ -2,7 +2,7 @@ export function InfoField({ label, value }: { label: string; value: string | num
   return (
     <div>
       <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-sm">{value || "\u2014"}</p>
+      <p className="text-sm">{value ?? "\u2014"}</p>
     </div>
   );
 }

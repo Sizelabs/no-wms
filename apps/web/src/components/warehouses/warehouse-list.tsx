@@ -135,12 +135,16 @@ export function WarehouseList({ warehouses }: WarehouseListProps) {
       title={selectedItem?.name ?? ""}
       detailHref={selectedItem ? `/${locale}/settings/warehouses/${selectedItem.id}` : undefined}
     >
-      <InfoField label="Código" value={selectedItem?.code} />
-      <InfoField label="Nombre" value={selectedItem?.name} />
-      <InfoField label="Ciudad" value={selectedItem?.city} />
-      <InfoField label="País" value={selectedItem?.country} />
-      <InfoField label="Zona Horaria" value={selectedItem?.timezone} />
-      <InfoField label="Estado" value={selectedItem?.is_active ? "Activa" : "Inactiva"} />
+      {selectedItem && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <InfoField label="Código" value={selectedItem.code} />
+          <InfoField label="Nombre" value={selectedItem.name} />
+          <InfoField label="Ciudad" value={selectedItem.city} />
+          <InfoField label="País" value={selectedItem.country} />
+          <InfoField label="Zona Horaria" value={selectedItem.timezone} />
+          <InfoField label="Estado" value={selectedItem.is_active ? "Activa" : "Inactiva"} />
+        </div>
+      )}
     </DetailSheet>
     </div>
   );

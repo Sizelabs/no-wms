@@ -216,7 +216,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                   <div className="flex gap-1">
                     {wo.status === "requested" && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "approved"); }}
+                        onClick={() => handleStatusChange(wo.id, "approved")}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
                       >
@@ -225,7 +225,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                     )}
                     {wo.status === "pending" && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "approved"); }}
+                        onClick={() => handleStatusChange(wo.id, "approved")}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
                       >
@@ -234,7 +234,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                     )}
                     {wo.status === "approved" && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "in_progress"); }}
+                        onClick={() => handleStatusChange(wo.id, "in_progress")}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
                       >
@@ -243,7 +243,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                     )}
                     {wo.status === "in_progress" && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "completed"); }}
+                        onClick={() => handleStatusChange(wo.id, "completed")}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
                       >
@@ -252,7 +252,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                     )}
                     {!["completed", "cancelled"].includes(wo.status) && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "cancelled"); }}
+                        onClick={() => handleStatusChange(wo.id, "cancelled")}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
                       >
