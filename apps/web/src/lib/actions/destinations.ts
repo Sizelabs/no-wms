@@ -27,6 +27,23 @@ function resolveCountryName(countryCode: string): string | null {
   return c?.name ?? null;
 }
 
+/** Return distinct country codes from destinations, enriched with name and flag. */
+export async function getDestinationCountries() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("destinations")
+    .select("country_code")
+    .eq("is_active", true);
+
+  if (error) return [];
+
+  const uniqueCodes = [...new Set((data ?? []).map((d) => d.country_code))].sort();
+  return uniqueCodes.map((code) => {
+    const c = Country.getCountryByCode(code);
+    return { isoCode: code, name: c?.name ?? code, flag: c?.flag ?? "" };
+  });
+}
+
 export async function getDestinationsList() {
   const supabase = await createClient();
 

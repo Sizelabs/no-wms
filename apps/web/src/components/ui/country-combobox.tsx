@@ -5,6 +5,12 @@ import { useEffect, useState } from "react";
 import { Combobox } from "@/components/ui/combobox";
 import { getAllCountries } from "@/lib/actions/locations";
 
+interface CountryOption {
+  isoCode: string;
+  name: string;
+  flag: string;
+}
+
 interface CountryComboboxProps {
   name?: string;
   value?: string;
@@ -14,6 +20,8 @@ interface CountryComboboxProps {
   required?: boolean;
   disabled?: boolean;
   id?: string;
+  /** If provided, only these countries are shown (e.g. destination countries). Otherwise loads all countries. */
+  countries?: CountryOption[];
 }
 
 export function CountryCombobox({
@@ -25,26 +33,32 @@ export function CountryCombobox({
   required,
   disabled,
   id,
+  countries: externalCountries,
 }: CountryComboboxProps) {
-  const [countries, setCountries] = useState<{ value: string; label: string }[]>([]);
+  const [loadedCountries, setLoadedCountries] = useState<CountryOption[]>([]);
 
   useEffect(() => {
-    getAllCountries().then((list) =>
-      setCountries(list.map((c) => ({ value: c.isoCode, label: `${c.flag} ${c.name} (${c.isoCode})` }))),
-    );
-  }, []);
+    if (externalCountries) return;
+    getAllCountries().then((list) => setLoadedCountries(list));
+  }, [externalCountries]);
+
+  const countries = externalCountries ?? loadedCountries;
+  const options = countries.map((c) => ({
+    value: c.isoCode,
+    label: `${c.flag} ${c.name} (${c.isoCode})`.trim(),
+  }));
 
   return (
     <Combobox
       id={id}
       name={name}
-      options={countries}
+      options={options}
       value={value}
       defaultValue={defaultValue}
       onChange={onChange}
-      placeholder={countries.length === 0 ? "Cargando..." : placeholder}
+      placeholder={options.length === 0 ? "Cargando..." : placeholder}
       required={required}
-      disabled={disabled || countries.length === 0}
+      disabled={disabled || options.length === 0}
     />
   );
 }

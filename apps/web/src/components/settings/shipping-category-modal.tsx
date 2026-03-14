@@ -9,6 +9,7 @@ import { useNotification } from "@/components/layout/notification";
 import { CountryCombobox } from "@/components/ui/country-combobox";
 import { inputClass, selectClass } from "@/components/ui/form-section";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { getDestinationCountries } from "@/lib/actions/destinations";
 import { createShippingCategory, updateShippingCategory } from "@/lib/actions/shipping-categories";
 import { getModalities } from "@/lib/actions/tariffs";
 
@@ -65,6 +66,7 @@ export function ShippingCategoryModal({ open, onClose, item }: ShippingCategoryM
   const isEditing = !!item;
 
   const [modalities, setModalities] = useState<ModalityOption[]>([]);
+  const [destinationCountries, setDestinationCountries] = useState<{ isoCode: string; name: string; flag: string }[]>([]);
   const [requiredDocs, setRequiredDocs] = useState<RequiredDocEntry[]>(
     item?.shipping_category_required_documents?.map((d) => ({
       document_type: d.document_type,
@@ -74,7 +76,7 @@ export function ShippingCategoryModal({ open, onClose, item }: ShippingCategoryM
     })) ?? [],
   );
 
-  // Lazy-load modalities when modal opens
+  // Lazy-load modalities and destination countries when modal opens
   useEffect(() => {
     if (!open) return;
     getModalities().then((res) => {
@@ -86,6 +88,7 @@ export function ShippingCategoryModal({ open, onClose, item }: ShippingCategoryM
         })));
       }
     });
+    getDestinationCountries().then(setDestinationCountries);
   }, [open]);
 
   const addDoc = () => {
@@ -156,6 +159,7 @@ export function ShippingCategoryModal({ open, onClose, item }: ShippingCategoryM
                     name="country_code"
                     defaultValue={item?.country_code ?? "EC"}
                     required
+                    countries={destinationCountries}
                   />
                 </div>
                 <div>
