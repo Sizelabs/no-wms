@@ -28,5 +28,8 @@
       "sharp",
       "unrs-resolver"
     ]
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
   }
 }
