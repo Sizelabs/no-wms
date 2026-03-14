@@ -12,12 +12,7 @@ import { InfoField } from "@/components/shipments/info-field";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
 import { updateShipmentStatus } from "@/lib/actions/shipments";
-
-const MODALITY_LABELS: Record<string, string> = {
-  air: "Aéreo",
-  ocean: "Marítimo",
-  ground: "Terrestre",
-};
+import { MODALITY_LABELS } from "@/lib/constants/modalities";
 
 interface HouseBill {
   id: string;

@@ -5,24 +5,13 @@ import { useMemo, useState } from "react";
 import { SiActionBar } from "@/components/shipping/si-action-bar";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 import { getShipmentModality } from "@/lib/shipping-utils";
 
 function unwrap<T>(val: T | T[] | null): T | null {
   if (val == null) return null;
   return Array.isArray(val) ? val[0] ?? null : val;
 }
-
-const MODALITY_LABELS: Record<string, string> = {
-  air: "Aéreo",
-  ocean: "Marítimo",
-  ground: "Terrestre",
-};
-
-const MODALITY_COLORS: Record<string, string> = {
-  air: "bg-sky-50 text-sky-700",
-  ocean: "bg-blue-50 text-blue-700",
-  ground: "bg-amber-50 text-amber-700",
-};
 
 interface UnassignedSIRow {
   id: string;

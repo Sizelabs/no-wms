@@ -9,20 +9,9 @@ import { useNotification } from "@/components/layout/notification";
 import { Combobox } from "@/components/ui/combobox";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { createShipmentWithSIs } from "@/lib/actions/shipments";
+import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 import type { SelectedSI } from "@/lib/shipping-utils";
 import { getShipmentModality } from "@/lib/shipping-utils";
-
-const MODALITY_LABELS: Record<string, string> = {
-  air: "Aéreo",
-  ocean: "Marítimo",
-  ground: "Terrestre",
-};
-
-const MODALITY_COLORS: Record<string, string> = {
-  air: "bg-sky-50 text-sky-700",
-  ocean: "bg-blue-50 text-blue-700",
-  ground: "bg-amber-50 text-amber-700",
-};
 
 interface Warehouse {
   id: string;

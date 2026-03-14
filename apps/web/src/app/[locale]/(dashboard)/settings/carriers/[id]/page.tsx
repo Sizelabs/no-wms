@@ -5,12 +5,7 @@ import { AwbBatchPanel } from "@/components/carriers/awb-batch-panel";
 import { PageHeader } from "@/components/layout/page-header";
 import { getCarrier } from "@/lib/actions/carriers";
 import { requirePermission } from "@/lib/auth/require-permission";
-
-const MODALITY_LABELS: Record<string, string> = {
-  air: "Aéreo",
-  ocean: "Marítimo",
-  ground: "Terrestre",
-};
+import { MODALITY_LABELS } from "@/lib/constants/modalities";
 
 export default async function CarrierDetailPage({
   params,

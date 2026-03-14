@@ -6,18 +6,7 @@ import { useState } from "react";
 
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
-
-const MODALITY_LABELS: Record<string, string> = {
-  air: "Aéreo",
-  ocean: "Marítimo",
-  ground: "Terrestre",
-};
-
-const MODALITY_COLORS: Record<string, string> = {
-  air: "bg-sky-50 text-sky-700",
-  ocean: "bg-blue-50 text-blue-700",
-  ground: "bg-amber-50 text-amber-700",
-};
+import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 
 interface Carrier {
   id: string;
