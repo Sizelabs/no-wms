@@ -8,13 +8,13 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
-import type { ShipmentSheetData } from "@/components/shipments/shipment-detail-sheet";
 import { ShipmentDetailSheet } from "@/components/shipments/shipment-detail-sheet";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { getShipment, updateShipmentStatus } from "@/lib/actions/shipments";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
+import type { ShipmentDetail as ShipmentDetailData } from "@/lib/types/shipments";
 
 interface HouseBill {
   id: string;
@@ -55,7 +55,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sheetData, setSheetData] = useState<ShipmentSheetData | null>(null);
+  const [sheetData, setSheetData] = useState<ShipmentDetailData | null>(null);
   const fetchNonce = useRef(0);
 
   const sheetOpen = selectedId !== null;
@@ -88,7 +88,7 @@ export function ShipmentList({ data }: ShipmentListProps) {
     const nonce = ++fetchNonce.current;
     const { data: full } = await getShipment(id);
     if (fetchNonce.current !== nonce) return; // stale response
-    setSheetData(full as ShipmentSheetData | null);
+    setSheetData(full as ShipmentDetailData | null);
   }, []);
 
   const closeSheet = useCallback(() => {

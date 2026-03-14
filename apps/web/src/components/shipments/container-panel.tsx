@@ -6,19 +6,11 @@ import { useState, useTransition } from "react";
 import { useNotification } from "@/components/layout/notification";
 import { inputClass } from "@/components/ui/form-section";
 import { addContainer, removeContainer } from "@/lib/actions/shipments";
-
-interface Container {
-  id: string;
-  container_number: string;
-  seal_number: string | null;
-  container_type: string;
-  tare_weight: number | null;
-  max_payload: number | null;
-}
+import type { ShipmentContainer } from "@/lib/types/shipments";
 
 interface ContainerPanelProps {
   shipmentId: string;
-  containers: Container[];
+  containers: ShipmentContainer[];
 }
 
 export function ContainerPanel({ shipmentId, containers }: ContainerPanelProps) {
