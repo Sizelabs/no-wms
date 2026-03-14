@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { CountryCombobox } from "@/components/ui/country-combobox";
 import { inputClass, selectClass } from "@/components/ui/form-section";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { createShippingCategory, updateShippingCategory } from "@/lib/actions/shipping-categories";
@@ -149,16 +150,12 @@ export function ShippingCategoryModal({ open, onClose, item }: ShippingCategoryM
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm text-gray-600">
-                    País (código ISO)<span className="ml-0.5 text-red-400">*</span>
+                    País<span className="ml-0.5 text-red-400">*</span>
                   </label>
-                  <input
+                  <CountryCombobox
                     name="country_code"
-                    type="text"
                     defaultValue={item?.country_code ?? "EC"}
-                    maxLength={2}
                     required
-                    className={inputClass}
-                    placeholder="EC"
                   />
                 </div>
                 <div>
