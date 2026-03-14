@@ -6,8 +6,11 @@ import { useState } from "react";
 
 import { TicketPriorityBadge } from "@/components/tickets/ticket-priority-badge";
 import { TicketStatusBadge } from "@/components/tickets/ticket-status-badge";
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface TicketRow {
   id: string;
@@ -50,6 +53,8 @@ export function TicketList({ data, agencies }: TicketListProps) {
     if (agencyFilter.length > 0 && (!t.agencies?.name || !agencyFilter.includes(t.agencies.name))) return false;
     return true;
   });
+
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
   const activeFilterCount = [priorityFilter, agencyFilter].filter((f) => f.length > 0).length;
 
@@ -137,35 +142,71 @@ export function TicketList({ data, agencies }: TicketListProps) {
             scrollElement={scrollEl}
             colSpan={7}
             emptyMessage="No hay tickets"
-            renderRow={(ticket) => (
-              <tr key={ticket.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/tickets/${ticket.id}`}
-                    className="font-mono text-xs font-medium text-blue-600 hover:underline"
-                  >
-                    {ticket.ticket_number}
-                  </Link>
-                </td>
-                <td className="max-w-xs truncate px-4 py-3 text-xs">{ticket.subject}</td>
-                <td className="px-4 py-3 text-xs">
-                  {ticket.agencies ? `${ticket.agencies.name}` : "—"}
-                </td>
-                <td className="px-4 py-3 text-xs">{ticket.category}</td>
-                <td className="px-4 py-3">
-                  <TicketPriorityBadge priority={ticket.priority} />
-                </td>
-                <td className="px-4 py-3">
-                  <TicketStatusBadge status={ticket.status} />
-                </td>
-                <td className="px-4 py-3 text-xs text-gray-500">
-                  {new Date(ticket.created_at).toLocaleDateString("es")}
-                </td>
-              </tr>
-            )}
+            renderRow={(ticket) => {
+              const isSelected = open && ticket.id === selectedId;
+              return (
+                <tr
+                  key={ticket.id}
+                  className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                  onClick={() => openSheet(ticket.id)}
+                >
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/tickets/${ticket.id}`}
+                      className="font-mono text-xs font-medium text-blue-600 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {ticket.ticket_number}
+                    </Link>
+                  </td>
+                  <td className="max-w-xs truncate px-4 py-3 text-xs">{ticket.subject}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {ticket.agencies ? `${ticket.agencies.name}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">{ticket.category}</td>
+                  <td className="px-4 py-3">
+                    <TicketPriorityBadge priority={ticket.priority} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <TicketStatusBadge status={ticket.status} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {new Date(ticket.created_at).toLocaleDateString("es")}
+                  </td>
+                </tr>
+              );
+            }}
           />
         </table>
       </div>
+
+      {/* Detail drawer */}
+      <DetailSheet
+        open={open}
+        onClose={closeSheet}
+        title={selectedItem ? `Ticket ${selectedItem.ticket_number}` : ""}
+        detailHref={selectedItem ? `/tickets/${selectedItem.id}` : undefined}
+      >
+        {selectedItem && (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <TicketStatusBadge status={selectedItem.status} />
+              <TicketPriorityBadge priority={selectedItem.priority} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <InfoField label="Ticket #" value={selectedItem.ticket_number} />
+              <InfoField label="Asunto" value={selectedItem.subject} />
+              <InfoField label="Categoría" value={selectedItem.category} />
+              <InfoField label="Agencia" value={selectedItem.agencies?.name} />
+              <InfoField label="Creado por" value={selectedItem.creator?.full_name} />
+              <InfoField
+                label="Fecha"
+                value={new Date(selectedItem.created_at).toLocaleDateString("es")}
+              />
+            </div>
+          </>
+        )}
+      </DetailSheet>
     </div>
   );
 }

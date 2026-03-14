@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface Organization {
   id: string;
@@ -31,6 +34,8 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
     }
     return true;
   });
+
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
   return (
     <div className="space-y-3">
@@ -68,8 +73,13 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
               agencies: 0,
               users: 0,
             };
+            const isSelected = open && fwd.id === selectedId;
             return (
-              <tr key={fwd.id} className="hover:bg-gray-50">
+              <tr
+                key={fwd.id}
+                className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                onClick={() => openSheet(fwd.id)}
+              >
                 <td className="px-4 py-3 font-medium text-gray-900">
                   {fwd.name}
                 </td>
@@ -83,6 +93,7 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
                   <Link
                     href={`/${locale}/settings/forwarders/${fwd.id}`}
                     className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     Ver detalle
                   </Link>
@@ -93,6 +104,23 @@ export function ForwarderList({ forwarders, counts }: ForwarderListProps) {
         />
       </table>
     </div>
+
+    <DetailSheet
+      open={open}
+      onClose={closeSheet}
+      title={selectedItem?.name ?? ""}
+      detailHref={selectedItem ? `/${locale}/settings/forwarders/${selectedItem.id}` : undefined}
+    >
+      {selectedItem && (
+        <>
+          <InfoField label="Nombre" value={selectedItem.name} />
+          <InfoField label="Slug" value={selectedItem.slug} />
+          <InfoField label="Bodegas" value={counts[selectedItem.id]?.warehouses ?? 0} />
+          <InfoField label="Agencias" value={counts[selectedItem.id]?.agencies ?? 0} />
+          <InfoField label="Usuarios" value={counts[selectedItem.id]?.users ?? 0} />
+        </>
+      )}
+    </DetailSheet>
     </div>
   );
 }

@@ -6,8 +6,11 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 import { updateWorkOrderStatus } from "@/lib/actions/work-orders";
 
 interface WorkOrder {
@@ -66,6 +69,8 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
     if (filter.type.length > 0 && !filter.type.includes(wo.type)) return false;
     return true;
   });
+
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
   const hasActions = canUpdate && data.some((wo) => !["completed", "cancelled"].includes(wo.status));
 
@@ -169,10 +174,20 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
             scrollElement={scrollEl}
             colSpan={hasActions ? 8 : 7}
             emptyMessage="No hay órdenes de trabajo"
-            renderRow={(wo) => (
-              <tr key={wo.id}>
+            renderRow={(wo) => {
+              const isSelected = open && wo.id === selectedId;
+              return (
+              <tr
+                key={wo.id}
+                className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                onClick={() => openSheet(wo.id)}
+              >
                 <td className="px-4 py-3 font-mono text-xs">
-                  <Link href={`/${locale}/work-orders/${wo.id}`} className="hover:underline">
+                  <Link
+                    href={`/${locale}/work-orders/${wo.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hover:underline"
+                  >
                     {wo.wo_number}
                   </Link>
                 </td>
@@ -197,11 +212,11 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                   {new Date(wo.created_at).toLocaleDateString("es")}
                 </td>
                 {hasActions && (
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex gap-1">
                     {wo.status === "requested" && (
                       <button
-                        onClick={() => handleStatusChange(wo.id, "approved")}
+                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "approved"); }}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
                       >
@@ -210,7 +225,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                     )}
                     {wo.status === "pending" && (
                       <button
-                        onClick={() => handleStatusChange(wo.id, "approved")}
+                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "approved"); }}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
                       >
@@ -219,7 +234,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                     )}
                     {wo.status === "approved" && (
                       <button
-                        onClick={() => handleStatusChange(wo.id, "in_progress")}
+                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "in_progress"); }}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
                       >
@@ -228,7 +243,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                     )}
                     {wo.status === "in_progress" && (
                       <button
-                        onClick={() => handleStatusChange(wo.id, "completed")}
+                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "completed"); }}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-green-700 hover:bg-green-50"
                       >
@@ -237,7 +252,7 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                     )}
                     {!["completed", "cancelled"].includes(wo.status) && (
                       <button
-                        onClick={() => handleStatusChange(wo.id, "cancelled")}
+                        onClick={(e) => { e.stopPropagation(); handleStatusChange(wo.id, "cancelled"); }}
                         disabled={isPending}
                         className="rounded border px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
                       >
@@ -248,10 +263,32 @@ export function WoList({ data, locale, canUpdate = false }: WoListProps) {
                 </td>
                 )}
               </tr>
-            )}
+              );
+            }}
           />
         </table>
       </div>
+
+      <DetailSheet
+        open={open}
+        onClose={closeSheet}
+        title={selectedItem ? `OT ${selectedItem.wo_number}` : "Detalle"}
+        detailHref={selectedItem ? `/${locale}/work-orders/${selectedItem.id}` : undefined}
+      >
+        {selectedItem && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoField label="OT #" value={selectedItem.wo_number} />
+            <InfoField label="Tipo" value={WORK_ORDER_TYPE_LABELS[selectedItem.type as keyof typeof WORK_ORDER_TYPE_LABELS] ?? selectedItem.type} />
+            <InfoField label="Estado" value={WO_STATUS_LABELS[selectedItem.status as keyof typeof WO_STATUS_LABELS] ?? selectedItem.status} />
+            <InfoField label="Prioridad" value={selectedItem.priority === "high" ? "Alta" : selectedItem.priority === "low" ? "Baja" : "Normal"} />
+            <InfoField label="Agencia" value={selectedItem.agencies?.name} />
+            <InfoField label="Responsable" value={selectedItem.profiles?.full_name} />
+            <InfoField label="WRs" value={selectedItem.work_order_items.length} />
+            <InfoField label="Instrucciones" value={selectedItem.instructions} />
+            <InfoField label="Fecha" value={new Date(selectedItem.created_at).toLocaleDateString("es")} />
+          </div>
+        )}
+      </DetailSheet>
     </div>
   );
 }

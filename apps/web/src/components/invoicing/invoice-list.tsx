@@ -5,8 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { InvoiceStatusBadge } from "@/components/invoicing/invoice-status-badge";
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface Invoice {
   id: string;
@@ -46,6 +49,8 @@ export function InvoiceList({ data }: InvoiceListProps) {
     if (filter.agency.length > 0 && !filter.agency.includes(inv.agencies?.code ?? "")) return false;
     return true;
   });
+
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
   const agencies = [...new Set(data.map((inv) => inv.agencies?.code).filter(Boolean))];
   const activeFilterCount = [filter.agency.length > 0].filter(Boolean).length;
@@ -120,43 +125,100 @@ export function InvoiceList({ data }: InvoiceListProps) {
             scrollElement={scrollEl}
             colSpan={10}
             emptyMessage="No hay facturas"
-            renderRow={(inv) => (
-              <tr key={inv.id}>
-                <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number}</td>
-                <td className="px-4 py-3 text-xs">
-                  {inv.agencies ? `${inv.agencies.name} (${inv.agencies.code})` : "—"}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {new Date(inv.period_start).toLocaleDateString("es")} —{" "}
-                  {new Date(inv.period_end).toLocaleDateString("es")}
-                </td>
-                <td className="px-4 py-3 text-right text-xs">${Number(inv.subtotal).toFixed(2)}</td>
-                <td className="px-4 py-3 text-right text-xs">${Number(inv.tax).toFixed(2)}</td>
-                <td className="px-4 py-3 text-right text-xs font-medium">
-                  ${Number(inv.total).toFixed(2)}
-                </td>
-                <td className="px-4 py-3">
-                  <InvoiceStatusBadge status={inv.status} />
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {inv.due_date ? new Date(inv.due_date).toLocaleDateString("es") : "—"}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("es") : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <Link
-                    href={`invoicing/${inv.id}`}
-                    className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
-                  >
-                    Ver
-                  </Link>
-                </td>
-              </tr>
-            )}
+            renderRow={(inv) => {
+              const isSelected = open && inv.id === selectedId;
+              return (
+                <tr
+                  key={inv.id}
+                  className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                  onClick={() => openSheet(inv.id)}
+                >
+                  <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {inv.agencies ? `${inv.agencies.name} (${inv.agencies.code})` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {new Date(inv.period_start).toLocaleDateString("es")} —{" "}
+                    {new Date(inv.period_end).toLocaleDateString("es")}
+                  </td>
+                  <td className="px-4 py-3 text-right text-xs">${Number(inv.subtotal).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-xs">${Number(inv.tax).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-xs font-medium">
+                    ${Number(inv.total).toFixed(2)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <InvoiceStatusBadge status={inv.status} />
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {inv.due_date ? new Date(inv.due_date).toLocaleDateString("es") : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString("es") : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`invoicing/${inv.id}`}
+                      className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Ver
+                    </Link>
+                  </td>
+                </tr>
+              );
+            }}
           />
         </table>
       </div>
+
+      <DetailSheet
+        open={open}
+        onClose={closeSheet}
+        title={selectedItem ? `Factura #${selectedItem.invoice_number}` : ""}
+        detailHref={selectedItem ? `invoicing/${selectedItem.id}` : undefined}
+      >
+        {selectedItem && (
+          <>
+            <div>
+              <InvoiceStatusBadge status={selectedItem.status} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <InfoField label="Factura #" value={selectedItem.invoice_number} />
+              <InfoField
+                label="Agencia"
+                value={
+                  selectedItem.agencies
+                    ? `${selectedItem.agencies.name} (${selectedItem.agencies.code})`
+                    : null
+                }
+              />
+              <InfoField
+                label="Periodo"
+                value={`${new Date(selectedItem.period_start).toLocaleDateString("es")} — ${new Date(selectedItem.period_end).toLocaleDateString("es")}`}
+              />
+              <InfoField label="Subtotal" value={`$${Number(selectedItem.subtotal).toFixed(2)}`} />
+              <InfoField label="Impuesto" value={`$${Number(selectedItem.tax).toFixed(2)}`} />
+              <InfoField label="Total" value={`$${Number(selectedItem.total).toFixed(2)}`} />
+              <InfoField
+                label="Vencimiento"
+                value={
+                  selectedItem.due_date
+                    ? new Date(selectedItem.due_date).toLocaleDateString("es")
+                    : null
+                }
+              />
+              <InfoField
+                label="Pagada"
+                value={
+                  selectedItem.paid_at
+                    ? new Date(selectedItem.paid_at).toLocaleDateString("es")
+                    : null
+                }
+              />
+            </div>
+          </>
+        )}
+      </DetailSheet>
     </div>
   );
 }

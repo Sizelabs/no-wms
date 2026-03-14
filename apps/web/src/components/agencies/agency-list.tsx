@@ -6,8 +6,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface Agency {
   id: string;
@@ -23,6 +26,11 @@ interface Agency {
 
 interface AgencyListProps {
   agencies: Agency[];
+}
+
+function getHomeDestination(agency: Agency): string {
+  const home = agency.agency_destinations?.find((d) => d.is_home)?.destinations;
+  return home ? `${home.city}, ${home.country_code}` : "\u2014";
 }
 
 export function AgencyList({ agencies }: AgencyListProps) {
@@ -50,6 +58,8 @@ export function AgencyList({ agencies }: AgencyListProps) {
     }
     return true;
   });
+
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
   return (
     <div className="space-y-3">
@@ -90,12 +100,19 @@ export function AgencyList({ agencies }: AgencyListProps) {
           scrollElement={scrollEl}
           colSpan={6}
           emptyMessage="No hay agencias registradas."
-          renderRow={(agency) => (
-            <tr key={agency.id} className="hover:bg-gray-50">
+          renderRow={(agency) => {
+            const isSelected = open && agency.id === selectedId;
+            return (
+            <tr
+              key={agency.id}
+              className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+              onClick={() => openSheet(agency.id)}
+            >
               <td className="px-4 py-3 font-mono text-xs">{agency.code}</td>
               <td className="px-4 py-3 font-medium text-gray-900">
                 <Link
                   href={`/${locale}/agencies/${agency.id}`}
+                  onClick={(e) => e.stopPropagation()}
                   className="hover:underline"
                 >
                   {agency.name}
@@ -113,10 +130,7 @@ export function AgencyList({ agencies }: AgencyListProps) {
                 </span>
               </td>
               <td className="px-4 py-3 text-gray-500">
-                {(() => {
-                  const home = agency.agency_destinations?.find((d) => d.is_home)?.destinations;
-                  return home ? `${home.city}, ${home.country_code}` : "—";
-                })()}
+                {getHomeDestination(agency)}
               </td>
               <td className="px-4 py-3">
                 <span
@@ -129,7 +143,7 @@ export function AgencyList({ agencies }: AgencyListProps) {
                   {agency.is_active ? "Activa" : "Inactiva"}
                 </span>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   className="text-xs font-medium text-gray-600 hover:text-gray-900"
@@ -138,10 +152,28 @@ export function AgencyList({ agencies }: AgencyListProps) {
                 </button>
               </td>
             </tr>
-          )}
+            );
+          }}
         />
       </table>
     </div>
+
+      <DetailSheet
+        open={open}
+        onClose={closeSheet}
+        title={selectedItem ? `Agencia ${selectedItem.name}` : "Detalle"}
+        detailHref={selectedItem ? `/${locale}/agencies/${selectedItem.id}` : undefined}
+      >
+        {selectedItem && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoField label="Código" value={selectedItem.code} />
+            <InfoField label="Nombre" value={selectedItem.name} />
+            <InfoField label="Tipo" value={AGENCY_TYPE_LABELS[selectedItem.type]} />
+            <InfoField label="País Destino" value={getHomeDestination(selectedItem)} />
+            <InfoField label="Estado" value={selectedItem.is_active ? "Activa" : "Inactiva"} />
+          </div>
+        )}
+      </DetailSheet>
     </div>
   );
 }

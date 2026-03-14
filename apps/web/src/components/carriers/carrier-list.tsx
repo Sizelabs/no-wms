@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 
 interface Carrier {
@@ -41,6 +44,8 @@ export function CarrierList({ carriers }: CarrierListProps) {
     if (modalityFilter.length > 0 && !modalityFilter.includes(c.modality)) return false;
     return true;
   });
+
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
   return (
     <div className="space-y-3">
@@ -80,12 +85,19 @@ export function CarrierList({ carriers }: CarrierListProps) {
             scrollElement={scrollEl}
             colSpan={5}
             emptyMessage="No hay transportistas registrados."
-            renderRow={(carrier) => (
-              <tr key={carrier.id} className="hover:bg-gray-50">
+            renderRow={(carrier) => {
+              const isSelected = open && carrier.id === selectedId;
+              return (
+              <tr
+                key={carrier.id}
+                className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                onClick={() => openSheet(carrier.id)}
+              >
                 <td className="px-4 py-3 font-mono text-xs">{carrier.code}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
                   <Link
                     href={`/${locale}/settings/carriers/${carrier.id}`}
+                    onClick={(e) => e.stopPropagation()}
                     className="hover:underline"
                   >
                     {carrier.name}
@@ -105,10 +117,30 @@ export function CarrierList({ carriers }: CarrierListProps) {
                   </span>
                 </td>
               </tr>
-            )}
+              );
+            }}
           />
         </table>
       </div>
+
+      <DetailSheet
+        open={open}
+        onClose={closeSheet}
+        title={selectedItem ? `Transportista ${selectedItem.name}` : "Detalle"}
+        detailHref={selectedItem ? `/${locale}/settings/carriers/${selectedItem.id}` : undefined}
+      >
+        {selectedItem && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoField label="Código" value={selectedItem.code} />
+            <InfoField label="Nombre" value={selectedItem.name} />
+            <InfoField label="Modalidad" value={MODALITY_LABELS[selectedItem.modality] ?? selectedItem.modality} />
+            <InfoField label="Contacto" value={selectedItem.contact_name ?? "—"} />
+            <InfoField label="Teléfono" value={selectedItem.contact_phone ?? "—"} />
+            <InfoField label="Email" value={selectedItem.contact_email ?? "—"} />
+            <InfoField label="Estado" value={selectedItem.is_active ? "Activo" : "Inactivo"} />
+          </div>
+        )}
+      </DetailSheet>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { ContainerPanel } from "@/components/shipments/container-panel";
-import { InfoField } from "@/components/shipments/info-field";
+import { InfoField } from "@/components/ui/info-field";
 import { HouseBillAssignmentPanel } from "@/components/shipments/house-bill-assignment-panel";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { getNextShipmentStatus, getShipmentStatusLabel, useAdvanceShipmentStatus } from "@/hooks/use-advance-shipment-status";

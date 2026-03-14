@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface Warehouse {
   id: string;
@@ -46,6 +49,8 @@ export function WarehouseList({ warehouses }: WarehouseListProps) {
     return true;
   });
 
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
+
   return (
     <div className="space-y-3">
       {/* Search + status row */}
@@ -85,36 +90,58 @@ export function WarehouseList({ warehouses }: WarehouseListProps) {
           scrollElement={scrollEl}
           colSpan={6}
           emptyMessage="No hay bodegas registradas."
-          renderRow={(w) => (
-            <tr key={w.id} className="hover:bg-gray-50">
-              <td className="px-4 py-3 font-mono text-xs">{w.code}</td>
-              <td className="px-4 py-3 font-medium text-gray-900">
-                <Link
-                  href={`/${locale}/settings/warehouses/${w.id}`}
-                  className="hover:underline"
-                >
-                  {w.name}
-                </Link>
-              </td>
-              <td className="px-4 py-3 text-gray-500">{w.city ?? "—"}</td>
-              <td className="px-4 py-3 text-gray-500">{w.country ?? "—"}</td>
-              <td className="px-4 py-3 text-gray-500">{w.timezone}</td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                    w.is_active
-                      ? "bg-green-50 text-green-700"
-                      : "bg-red-50 text-red-700"
-                  }`}
-                >
-                  {w.is_active ? "Activa" : "Inactiva"}
-                </span>
-              </td>
-            </tr>
-          )}
+          renderRow={(w) => {
+            const isSelected = open && w.id === selectedId;
+            return (
+              <tr
+                key={w.id}
+                className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                onClick={() => openSheet(w.id)}
+              >
+                <td className="px-4 py-3 font-mono text-xs">{w.code}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">
+                  <Link
+                    href={`/${locale}/settings/warehouses/${w.id}`}
+                    className="hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {w.name}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-gray-500">{w.city ?? "—"}</td>
+                <td className="px-4 py-3 text-gray-500">{w.country ?? "—"}</td>
+                <td className="px-4 py-3 text-gray-500">{w.timezone}</td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                      w.is_active
+                        ? "bg-green-50 text-green-700"
+                        : "bg-red-50 text-red-700"
+                    }`}
+                  >
+                    {w.is_active ? "Activa" : "Inactiva"}
+                  </span>
+                </td>
+              </tr>
+            );
+          }}
         />
       </table>
     </div>
+
+    <DetailSheet
+      open={open}
+      onClose={closeSheet}
+      title={selectedItem?.name ?? ""}
+      detailHref={selectedItem ? `/${locale}/settings/warehouses/${selectedItem.id}` : undefined}
+    >
+      <InfoField label="Código" value={selectedItem?.code} />
+      <InfoField label="Nombre" value={selectedItem?.name} />
+      <InfoField label="Ciudad" value={selectedItem?.city} />
+      <InfoField label="País" value={selectedItem?.country} />
+      <InfoField label="Zona Horaria" value={selectedItem?.timezone} />
+      <InfoField label="Estado" value={selectedItem?.is_active ? "Activa" : "Inactiva"} />
+    </DetailSheet>
     </div>
   );
 }

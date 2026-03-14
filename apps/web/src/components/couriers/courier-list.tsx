@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface CourierDestination {
   id: string;
@@ -52,6 +55,19 @@ export function CourierList({ couriers }: CourierListProps) {
     return true;
   });
 
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
+
+  const selectedDestinations = selectedItem
+    ? [
+        ...new Set(
+          selectedItem.courier_destinations
+            .filter((cd) => cd.is_active)
+            .map((cd) => cd.destinations?.city)
+            .filter(Boolean),
+        ),
+      ]
+    : [];
+
   return (
     <div className="space-y-3">
       {/* Search + status row */}
@@ -96,14 +112,20 @@ export function CourierList({ couriers }: CourierListProps) {
               .map((cd) => cd.destinations?.city)
               .filter(Boolean);
             const uniqueDestinations = [...new Set(destinations)];
+            const isSelected = open && courier.id === selectedId;
 
             return (
-              <tr key={courier.id} className="hover:bg-gray-50">
+              <tr
+                key={courier.id}
+                className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                onClick={() => openSheet(courier.id)}
+              >
                 <td className="px-4 py-3 font-mono text-xs">{courier.code}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
                   <Link
                     href={`/${locale}/settings/couriers/${courier.id}`}
                     className="hover:underline"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {courier.name}
                   </Link>
@@ -141,6 +163,32 @@ export function CourierList({ couriers }: CourierListProps) {
         />
       </table>
     </div>
+
+    <DetailSheet
+      open={open}
+      onClose={closeSheet}
+      title={selectedItem?.name ?? ""}
+      detailHref={selectedItem ? `/${locale}/settings/couriers/${selectedItem.id}` : undefined}
+    >
+      {selectedItem && (
+        <>
+          <InfoField label="Código" value={selectedItem.code} />
+          <InfoField label="Nombre" value={selectedItem.name} />
+          <InfoField
+            label="Tipo"
+            value={selectedItem.type === "corporativo" ? "Corporativo" : "Box"}
+          />
+          <InfoField
+            label="Destinos"
+            value={selectedDestinations.length > 0 ? selectedDestinations.join(", ") : null}
+          />
+          <InfoField
+            label="Estado"
+            value={selectedItem.is_active ? "Activo" : "Inactivo"}
+          />
+        </>
+      )}
+    </DetailSheet>
     </div>
   );
 }

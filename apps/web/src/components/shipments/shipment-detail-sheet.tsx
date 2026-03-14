@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-import { InfoField } from "@/components/shipments/info-field";
+import { InfoField } from "@/components/ui/info-field";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
 import { getNextShipmentStatus, getShipmentStatusLabel, useAdvanceShipmentStatus } from "@/hooks/use-advance-shipment-status";
-import { MODALITY_LABELS } from "@/lib/constants/modalities";
+import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 import type { ShipmentDetail } from "@/lib/types/shipments";
 
 interface ShipmentDetailSheetProps {
@@ -34,7 +34,7 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <ShipmentStatusBadge status={shipment.status} />
-                <span className="text-sm text-gray-500">
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${MODALITY_COLORS[shipment.modality] ?? ""}`}>
                   {MODALITY_LABELS[shipment.modality] ?? shipment.modality}
                 </span>
               </div>

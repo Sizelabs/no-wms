@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 
 interface Consignee {
   id: string;
@@ -52,6 +55,8 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
     return true;
   });
 
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
+
   return (
     <div className="space-y-3">
       {/* Search + status row */}
@@ -91,38 +96,60 @@ export function ConsigneeList({ consignees }: ConsigneeListProps) {
           scrollElement={scrollEl}
           colSpan={6}
           emptyMessage="No hay consignatarios registrados."
-          renderRow={(c) => (
-            <tr key={c.id} className="hover:bg-gray-50">
-              <td className="px-4 py-3 font-mono text-xs">{c.casillero}</td>
-              <td className="px-4 py-3 font-medium text-gray-900">
-                <Link
-                  href={`/${locale}/consignees/${c.id}`}
-                  className="hover:underline"
-                >
-                  {c.full_name}
-                </Link>
-              </td>
-              <td className="px-4 py-3 text-gray-500">{c.cedula_ruc ?? "—"}</td>
-              <td className="px-4 py-3 text-gray-500">
-                {getAgencyName(c.agencies)}
-              </td>
-              <td className="px-4 py-3 text-gray-500">{c.city ?? "—"}</td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                    c.is_active
-                      ? "bg-green-50 text-green-700"
-                      : "bg-red-50 text-red-700"
-                  }`}
-                >
-                  {c.is_active ? "Activo" : "Inactivo"}
-                </span>
-              </td>
-            </tr>
-          )}
+          renderRow={(c) => {
+            const isSelected = open && c.id === selectedId;
+            return (
+              <tr
+                key={c.id}
+                className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                onClick={() => openSheet(c.id)}
+              >
+                <td className="px-4 py-3 font-mono text-xs">{c.casillero}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">
+                  <Link
+                    href={`/${locale}/consignees/${c.id}`}
+                    className="hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {c.full_name}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-gray-500">{c.cedula_ruc ?? "—"}</td>
+                <td className="px-4 py-3 text-gray-500">
+                  {getAgencyName(c.agencies)}
+                </td>
+                <td className="px-4 py-3 text-gray-500">{c.city ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                      c.is_active
+                        ? "bg-green-50 text-green-700"
+                        : "bg-red-50 text-red-700"
+                    }`}
+                  >
+                    {c.is_active ? "Activo" : "Inactivo"}
+                  </span>
+                </td>
+              </tr>
+            );
+          }}
         />
       </table>
     </div>
+
+      <DetailSheet
+        open={open}
+        onClose={closeSheet}
+        title={selectedItem?.full_name ?? ""}
+        detailHref={selectedItem ? `/${locale}/consignees/${selectedItem.id}` : undefined}
+      >
+        <InfoField label="Casillero" value={selectedItem?.casillero} />
+        <InfoField label="Nombre" value={selectedItem?.full_name} />
+        <InfoField label="Cédula/RUC" value={selectedItem?.cedula_ruc} />
+        <InfoField label="Agencia" value={selectedItem ? getAgencyName(selectedItem.agencies) : undefined} />
+        <InfoField label="Ciudad" value={selectedItem?.city} />
+        <InfoField label="Estado" value={selectedItem ? (selectedItem.is_active ? "Activo" : "Inactivo") : undefined} />
+      </DetailSheet>
     </div>
   );
 }

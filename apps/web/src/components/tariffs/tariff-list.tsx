@@ -5,8 +5,11 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 import { deleteTariffSchedule } from "@/lib/actions/tariffs";
 
 interface TariffSchedule {
@@ -73,6 +76,8 @@ export function TariffList({ data, warehouses }: TariffListProps) {
     }
     return true;
   });
+
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
 
   const handleDeactivate = (id: string) => {
     if (!confirm("¿Desactivar esta tarifa?")) return;
@@ -143,79 +148,146 @@ export function TariffList({ data, warehouses }: TariffListProps) {
             scrollElement={scrollEl}
             colSpan={10}
             emptyMessage="No hay tarifas configuradas"
-            renderRow={(t) => (
-              <tr key={t.id}>
-                <td className="px-4 py-3 text-xs font-medium text-gray-900">
-                  {t.handling_costs?.name ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
-                <td className="px-4 py-3 text-xs">
-                  {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}
-                </td>
-                <td className="px-4 py-3 text-xs font-mono">
-                  ${Number(t.rate).toFixed(2)}{" "}
-                  <span className="text-gray-400">
-                    {RATE_UNIT_LABELS[t.rate_unit as RateUnit] ?? t.rate_unit}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {t.minimum_charge != null ? `$${Number(t.minimum_charge).toFixed(2)}` : "—"}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {t.couriers ? t.couriers.code : "—"}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {t.agencies ? (
-                    <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                      {t.agencies.name}
+            renderRow={(t) => {
+              const isSelected = open && t.id === selectedId;
+              return (
+                <tr
+                  key={t.id}
+                  className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                  onClick={() => openSheet(t.id)}
+                >
+                  <td className="px-4 py-3 text-xs font-medium text-gray-900">
+                    {t.handling_costs?.name ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">{t.warehouses?.name ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {t.destinations ? `${t.destinations.city} (${t.destinations.country_code})` : "Todos"}
+                  </td>
+                  <td className="px-4 py-3 text-xs font-mono">
+                    ${Number(t.rate).toFixed(2)}{" "}
+                    <span className="text-gray-400">
+                      {RATE_UNIT_LABELS[t.rate_unit as RateUnit] ?? t.rate_unit}
                     </span>
-                  ) : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      t.is_active
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    {t.is_active ? "Activa" : "Inactiva"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {new Date(t.effective_from).toLocaleDateString("es")}
-                  {t.effective_to && ` — ${new Date(t.effective_to).toLocaleDateString("es")}`}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    <Link
-                      href={`tariffs/${t.id}`}
-                      className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {t.minimum_charge != null ? `$${Number(t.minimum_charge).toFixed(2)}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {t.couriers ? t.couriers.code : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {t.agencies ? (
+                      <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        {t.agencies.name}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        t.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
                     >
-                      Ver
-                    </Link>
-                    <Link
-                      href={`tariffs/${t.id}/edit`}
-                      className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
-                    >
-                      Editar
-                    </Link>
-                    {t.is_active && (
-                      <button
-                        onClick={() => handleDeactivate(t.id)}
-                        disabled={isPending}
-                        className="rounded border px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
+                      {t.is_active ? "Activa" : "Inactiva"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {new Date(t.effective_from).toLocaleDateString("es")}
+                    {t.effective_to && ` — ${new Date(t.effective_to).toLocaleDateString("es")}`}
+                  </td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                      <Link
+                        href={`tariffs/${t.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
                       >
-                        Desactivar
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )}
+                        Ver
+                      </Link>
+                      <Link
+                        href={`tariffs/${t.id}/edit`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                      >
+                        Editar
+                      </Link>
+                      {t.is_active && (
+                        <button
+                          onClick={() => handleDeactivate(t.id)}
+                          disabled={isPending}
+                          className="rounded border px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
+                        >
+                          Desactivar
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            }}
           />
         </table>
       </div>
+
+      <DetailSheet
+        open={open}
+        onClose={closeSheet}
+        title={selectedItem?.handling_costs?.name ?? "Tarifa"}
+        detailHref={selectedItem ? `tariffs/${selectedItem.id}` : undefined}
+      >
+        {selectedItem && (
+          <>
+            <InfoField
+              label="Costo de Manejo"
+              value={selectedItem.handling_costs?.name}
+            />
+            <InfoField
+              label="Bodega"
+              value={selectedItem.warehouses?.name}
+            />
+            <InfoField
+              label="Destino"
+              value={
+                selectedItem.destinations
+                  ? `${selectedItem.destinations.city} (${selectedItem.destinations.country_code})`
+                  : "Todos"
+              }
+            />
+            <InfoField
+              label="Tarifa"
+              value={`$${Number(selectedItem.rate).toFixed(2)} ${RATE_UNIT_LABELS[selectedItem.rate_unit as RateUnit] ?? selectedItem.rate_unit}`}
+            />
+            <InfoField
+              label="Mínimo"
+              value={
+                selectedItem.minimum_charge != null
+                  ? `$${Number(selectedItem.minimum_charge).toFixed(2)}`
+                  : null
+              }
+            />
+            <InfoField label="Moneda" value={selectedItem.currency} />
+            <InfoField
+              label="Courier"
+              value={selectedItem.couriers?.code}
+            />
+            <InfoField
+              label="Agencia"
+              value={selectedItem.agencies?.name}
+            />
+            <InfoField
+              label="Estado"
+              value={selectedItem.is_active ? "Activa" : "Inactiva"}
+            />
+            <InfoField
+              label="Vigencia"
+              value={`${new Date(selectedItem.effective_from).toLocaleDateString("es")}${selectedItem.effective_to ? ` — ${new Date(selectedItem.effective_to).toLocaleDateString("es")}` : ""}`}
+            />
+            <InfoField label="Notas" value={selectedItem.notes} />
+          </>
+        )}
+      </DetailSheet>
     </div>
   );
 }

@@ -8,8 +8,11 @@ import { useCallback, useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
+import { DetailSheet } from "@/components/ui/detail-sheet";
+import { InfoField } from "@/components/ui/info-field";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
+import { useSheetState } from "@/hooks/use-sheet-state";
 import {
   resendInvite,
   resetUserPassword,
@@ -79,6 +82,8 @@ export function UserList({ users, allowedRoles }: UserListProps) {
     return true;
   });
 
+  const { selectedId, selectedItem, open, openSheet, closeSheet } = useSheetState(filtered);
+
   return (
     <div className="space-y-3">
       {/* Search + status row */}
@@ -116,12 +121,19 @@ export function UserList({ users, allowedRoles }: UserListProps) {
           scrollElement={scrollEl}
           colSpan={showActions ? 4 : 3}
           emptyMessage="No hay usuarios registrados."
-          renderRow={(u) => (
-            <tr key={u.id} className="hover:bg-gray-50">
+          renderRow={(u) => {
+            const isSelected = open && u.id === selectedId;
+            return (
+            <tr
+              key={u.id}
+              className={`cursor-pointer ${isSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+              onClick={() => openSheet(u.id)}
+            >
               <td className="px-4 py-3 font-medium text-gray-900">
                 <Link
                   href={`/${locale}/settings/users/${u.id}`}
                   className="hover:underline"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   {u.full_name}
                 </Link>
@@ -150,7 +162,7 @@ export function UserList({ users, allowedRoles }: UserListProps) {
                 </span>
               </td>
               {showActions && (
-              <td className="px-4 py-3">
+              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                 <div className="flex gap-3">
                   <button
                     type="button"
@@ -197,10 +209,34 @@ export function UserList({ users, allowedRoles }: UserListProps) {
               </td>
               )}
             </tr>
-          )}
+            );
+          }}
         />
       </table>
     </div>
+
+      <DetailSheet
+        open={open}
+        onClose={closeSheet}
+        title={selectedItem?.full_name ?? ""}
+        detailHref={selectedItem ? `/${locale}/settings/users/${selectedItem.id}` : undefined}
+      >
+        <InfoField label="Nombre" value={selectedItem?.full_name} />
+        <div>
+          <p className="text-xs text-gray-500">Roles</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {selectedItem?.user_roles.map((r) => (
+              <span
+                key={r.id}
+                className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+              >
+                {ROLE_LABELS[r.role as Role] ?? r.role}
+              </span>
+            ))}
+          </div>
+        </div>
+        <InfoField label="Estado" value={selectedItem?.is_active ? "Activo" : "Inactivo"} />
+      </DetailSheet>
     </div>
   );
 }
