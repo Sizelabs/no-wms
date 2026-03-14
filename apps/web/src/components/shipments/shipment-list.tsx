@@ -5,7 +5,7 @@ import type { ShipmentModality, ShipmentStatus } from "@no-wms/shared/constants/
 import { SHIPMENT_STATUS_FLOW, SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import type { ShipmentSheetData } from "@/components/shipments/shipment-detail-sheet";
@@ -65,17 +65,19 @@ export function ShipmentList({ data }: ShipmentListProps) {
   const [modalityFilter, setModalityFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetData, setSheetData] = useState<ShipmentSheetData | null>(null);
-  const [sheetLoading, setSheetLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sheetData, setSheetData] = useState<ShipmentSheetData | null>(null);
+  const fetchNonce = useRef(0);
+
+  const sheetOpen = selectedId !== null;
+  const sheetLoading = sheetOpen && sheetData?.id !== selectedId;
 
   const hasActions = data.some((s) => {
     const flow = SHIPMENT_STATUS_FLOW[s.modality as ShipmentModality];
     return flow && flow[s.status as ShipmentStatus] !== undefined;
   });
 
-  const filtered = data.filter((s) => {
+  const filtered = useMemo(() => data.filter((s) => {
     if (search) {
       const q = search.toLowerCase();
       const matches =
@@ -90,19 +92,17 @@ export function ShipmentList({ data }: ShipmentListProps) {
     if (modalityFilter.length > 0 && !modalityFilter.includes(s.modality)) return false;
     if (statusFilter.length > 0 && !statusFilter.includes(s.status)) return false;
     return true;
-  });
+  }), [data, search, modalityFilter, statusFilter]);
 
   const openSheet = useCallback(async (id: string) => {
     setSelectedId(id);
-    setSheetOpen(true);
-    setSheetLoading(true);
+    const nonce = ++fetchNonce.current;
     const { data: full } = await getShipment(id);
+    if (fetchNonce.current !== nonce) return; // stale response
     setSheetData(full as ShipmentSheetData | null);
-    setSheetLoading(false);
   }, []);
 
   const closeSheet = useCallback(() => {
-    setSheetOpen(false);
     setSelectedId(null);
   }, []);
 

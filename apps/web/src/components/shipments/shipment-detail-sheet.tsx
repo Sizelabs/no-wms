@@ -8,13 +8,14 @@ import { useParams } from "next/navigation";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { InfoField } from "@/components/shipments/info-field";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
 import { updateShipmentStatus } from "@/lib/actions/shipments";
 
 const MODALITY_LABELS: Record<string, string> = {
-  air: "Aereo",
-  ocean: "Maritimo",
+  air: "Aéreo",
+  ocean: "Marítimo",
   ground: "Terrestre",
 };
 
@@ -72,16 +73,6 @@ export interface ShipmentSheetData {
   driver_phone: string | null;
   hawbs: HouseBill[];
   shipment_containers: Container[];
-}
-
-function InfoField({ label, value }: { label: string; value: string | number | null | undefined }) {
-  if (!value) return null;
-  return (
-    <div>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-sm">{value}</p>
-    </div>
-  );
 }
 
 interface ShipmentDetailSheetProps {

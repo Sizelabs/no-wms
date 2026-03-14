@@ -3,10 +3,13 @@
 import type { ShipmentModality, ShipmentStatus } from "@no-wms/shared/constants/statuses";
 
 import { SHIPMENT_STATUS_FLOW, SHIPMENT_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
 import { ContainerPanel } from "@/components/shipments/container-panel";
+import { InfoField } from "@/components/shipments/info-field";
 import { HouseBillAssignmentPanel } from "@/components/shipments/house-bill-assignment-panel";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { updateShipmentStatus } from "@/lib/actions/shipments";
@@ -83,19 +86,11 @@ interface ShipmentDetailProps {
   shipment: ShipmentData;
 }
 
-function InfoField({ label, value }: { label: string; value: string | number | null | undefined }) {
-  if (!value) return null;
-  return (
-    <div>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-sm">{value}</p>
-    </div>
-  );
-}
-
 export function ShipmentDetail({ shipment }: ShipmentDetailProps) {
   const { notify } = useNotification();
   const [isPending, startTransition] = useTransition();
+  const params = useParams();
+  const locale = params.locale as string;
 
   const flow = SHIPMENT_STATUS_FLOW[shipment.modality as ShipmentModality];
   const nextStatus = flow?.[shipment.status as ShipmentStatus];
@@ -120,15 +115,26 @@ export function ShipmentDetail({ shipment }: ShipmentDetailProps) {
           <ShipmentStatusBadge status={shipment.status} />
           <span className="text-sm text-gray-500">{MODALITY_LABELS[shipment.modality] ?? shipment.modality}</span>
         </div>
-        {nextStatus && (
-          <button
-            onClick={handleAdvance}
-            disabled={isPending}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-          >
-            {isPending ? "Actualizando..." : `Avanzar a: ${SHIPMENT_STATUS_LABELS[nextStatus] ?? nextStatus}`}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {shipment.modality === "air" && shipment.awb_number && (
+            <Link
+              href={`/${locale}/shipments/${shipment.id}/mawb/print`}
+              target="_blank"
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Imprimir MAWB
+            </Link>
+          )}
+          {nextStatus && (
+            <button
+              onClick={handleAdvance}
+              disabled={isPending}
+              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              {isPending ? "Actualizando..." : `Avanzar a: ${SHIPMENT_STATUS_LABELS[nextStatus] ?? nextStatus}`}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Common fields */}
