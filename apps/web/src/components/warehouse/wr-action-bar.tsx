@@ -79,53 +79,59 @@ export function WrActionBar({
     }
   }, [count]);
 
-  // ResizeObserver: measure which buttons fit
+  // Measure which buttons fit in the container
+  const measure = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const containerWidth = container.offsetWidth;
+    // Reserve space for overflow button (~56px for "+N" pill)
+    const overflowBtnWidth = 56;
+    let usedWidth = 0;
+    let newCutoff = WR_ACTION_BAR_SERVICES.length;
+
+    for (let i = 0; i < buttonRefs.current.length; i++) {
+      const btn = buttonRefs.current[i];
+      if (!btn) continue;
+      const btnWidth = btn.offsetWidth + 6; // 6px for gap-1.5
+      if (usedWidth + btnWidth > containerWidth - overflowBtnWidth) {
+        newCutoff = i;
+        break;
+      }
+      usedWidth += btnWidth;
+    }
+
+    // If all buttons fit without the overflow reserve, show them all
+    if (newCutoff === WR_ACTION_BAR_SERVICES.length) {
+      let total = 0;
+      for (let i = 0; i < buttonRefs.current.length; i++) {
+        const btn = buttonRefs.current[i];
+        if (!btn) continue;
+        total += btn.offsetWidth + 6;
+      }
+      if (total <= containerWidth) {
+        setCutoffIndex(WR_ACTION_BAR_SERVICES.length);
+        return;
+      }
+    }
+
+    setCutoffIndex(newCutoff);
+  }, []);
+
+  // ResizeObserver: re-measure on container resize (stable, attaches once)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const measure = () => {
-      const containerWidth = container.offsetWidth;
-      // Reserve space for overflow button (~56px for "+N" pill)
-      const overflowBtnWidth = 56;
-      let usedWidth = 0;
-      let newCutoff = WR_ACTION_BAR_SERVICES.length;
-
-      for (let i = 0; i < buttonRefs.current.length; i++) {
-        const btn = buttonRefs.current[i];
-        if (!btn) continue;
-        const btnWidth = btn.offsetWidth + 6; // 6px for gap-1.5
-        if (usedWidth + btnWidth > containerWidth - overflowBtnWidth) {
-          newCutoff = i;
-          break;
-        }
-        usedWidth += btnWidth;
-      }
-
-      // If all buttons fit without the overflow reserve, show them all
-      if (newCutoff === WR_ACTION_BAR_SERVICES.length) {
-        let total = 0;
-        for (let i = 0; i < buttonRefs.current.length; i++) {
-          const btn = buttonRefs.current[i];
-          if (!btn) continue;
-          total += btn.offsetWidth + 6;
-        }
-        if (total <= containerWidth) {
-          setCutoffIndex(WR_ACTION_BAR_SERVICES.length);
-          return;
-        }
-      }
-
-      setCutoffIndex(newCutoff);
-    };
-
     const ro = new ResizeObserver(measure);
     ro.observe(container);
-    // Initial measurement after buttons render
-    measure();
-
     return () => ro.disconnect();
-  }, [count]); // re-attach when selection changes (bar appears/disappears)
+  }, [measure]);
+
+  // Re-measure when selection count changes (bar appears/disappears)
+  useEffect(() => {
+    measure();
+  }, [count, measure]);
 
   const handleCloseFlow = useCallback(() => {
     setActiveFlow(null);

@@ -199,7 +199,7 @@ export async function getShipments(filters?: { status?: string; modality?: strin
 
   let query = supabase
     .from("shipments")
-    .select("*, carriers(name, code), destinations:destination_id(city, country_code), hawbs(id, hawb_number, document_type, shipping_instruction_id)")
+    .select("*, carriers(name, code), destinations:destination_id(city, country_code), agencies:destination_agent_id(name, code), hawbs(id, hawb_number, document_type, shipping_instruction_id)")
     .order("created_at", { ascending: false });
 
   if (warehouseScope !== null) {
@@ -426,4 +426,73 @@ export async function removeContainer(id: string): Promise<{ error?: string }> {
 
   revalidatePath("/shipments");
   return {};
+}
+
+// ── MAWB Print ──
+
+export async function getMawbForPrint(shipmentId: string) {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { data: null, settings: null, org: null };
+
+  // Fetch profile and shipment in parallel (shipment query doesn't need orgId)
+  const [{ data: profile }, { data: shipment, error }] = await Promise.all([
+    supabase.from("profiles").select("organization_id").eq("id", user.id).single(),
+    supabase
+      .from("shipments")
+      .select(`
+        *,
+        carriers(name, code),
+        destinations:destination_id(city, country_code),
+        agencies:destination_agent_id(name, code, address, phone, email),
+        warehouses:warehouse_id(name, code, city, country, full_address, phone, email),
+        hawbs(
+          id, hawb_number, document_type, pieces, weight_lb, created_at,
+          shipping_instructions(
+            si_number, agency_id, total_pieces, total_billable_weight_lb, total_declared_value_usd,
+            special_instructions, additional_charges,
+            agencies(name, code, ruc, address, phone, email),
+            consignees(full_name, casillero, cedula_ruc, address_line1, city, province, phone),
+            shipping_instruction_items(
+              warehouse_receipt_id,
+              warehouse_receipts(
+                wr_number, total_actual_weight_lb, total_billable_weight_lb, total_packages, total_pieces,
+                has_dgr_package,
+                packages(tracking_number, package_type, pieces_count, actual_weight_lb, billable_weight_lb,
+                  length_in, width_in, height_in, is_dgr, dgr_class, content_description)
+              )
+            )
+          )
+        )
+      `)
+      .eq("id", shipmentId)
+      .single(),
+  ]);
+
+  const orgId = profile?.organization_id;
+  if (!orgId || error || !shipment) return { data: null, settings: null, org: null };
+
+  // Fetch settings and org info in parallel
+  const settingKeys = [
+    "hawb_iata_code",
+    "hawb_account_no",
+    "hawb_airport_name",
+    "hawb_shipper_account",
+  ] as const;
+
+  const [settingsResults, orgResult] = await Promise.all([
+    Promise.all(
+      settingKeys.map((key) =>
+        supabase.rpc("resolve_setting", { p_org_id: orgId, p_key: key }).then((r) => [key, r.data] as const),
+      ),
+    ),
+    supabase.from("organizations").select("name, logo_url, slug").eq("id", orgId).single(),
+  ]);
+
+  const settings = Object.fromEntries(
+    settingsResults.map(([key, val]) => [key, val != null ? String(val).replace(/^"|"$/g, "") : ""]),
+  );
+
+  return { data: shipment, settings, org: orgResult.data };
 }

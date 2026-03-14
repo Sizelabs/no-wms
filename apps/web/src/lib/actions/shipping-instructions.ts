@@ -635,10 +635,13 @@ export async function getHawbForPrint(siId: string) {
   const supabase = await createClient();
 
   // Get user's org ID
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { data: null };
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("organization_id")
-    .limit(1)
+    .eq("id", user.id)
     .single();
 
   const orgId = profile?.organization_id;
