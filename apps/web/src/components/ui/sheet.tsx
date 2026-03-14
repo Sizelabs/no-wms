@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
 
+type SheetState = "closed" | "mounting" | "open" | "closing";
+
 interface SheetProps {
   open: boolean;
   onClose: () => void;
@@ -16,24 +18,22 @@ export function Sheet({ open, onClose, children }: SheetProps) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  const [mounted, setMounted] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [state, setState] = useState<SheetState>("closed");
+  const visible = state === "open";
 
   useEffect(() => {
     if (open) {
-      setMounted(true);
-    } else if (mounted) {
-      setVisible(false);
+      setState("mounting");
+      // Force reflow then trigger animation
+      const raf = requestAnimationFrame(() => {
+        panelRef.current?.getBoundingClientRect();
+        setState("open");
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setState((prev) => (prev === "closed" ? "closed" : "closing"));
     }
-  }, [open, mounted]);
-
-  // Once mounted, force a layout read then trigger the animation
-  useEffect(() => {
-    if (!mounted || !open) return;
-    // Force reflow so the browser registers the initial translate-x-full state
-    panelRef.current?.getBoundingClientRect();
-    setVisible(true);
-  }, [mounted, open]);
+  }, [open]);
 
   useLockBodyScroll(open);
 
@@ -46,7 +46,7 @@ export function Sheet({ open, onClose, children }: SheetProps) {
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  if (!mounted) return null;
+  if (state === "closed") return null;
 
   return (
     <div
@@ -77,7 +77,7 @@ export function Sheet({ open, onClose, children }: SheetProps) {
         className="flex flex-col bg-white shadow-2xl"
         onTransitionEnd={(e) => {
           if (e.propertyName === "transform" && !open) {
-            setMounted(false);
+            setState("closed");
           }
         }}
       >

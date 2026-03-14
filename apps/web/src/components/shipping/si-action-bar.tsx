@@ -51,14 +51,15 @@ export function SiActionBar({
   orgName,
 }: SiActionBarProps) {
   const [showModal, setShowModal] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
   const count = selectedSIs.length;
 
+  // Two-phase animation: mount → visible (slide in), count=0 → !visible (slide out) → unmount
   useEffect(() => {
     if (count > 0) {
-      requestAnimationFrame(() => setMounted(true));
+      requestAnimationFrame(() => setVisible(true));
     } else {
-      setMounted(false);
+      setVisible(false);
     }
   }, [count]);
 
@@ -71,16 +72,20 @@ export function SiActionBar({
     onClearSelection();
   }, [onClearSelection]);
 
-  if (count === 0) return null;
-
   // Check if all selected SIs have the same shipment modality
-  const modalities = new Set(selectedSIs.map((si) => getShipmentModality(si.modality_code)));
+  const modalities = count > 0
+    ? new Set(selectedSIs.map((si) => getShipmentModality(si.modality_code)))
+    : new Set<string>();
   const isMixed = modalities.size > 1;
 
+  // Keep bar in DOM while animating out
+  const showBar = count > 0 || visible;
+  if (!showBar) return null;
+
   return (
-    <div className="contents">
+    <>
       {/* Mixed type warning */}
-      {isMixed && (
+      {isMixed && count > 0 && (
         <div className="fixed bottom-[68px] left-60 right-0 z-40 flex justify-center px-6">
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 shadow-sm">
             Las SIs seleccionadas tienen modalidades mixtas. Seleccione solo una modalidad para crear un embarque.
@@ -91,8 +96,11 @@ export function SiActionBar({
       {/* Floating action bar */}
       <div
         className={`fixed bottom-0 left-60 right-0 z-40 p-4 transition-transform duration-300 ease-out ${
-          mounted && !showModal ? "translate-y-0" : "translate-y-full"
+          visible && count > 0 && !showModal ? "translate-y-0" : "translate-y-full"
         }`}
+        onTransitionEnd={() => {
+          if (count === 0) setVisible(false);
+        }}
       >
         <div className="rounded-lg border border-gray-200 bg-white shadow-lg">
           <div className="flex items-center gap-3 px-4 py-2.5">
@@ -143,6 +151,6 @@ export function SiActionBar({
           orgName={orgName}
         />
       )}
-    </div>
+    </>
   );
 }
