@@ -59,6 +59,16 @@ export async function createShippingCategory(formData: FormData): Promise<{ id: 
   const modalityId = formData.get("modality_id") as string;
   if (!modalityId) return { error: "Modalidad es requerida" };
 
+  // Auto-assign display_order to the next available position
+  const { data: maxRow } = await supabase
+    .from("shipping_categories")
+    .select("display_order")
+    .eq("organization_id", profile.organization_id)
+    .order("display_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextOrder = (maxRow?.display_order ?? 0) + 1;
+
   const { data, error } = await supabase
     .from("shipping_categories")
     .insert({
@@ -68,7 +78,7 @@ export async function createShippingCategory(formData: FormData): Promise<{ id: 
       code,
       name,
       description: (formData.get("description") as string) || null,
-      display_order: Number(formData.get("display_order") || 0),
+      display_order: nextOrder,
       max_weight_kg: formData.get("max_weight_kg") ? Number(formData.get("max_weight_kg")) : null,
       min_declared_value_usd: formData.get("min_declared_value_usd") ? Number(formData.get("min_declared_value_usd")) : null,
       max_declared_value_usd: formData.get("max_declared_value_usd") ? Number(formData.get("max_declared_value_usd")) : null,
@@ -122,7 +132,7 @@ export async function updateShippingCategory(id: string, formData: FormData): Pr
     if (val !== null) updates[field] = val || null;
   }
 
-  const numericFields = ["display_order", "max_weight_kg", "min_declared_value_usd", "max_declared_value_usd"] as const;
+  const numericFields = ["max_weight_kg", "min_declared_value_usd", "max_declared_value_usd"] as const;
   for (const field of numericFields) {
     const val = formData.get(field) as string | null;
     if (val !== null) updates[field] = val ? Number(val) : null;

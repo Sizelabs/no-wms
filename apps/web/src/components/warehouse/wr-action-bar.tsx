@@ -145,7 +145,7 @@ export function WrActionBar({
     <>
       {/* Warning for WRs with active WO */}
       {wrsWithActiveWo > 0 && (
-        <div className="fixed bottom-[68px] left-60 right-0 z-40 flex justify-center px-6">
+        <div className="fixed bottom-[76px] left-60 right-0 z-40 flex justify-center px-6">
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 shadow-sm">
             {wrsWithActiveWo} recibo(s) con OT activa seran excluidos
           </div>
@@ -158,23 +158,23 @@ export function WrActionBar({
           mounted && !activeFlow ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="rounded-lg border border-gray-200 bg-white shadow-lg">
-          <div className="flex items-center gap-3 px-4 py-2.5">
+        <div className="rounded-xl bg-gray-900 shadow-2xl ring-1 ring-white/10">
+          <div className="flex items-center gap-3 px-5 py-3">
             {/* Left: Selection count */}
             <div className="flex shrink-0 items-center gap-1.5">
-              <span className="text-sm font-bold text-gray-900">{count}</span>
-              <span className="text-sm text-gray-500">recibo(s)</span>
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-gray-900">{count}</span>
+              <span className="text-sm text-gray-300">recibo(s)</span>
               <button
                 type="button"
                 onClick={onClearSelection}
-                className="ml-1 text-xs text-gray-400 hover:text-gray-600"
+                className="ml-1 text-xs text-gray-500 hover:text-white"
                 title="Deseleccionar todo"
               >
                 ✕
               </button>
             </div>
 
-            <div className="mx-2 h-6 w-px shrink-0 bg-gray-200" />
+            <div className="mx-2 h-6 w-px shrink-0 bg-gray-700" />
 
             {/* Center: Responsive button container */}
             <div ref={containerRef} className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -191,8 +191,8 @@ export function WrActionBar({
                     title={disabledReason ?? WORK_ORDER_TYPE_LABELS[type]}
                     className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                       disabledReason
-                        ? "cursor-not-allowed border-gray-200 text-gray-400 opacity-50"
-                        : "border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                        ? "cursor-not-allowed border-gray-700 text-gray-600 opacity-50"
+                        : "border-gray-600 text-gray-200 hover:border-gray-400 hover:bg-gray-800"
                     } ${!isVisible ? "invisible" : ""}`}
                     aria-hidden={!isVisible}
                     tabIndex={isVisible ? 0 : -1}
@@ -210,7 +210,7 @@ export function WrActionBar({
                 <button
                   type="button"
                   onClick={() => setShowOverflow(!showOverflow)}
-                  className="inline-flex items-center rounded-full border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                  className="inline-flex items-center rounded-full border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-200 hover:border-gray-400 hover:bg-gray-800"
                 >
                   +{overflowServices.length}
                 </button>

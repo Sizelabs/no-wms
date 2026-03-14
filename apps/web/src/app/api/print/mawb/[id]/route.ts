@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getMawbForPrint } from "@/lib/actions/shipments";
-import { stampMawbPdf } from "@/lib/pdf/awb-stamper";
+import { stampMawbPdf } from "@/lib/pdf/awb-pdf";
 
 export async function GET(
   _request: NextRequest,

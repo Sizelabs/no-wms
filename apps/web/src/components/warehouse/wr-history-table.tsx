@@ -97,10 +97,14 @@ function computeBodegaje(
   };
 }
 
+function getConsigneeKey(wr: WarehouseReceipt) {
+  return wr.consignees?.full_name ?? wr.consignee_name ?? "";
+}
+
 function groupByConsignee(receipts: WarehouseReceipt[]) {
   const groups = new Map<string, WarehouseReceipt[]>();
   for (const wr of receipts) {
-    const key = wr.consignees?.full_name ?? wr.consignee_name ?? "";
+    const key = getConsigneeKey(wr);
     const list = groups.get(key);
     if (list) {
       list.push(wr);
@@ -121,7 +125,7 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
   const searchParams = useSearchParams();
   const permissions = usePermissions();
   const [showFilters, setShowFilters] = useState(false);
-  const grouped = groupByConsignee(data);
+  const grouped = useMemo(() => groupByConsignee(data), [data]);
 
   // Selection state — tracks WR IDs
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -131,6 +135,18 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
     () => data.filter((wr) => selected.has(wr.id)),
     [data, selected],
   );
+
+  // Derive the locked consignee from current selection (all selected WRs must share the same consignee)
+  const lockedConsignee = useMemo(() => {
+    if (selectedWrs.length === 0) return null;
+    return getConsigneeKey(selectedWrs[0]!);
+  }, [selectedWrs]);
+
+  // Whether all WRs from the locked consignee are selected (used by master checkbox + toggleAll)
+  const isAllLockedSelected = useMemo(() => {
+    if (lockedConsignee === null) return false;
+    return data.filter((wr) => getConsigneeKey(wr) === lockedConsignee).every((wr) => selected.has(wr.id));
+  }, [data, selected, lockedConsignee]);
 
   // Count WRs that have active work orders (status = in_work_order)
   const wrsWithActiveWo = useMemo(
@@ -154,12 +170,14 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
   }, []);
 
   const toggleAll = useCallback(() => {
-    if (selected.size === data.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(data.map((wr) => wr.id)));
-    }
-  }, [data, selected.size]);
+    if (lockedConsignee === null) return;
+    setSelected((prev) => {
+      const consigneeWrs = data.filter((wr) => getConsigneeKey(wr) === lockedConsignee);
+      const allSelected = consigneeWrs.every((wr) => prev.has(wr.id));
+      if (allSelected) return new Set();
+      return new Set(consigneeWrs.map((wr) => wr.id));
+    });
+  }, [data, lockedConsignee]);
 
   const toggleGroup = useCallback((receipts: WarehouseReceipt[]) => {
     setSelected((prev) => {
@@ -312,9 +330,11 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
               <th className="px-3 py-3">
                 <input
                   type="checkbox"
-                  checked={selected.size === data.length && data.length > 0}
+                  checked={isAllLockedSelected}
+                  disabled={lockedConsignee === null}
                   onChange={toggleAll}
-                  className="rounded border-gray-300"
+                  className="rounded border-gray-300 disabled:opacity-30"
+                  title={lockedConsignee === null ? "Seleccione recibos de un consignatario" : `Seleccionar todos de ${lockedConsignee}`}
                 />
               </th>
               <th className="px-3 py-3">WR#</th>
@@ -358,7 +378,8 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                         checked={allGroupSelected}
                         ref={(el) => { if (el) el.indeterminate = someGroupSelected; }}
                         onChange={() => toggleGroup(receipts)}
-                        className="rounded border-gray-300"
+                        disabled={lockedConsignee !== null && lockedConsignee !== (consignee || "")}
+                        className="rounded border-gray-300 disabled:opacity-30"
                       />
                     </td>
                     <td
@@ -404,7 +425,8 @@ export function WrHistoryTable({ data, count, locale, agencies = [], warehouses 
                           type="checkbox"
                           checked={selected.has(wr.id)}
                           onChange={() => toggleSelect(wr.id)}
-                          className="rounded border-gray-300"
+                          disabled={lockedConsignee !== null && lockedConsignee !== getConsigneeKey(wr)}
+                          className="rounded border-gray-300 disabled:opacity-30"
                         />
                       </td>
                       <td className="px-3 py-2.5">

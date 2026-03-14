@@ -119,23 +119,23 @@ export function ShippingCategoryList({ data, canCreate = false, canUpdate, canDe
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-            <tr>
-              <th className="px-4 py-2">Código</th>
-              <th className="px-4 py-2">Nombre</th>
-              <th className="px-4 py-2">País</th>
-              <th className="px-4 py-2">Modalidad</th>
-              <th className="px-4 py-2">Tipo Carga</th>
-              <th className="px-4 py-2">Límites</th>
-              <th className="px-4 py-2">Aduanas</th>
-              <th className="px-4 py-2">Docs</th>
-              <th className="px-4 py-2">Estado</th>
-              {(canUpdate || canDelete) && <th className="px-4 py-2">Acciones</th>}
+      <div className="overflow-auto rounded-lg border bg-white max-h-[calc(100vh-280px)]">
+        <table className="w-full text-left text-sm">
+          <thead className="sticky top-0 z-10 bg-white">
+            <tr className="border-b text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3">Código</th>
+              <th className="px-4 py-3">Nombre</th>
+              <th className="px-4 py-3">País</th>
+              <th className="px-4 py-3">Modalidad</th>
+              <th className="px-4 py-3">Tipo Carga</th>
+              <th className="px-4 py-3">Límites</th>
+              <th className="px-4 py-3">Aduanas</th>
+              <th className="px-4 py-3">Docs</th>
+              <th className="px-4 py-3">Estado</th>
+              {(canUpdate || canDelete) && <th className="px-4 py-3">Acciones</th>}
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody>
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
@@ -144,42 +144,42 @@ export function ShippingCategoryList({ data, canCreate = false, canUpdate, canDe
               </tr>
             ) : (
               filtered.map((cat) => (
-                <tr key={cat.id} className={cat.is_active ? "" : "opacity-50"}>
-                  <td className="px-4 py-2">
+                <tr key={cat.id} className={`hover:bg-gray-50 ${cat.is_active ? "" : "opacity-50"}`}>
+                  <td className="px-4 py-3">
                     <span className="inline-flex rounded bg-gray-900 px-1.5 py-0.5 text-xs font-bold text-white">
                       {cat.code}
                     </span>
                   </td>
-                  <td className="px-4 py-2 font-medium text-gray-900">{cat.name}</td>
-                  <td className="px-4 py-2">{cat.country_code}</td>
-                  <td className="px-4 py-2">{cat.modalities?.name ?? "—"}</td>
-                  <td className="px-4 py-2">{CARGO_TYPE_LABELS[cat.cargo_type as CargoType] ?? cat.cargo_type}</td>
-                  <td className="px-4 py-2 text-xs text-gray-500">
+                  <td className="px-4 py-3 font-medium text-gray-900">{cat.name}</td>
+                  <td className="px-4 py-3">{cat.country_code}</td>
+                  <td className="px-4 py-3">{cat.modalities?.name ?? "—"}</td>
+                  <td className="px-4 py-3">{CARGO_TYPE_LABELS[cat.cargo_type as CargoType] ?? cat.cargo_type}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
                     {cat.max_weight_kg && <span>Max {cat.max_weight_kg} kg</span>}
                     {cat.max_weight_kg && cat.max_declared_value_usd && " · "}
                     {cat.min_declared_value_usd && <span>${cat.min_declared_value_usd}</span>}
                     {cat.min_declared_value_usd && cat.max_declared_value_usd && "–"}
                     {cat.max_declared_value_usd && <span>${cat.max_declared_value_usd}</span>}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3">
                     {CUSTOMS_DECLARATION_LABELS[cat.customs_declaration_type as CustomsDeclarationType] ?? cat.customs_declaration_type}
                   </td>
-                  <td className="px-4 py-2 text-center">
+                  <td className="px-4 py-3 text-center">
                     {cat.shipping_category_required_documents?.filter((d) => d.is_required).length || 0}
                   </td>
-                  <td className="px-4 py-2">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${cat.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${cat.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
                       {cat.is_active ? "Activo" : "Inactivo"}
                     </span>
                   </td>
                   {(canUpdate || canDelete) && (
-                    <td className="px-4 py-2">
-                      <div className="flex gap-2">
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
                         {canUpdate && (
                           <button
                             type="button"
                             onClick={() => modal.openEdit(cat)}
-                            className="text-xs text-gray-600 hover:text-gray-900"
+                            className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
                           >
                             Editar
                           </button>
@@ -189,7 +189,7 @@ export function ShippingCategoryList({ data, canCreate = false, canUpdate, canDe
                             type="button"
                             onClick={() => handleDeactivate(cat.id)}
                             disabled={isPending}
-                            className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50"
+                            className="rounded border px-2 py-0.5 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
                           >
                             Desactivar
                           </button>

@@ -63,6 +63,36 @@ async function generateHawbForSi(
   }
 }
 
+/** Recalculate and update a shipment's total_pieces, total_weight_lb, and total_house_bills from its HAWBs. */
+async function recalcShipmentTotals(
+  supabase: SupabaseClient,
+  shipmentId: string,
+): Promise<void> {
+  const { data: hawbs } = await supabase
+    .from("hawbs")
+    .select("pieces, weight_lb")
+    .eq("shipment_id", shipmentId);
+
+  const rows = hawbs ?? [];
+  const totals = rows.reduce(
+    (acc, h) => {
+      acc.pieces += h.pieces ?? 0;
+      acc.weight += Number(h.weight_lb ?? 0);
+      return acc;
+    },
+    { pieces: 0, weight: 0 },
+  );
+
+  await supabase
+    .from("shipments")
+    .update({
+      total_pieces: rows.length ? totals.pieces : null,
+      total_weight_lb: rows.length ? totals.weight : null,
+      total_house_bills: rows.length ? rows.length : null,
+    })
+    .eq("id", shipmentId);
+}
+
 // ── Shipments ──
 
 export async function createShipment(formData: FormData): Promise<{ id: string; shipment_number: string } | { error: string }> {
@@ -313,6 +343,7 @@ export async function assignSiToShipment(
   }
 
   await generateHawbForSi(supabase, si as unknown as SiWithItems, shipmentId);
+  await recalcShipmentTotals(supabase, shipmentId);
 
   revalidatePath("/shipments");
   revalidatePath("/shipping-instructions");
@@ -372,6 +403,8 @@ export async function createShipmentWithSIs(
   for (const si of sis) {
     await generateHawbForSi(supabase, si as unknown as SiWithItems, shipmentId);
   }
+
+  await recalcShipmentTotals(supabase, shipmentId);
 
   revalidatePath("/shipments");
   revalidatePath("/shipping-instructions");

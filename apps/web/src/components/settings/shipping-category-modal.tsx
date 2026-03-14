@@ -190,15 +190,6 @@ export function ShippingCategoryModal({ open, onClose, item }: ShippingCategoryM
                     placeholder="B+"
                   />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm text-gray-600">Orden</label>
-                  <input
-                    name="display_order"
-                    type="number"
-                    defaultValue={item?.display_order ?? 0}
-                    className={inputClass}
-                  />
-                </div>
                 <div className="sm:col-span-2">
                   <label className="mb-1.5 block text-sm text-gray-600">
                     Nombre<span className="ml-0.5 text-red-400">*</span>

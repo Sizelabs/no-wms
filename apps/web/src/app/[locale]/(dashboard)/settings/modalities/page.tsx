@@ -50,12 +50,13 @@ export default async function ModalitiesPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Modalidades" />
-      <CourierFilter
-        couriers={couriers}
-        selectedCourierId={effectiveCourierId}
-        isCourierScoped={courierScope !== null}
-      />
+      <PageHeader title="Modalidades">
+        <CourierFilter
+          couriers={couriers}
+          selectedCourierId={effectiveCourierId}
+          isCourierScoped={courierScope !== null}
+        />
+      </PageHeader>
       <ModalityList
         data={data ?? []}
         selectedCourierId={effectiveCourierId}

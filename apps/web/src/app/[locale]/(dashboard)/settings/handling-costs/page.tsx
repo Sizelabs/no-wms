@@ -50,12 +50,13 @@ export default async function HandlingCostsPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Costos de Manejo" />
-      <CourierFilter
-        couriers={couriers}
-        selectedCourierId={effectiveCourierId}
-        isCourierScoped={courierScope !== null}
-      />
+      <PageHeader title="Costos de Manejo">
+        <CourierFilter
+          couriers={couriers}
+          selectedCourierId={effectiveCourierId}
+          isCourierScoped={courierScope !== null}
+        />
+      </PageHeader>
       <HandlingCostList
         data={data ?? []}
         selectedCourierId={effectiveCourierId}
