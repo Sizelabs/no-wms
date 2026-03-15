@@ -4,17 +4,20 @@ import { FORWARDER_SIDE_ROLES, ROLES } from "@no-wms/shared/constants/roles";
 import { SI_STATUS_LABELS } from "@no-wms/shared/constants/statuses";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { useUserRoles } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
 import { SiActionBar } from "@/components/shipping/si-action-bar";
+import type { SiDetailData } from "@/components/shipping/si-detail-sheet";
+import { SiDetailSheet } from "@/components/shipping/si-detail-sheet";
 import { SiRejectModal } from "@/components/shipping/si-reject-modal";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import {
   approveShippingInstruction,
   finalizeShippingInstruction,
+  getShippingInstruction,
   rejectShippingInstruction,
 } from "@/lib/actions/shipping-instructions";
 import { formatDate } from "@/lib/format";
@@ -89,7 +92,7 @@ const STATUS_COLORS: Record<string, string> = {
 function formatWeight(si: ShippingInstruction): string {
   const w = si.total_billable_weight_lb
     ?? (si.shipping_instruction_items.reduce((s, i) => s + Number(i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0) || null);
-  return w ? `${Number(w).toFixed(1)} lb` : "—";
+  return w ? `${Number(w).toFixed(1)} lb` : "\u2014";
 }
 
 export function SiList({ data, locale, warehouses, destinations, carriers, agencies, orgName }: SiListProps) {
@@ -104,6 +107,12 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
 
   // Selection state
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Drawer state
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sheetData, setSheetData] = useState<SiDetailData | null>(null);
+  const fetchNonce = useRef(0);
+  const sheetOpen = selectedId !== null;
 
   const roles = useUserRoles();
   const isDestinationAdmin = roles.includes(ROLES.DESTINATION_ADMIN);
@@ -131,7 +140,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
     [data],
   );
 
-  const filtered = data.filter((si) => {
+  const filtered = useMemo(() => data.filter((si) => {
     if (search) {
       const q = search.toLowerCase();
       const matches =
@@ -148,7 +157,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
       if (!filter.modality.includes(siModalityCode)) return false;
     }
     return true;
-  });
+  }), [data, search, filter]);
 
   const selectableFiltered = filtered.filter((si) => selectableIds.has(si.id));
   const allSelectableSelected = selectableFiltered.length > 0 && selectableFiltered.every((si) => selected.has(si.id));
@@ -168,6 +177,68 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
       setSelected(new Set(selectableFiltered.map((si) => si.id)));
     }
   }, [allSelectableSelected, selectableFiltered]);
+
+  // Open drawer with two-stage data loading
+  const openSheet = useCallback(async (id: string) => {
+    setSelectedId(id);
+    // Immediately populate with row data
+    const row = data.find((s) => s.id === id);
+    if (row) {
+      setSheetData({
+        ...row,
+        total_declared_value_usd: null,
+        approved_at: null,
+        cedula_ruc: null,
+        cupo_4x4_used: null,
+        special_instructions: null,
+        rejection_reason: null,
+        insure_cargo: null,
+        is_dgr: null,
+        courier_category: null,
+        category_snapshot: null,
+        additional_charges: null,
+        hawbs: row.hawbs.map((h) => ({ ...h, pieces: null, weight_lb: null })),
+        shipping_instruction_items: row.shipping_instruction_items.map((i) => ({
+          warehouse_receipt_id: i.warehouse_receipt_id,
+          warehouse_receipts: i.warehouse_receipts
+            ? { wr_number: "", total_billable_weight_lb: i.warehouse_receipts.total_billable_weight_lb, packages: [] }
+            : null,
+        })),
+      });
+    }
+    // Fetch full detail
+    const nonce = ++fetchNonce.current;
+    try {
+      const { data: full } = await getShippingInstruction(id);
+      if (fetchNonce.current !== nonce) return;
+      if (full) setSheetData(full as unknown as SiDetailData);
+    } catch {
+      // Stale nonce or navigation; keep initial data visible
+    }
+  }, [data]);
+
+  const closeSheet = useCallback(() => {
+    setSelectedId(null);
+  }, []);
+
+  // Arrow key navigation between rows while sheet is open
+  useEffect(() => {
+    if (!sheetOpen || !selectedId) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      const idx = filtered.findIndex((s) => s.id === selectedId);
+      if (idx === -1) return;
+      const nextIdx = e.key === "ArrowDown"
+        ? Math.min(idx + 1, filtered.length - 1)
+        : Math.max(idx - 1, 0);
+      if (nextIdx === idx) return;
+      const next = filtered[nextIdx];
+      if (next) openSheet(next.id);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [sheetOpen, selectedId, filtered, openSheet]);
 
   // Collect selected SIs for shipment creation
   const selectedSIs = useMemo(() => {
@@ -282,7 +353,7 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
               <th className="px-3 py-3">Consignatario</th>
               <th className="px-3 py-3">WRs</th>
               <th className="px-3 py-3">Peso</th>
-              <th className="px-3 py-3">Guía</th>
+              <th className="px-3 py-3">Guia</th>
               <th className="px-3 py-3">Estado</th>
               <th className="px-3 py-3">Fecha</th>
               {hasActions && <th className="px-3 py-3">{t("actions")}</th>}
@@ -295,18 +366,19 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
             emptyMessage="No hay instrucciones de embarque"
             renderRow={(si) => {
               const isSelectable = selectableIds.has(si.id);
-              const isSelected = selected.has(si.id);
+              const isRowSelected = sheetOpen && si.id === selectedId;
+              const isChecked = selected.has(si.id);
               return (
                 <tr
                   key={si.id}
-                  className={`border-t border-gray-100 hover:bg-gray-50${isSelectable ? " cursor-pointer" : ""}`}
-                  onClick={() => { if (isSelectable) toggleSelect(si.id); }}
+                  className={`border-t border-gray-100 cursor-pointer ${isRowSelected ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                  onClick={() => openSheet(si.id)}
                 >
                   <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                     {isSelectable ? (
                       <input
                         type="checkbox"
-                        checked={isSelected}
+                        checked={isChecked}
                         onChange={() => toggleSelect(si.id)}
                         className="rounded border-gray-300"
                       />
@@ -331,13 +403,13 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
                     {si.modalities?.name ?? si.modality}
                   </td>
                   <td className="px-3 py-2.5 text-xs">
-                    {si.agencies ? `${si.agencies.name} (${si.agencies.code})` : "—"}
+                    {si.agencies ? `${si.agencies.name} (${si.agencies.code})` : "\u2014"}
                   </td>
-                  <td className="px-3 py-2.5 text-xs">{si.consignees?.full_name ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-xs">{si.consignees?.full_name ?? "\u2014"}</td>
                   <td className="px-3 py-2.5 text-xs">{si.shipping_instruction_items.length}</td>
                   <td className="px-3 py-2.5 text-xs">{formatWeight(si)}</td>
                   <td className="px-3 py-2.5 font-mono text-xs">
-                    {si.hawbs.length ? si.hawbs.map((h) => h.hawb_number).join(", ") : "—"}
+                    {si.hawbs.length ? si.hawbs.map((h) => h.hawb_number).join(", ") : "\u2014"}
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[si.status] ?? ""}`}>
@@ -408,6 +480,12 @@ export function SiList({ data, locale, warehouses, destinations, carriers, agenc
         carriers={carriers}
         agencies={agencies}
         orgName={orgName}
+      />
+
+      <SiDetailSheet
+        open={sheetOpen}
+        onClose={closeSheet}
+        si={sheetData}
       />
     </div>
   );
