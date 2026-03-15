@@ -237,7 +237,9 @@ function stampHawbFields(
   const cons = si.consignees;
   const departureAirport = (shipment?.departure_airport as string)?.toUpperCase() || settings.hawb_departure_iata || "MIA";
   const arrivalAirport = (shipment?.arrival_airport as string)?.toUpperCase() || "";
-  const carrierName = (shipment?.carrier_name as string) ?? (courier?.name as string) ?? "";
+  const carrierName = (shipment?.carrier_name as string) ?? "";
+  const courierName = (courier?.name as string) ?? "";
+  const byFirstCarrier = carrierName || courierName;
   const mawbNumber = (shipment?.awb_number as string) ?? "";
   const flightNumber = (shipment?.flight_number as string) ?? "";
   const depDate = shipment?.departure_date as string | null;
@@ -251,6 +253,9 @@ function stampHawbFields(
   tb(500, 30, hawb.hawb_number, 9.5);
   tb(495, 738, hawb.hawb_number, 7);
 
+  // "AIR WAYBILL" title below "Not Negotiable"
+  tb(365, 68, "AIR WAYBILL", 9.5);
+
   // Shipper = Agency
   tb(40, 73, si.agencies?.name ?? "");
   t(40, 83, si.agencies?.address ?? "", 8);
@@ -261,7 +266,7 @@ function stampHawbFields(
   t(195, 68, si.agencies?.code ?? "", 8);
 
   // Issued by
-  tb(365, 80, carrierName || (courier?.name as string) || "");
+  tb(365, 80, byFirstCarrier);
   t(365, 90, org?.name ? `Agent: ${org.name}` : "", 7.5);
 
   // Consignee
@@ -294,11 +299,10 @@ function stampHawbFields(
 
   // Routing — "To" is arrival IATA code, "By First Carrier" is MAWB carrier
   tb(40, 256, arrivalAirport);
-  t(67, 256, carrierName, 8);
-  t(155, 256, mawbNumber, 8);
+  t(67, 256, byFirstCarrier, 8);
   t(324, 256, "USD", 8);
   tb(371, 257, "X");
-  tb(418, 257, "X");
+  tb(378, 257, "X");
   drawTextRight(page, font, 495, 256, si.total_declared_value_usd != null ? fmt(si.total_declared_value_usd) : "NVD", 8);
   drawTextRight(page, font, 570, 256, si.total_declared_value_usd != null ? fmt(si.total_declared_value_usd) : "NCV", 8);
 
@@ -433,10 +437,11 @@ function stampMawbFields(
   tb(40, 234, departureAirport?.toUpperCase() || settings.hawb_departure_iata || "MIA");
 
   tb(40, 256, arrivalAirport);
-  t(67, 256, awbNumber ? `${carrierName} - ${awbNumber}` : carrierName, 8);
+  t(67, 256, carrierName, 8);
+  t(155, 256, awbNumber, 8);
   t(324, 256, "USD", 8);
   tb(371, 257, "X");
-  tb(418, 257, "X");
+  tb(378, 257, "X");
   drawTextRight(page, font, 495, 256, declaredTotal != null ? fmt(declaredTotal) : "NVD", 8);
   drawTextRight(page, font, 570, 256, declaredTotal != null ? fmt(declaredTotal) : "NCV", 8);
 
