@@ -11,6 +11,7 @@ import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
+import { daysSinceDate } from "@/lib/date-utils";
 import { useNotification } from "@/components/layout/notification";
 import { EditableField } from "@/components/ui/editable-field";
 import {
@@ -775,7 +776,7 @@ export function WrEditableDocument({
     day: "numeric",
   });
   const receivedByName = orgMembers.find((m) => m.id === receivedBy)?.name ?? wr.profiles?.full_name ?? "—";
-  const storageDays = Math.floor((Date.now() - new Date(wr.received_at).getTime()) / (1000 * 60 * 60 * 24));
+  const storageDays = daysSinceDate(wr.received_at);
   const daysColor = storageDays > 60 ? "bg-red-50 text-red-700" : storageDays > 30 ? "bg-yellow-50 text-yellow-700" : "bg-green-50 text-green-700";
 
   /* ── Save functions (used by both panel and document) ── */

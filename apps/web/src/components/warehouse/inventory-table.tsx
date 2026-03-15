@@ -10,6 +10,7 @@ import { usePermissions } from "@/components/auth/role-provider";
 import { useNotification } from "@/components/layout/notification";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { bulkUpdateStatus } from "@/lib/actions/warehouse-receipts";
+import { daysSinceDate } from "@/lib/date-utils";
 import { formatDate } from "@/lib/format";
 
 interface PackageRow {
@@ -53,11 +54,7 @@ const STATUS_COLORS: Record<string, string> = {
   abandoned: "bg-gray-200 text-gray-500",
 };
 
-function storageDays(receivedAt: string): number {
-  const received = new Date(receivedAt);
-  const now = new Date();
-  return Math.floor((now.getTime() - received.getTime()) / (1000 * 60 * 60 * 24));
-}
+const storageDays = daysSinceDate;
 
 function storageDayColor(days: number): string {
   if (days > 60) return "text-red-600 font-medium";

@@ -1282,7 +1282,10 @@ export async function updateWarehouseReceiptStatus(
   revalidatePath("/history");
 }
 
-export async function getStorageSettings(): Promise<{
+export async function getStorageSettings(opts?: {
+  agencyId?: string;
+  warehouseId?: string;
+}): Promise<{
   freeStorageDays: number;
   storageDailyRate: number;
 }> {
@@ -1297,15 +1300,15 @@ export async function getStorageSettings(): Promise<{
   const orgId = profile?.organization_id;
   if (!orgId) return { freeStorageDays: 30, storageDailyRate: 0.5 };
 
+  const rpcParams = {
+    p_org_id: orgId,
+    ...(opts?.agencyId ? { p_agency_id: opts.agencyId } : {}),
+    ...(opts?.warehouseId ? { p_warehouse_id: opts.warehouseId } : {}),
+  };
+
   const [{ data: freeDaysSetting }, { data: rateSetting }] = await Promise.all([
-    supabase.rpc("resolve_setting", {
-      p_org_id: orgId,
-      p_key: "free_storage_days",
-    }),
-    supabase.rpc("resolve_setting", {
-      p_org_id: orgId,
-      p_key: "storage_daily_rate",
-    }),
+    supabase.rpc("resolve_setting", { ...rpcParams, p_key: "free_storage_days" }),
+    supabase.rpc("resolve_setting", { ...rpcParams, p_key: "storage_daily_rate" }),
   ]);
 
   return {

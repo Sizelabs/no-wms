@@ -2,6 +2,8 @@
 
 import { getUserAgencyScope, getUserFullScope, getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
+import { daysSinceDate } from "@/lib/date-utils";
+import { getStorageSettings } from "@/lib/actions/warehouse-receipts";
 
 // ---------------------------------------------------------------------------
 // Dashboard stats (live counts)
@@ -13,8 +15,6 @@ export async function getDashboardStats() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayIso = today.toISOString();
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const withScopes = (query: any) => {
     let scopedQuery = query;
@@ -69,15 +69,6 @@ export async function getDashboardStats() {
     ticketQuery = ticketQuery.in("agency_id", agencyScope);
   }
 
-  // Storage alerts (WRs in warehouse > 30 days — simplified check)
-  const storageQuery = withScopes(
-    supabase
-    .from("warehouse_receipts")
-    .select("id", { count: "exact", head: true })
-    .in("status", ["in_warehouse", "in_work_order", "in_dispatch"])
-    .lte("received_at", thirtyDaysAgo.toISOString()),
-  );
-
   // Recent WRs (last 5)
   const recentWrQuery = withScopes(
     supabase
@@ -87,23 +78,36 @@ export async function getDashboardStats() {
     .limit(5),
   );
 
+  // Run getStorageSettings in parallel with the non-dependent queries
   const [
+    { freeStorageDays },
     { count: boxesReceivedToday },
     { count: totalInWarehouse },
     { count: pendingWorkOrders },
     { count: pendingDispatches },
     { count: openTickets },
-    { count: storageAlerts },
     { data: recentWrs },
   ] = await Promise.all([
+    getStorageSettings(),
     receivedQuery,
     inWarehouseQuery,
     woQuery,
     siQuery,
     ticketQuery,
-    storageQuery,
     recentWrQuery,
   ]);
+
+  // Storage alerts query depends on resolved freeStorageDays
+  const freeStorageCutoff = new Date(today);
+  freeStorageCutoff.setDate(freeStorageCutoff.getDate() - freeStorageDays);
+
+  const { count: storageAlerts } = await withScopes(
+    supabase
+    .from("warehouse_receipts")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["in_warehouse", "in_work_order", "in_dispatch"])
+    .lte("received_at", freeStorageCutoff.toISOString()),
+  );
 
   return {
     boxesReceivedToday: boxesReceivedToday ?? 0,
@@ -289,12 +293,10 @@ export async function getStorageReport(filters?: {
 
   if (error) return { data: [], error: error.message };
 
-  const now = new Date();
-  const rows = (data ?? []).map((wr) => {
-    const receivedDate = new Date(wr.received_at);
-    const daysInStorage = Math.floor((now.getTime() - receivedDate.getTime()) / (1000 * 60 * 60 * 24));
-    return { ...wr, days_in_storage: daysInStorage };
-  });
+  const rows = (data ?? []).map((wr) => ({
+    ...wr,
+    days_in_storage: daysSinceDate(wr.received_at),
+  }));
 
   return { data: rows, error: null };
 }

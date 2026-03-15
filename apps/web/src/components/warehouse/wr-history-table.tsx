@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition
 import { usePermissions } from "@/components/auth/role-provider";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { WrActionBar } from "@/components/warehouse/wr-action-bar";
+import { daysSinceDate } from "@/lib/date-utils";
 import { formatCurrency } from "@/lib/format";
 
 interface WrPackage {
@@ -76,9 +77,7 @@ function computeBodegaje(
     return { label: "—", className: "text-gray-400" };
   }
 
-  const daysSinceReceived = Math.ceil(
-    (Date.now() - new Date(wr.received_at).getTime()) / (1000 * 60 * 60 * 24),
-  );
+  const daysSinceReceived = daysSinceDate(wr.received_at);
   const freeDays = wr.free_storage_override_days ?? freeStorageDays;
   const remaining = freeDays - daysSinceReceived;
 
