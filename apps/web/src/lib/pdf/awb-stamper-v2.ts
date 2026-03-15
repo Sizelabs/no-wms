@@ -302,7 +302,7 @@ function stampHawbFields(
   t(67, 256, byFirstCarrier, 8);
   t(324, 256, "USD", 8);
   tb(371, 257, "X");
-  tb(378, 257, "X");
+  tb(403, 257, "X");
   drawTextRight(page, font, 495, 256, si.total_declared_value_usd != null ? fmt(si.total_declared_value_usd) : "NVD", 8);
   drawTextRight(page, font, 570, 256, si.total_declared_value_usd != null ? fmt(si.total_declared_value_usd) : "NCV", 8);
 
@@ -323,15 +323,18 @@ function stampHawbFields(
   t(113, 367, "L", 8);
   t(155, 357, "G.C.", 8);
   drawTextRight(page, fontBold, 255, 357, fmt(chargeableKg));
+  t(270, 357, "AS AGREED", 8);
 
   // Nature of Goods
   const goodsLines = buildGoodsLines(items);
   drawMultiline(page, font, 448, 357, goodsLines, 6, 10);
 
   // Bottom totals
-  tb(40, 515, piecesStr);
-  drawTextRight(page, fontBold, 107, 515, fmt(grossKg));
-  t(113, 515, "K", 8);
+  tb(40, 510, piecesStr);
+  drawTextRight(page, fontBold, 107, 510, fmt(grossKg));
+  t(113, 510, "K", 8);
+  drawTextRight(page, font, 107, 520, hawb.weight_lb != null ? fmt(hawb.weight_lb) : "", 7.5);
+  t(113, 520, "L", 8);
 
   // Other Charges
   for (let i = 0; i < charges.length && i < 3; i++) {
@@ -410,48 +413,62 @@ function stampMawbFields(
   tb(500, 30, awbNumber, 9.5);
   tb(495, 738, awbNumber, 7);
 
-  tb(30, 68, shipperName);
-  t(30, 78, shipperAddress, 8);
-  t(30, 88, shipment.warehouses?.phone ? `Tel: ${shipment.warehouses.phone}` : "", 8);
+  // "AIR WAYBILL" title
+  tb(365, 68, "AIR WAYBILL", 9.5);
 
-  tb(395, 90, carrierName);
-  t(395, 100, org?.name ? `Agent: ${org.name}` : "", 7.5);
+  // Shipper
+  tb(40, 73, shipperName);
+  t(40, 83, shipperAddress, 8);
+  t(40, 93, shipment.warehouses?.phone ? `Tel: ${shipment.warehouses.phone}` : "", 8);
 
+  // Issued by
+  tb(365, 80, carrierName);
+  t(365, 90, org?.name ? `Agent: ${org.name}` : "", 7.5);
+
+  // Consignee
   const consigneeName = shipment.consignee_name || shipment.agencies?.name || "";
   const consigneeAddress = shipment.consignee_address || shipment.agencies?.address || "";
-  tb(30, 132, consigneeName);
-  t(30, 142, consigneeAddress, 8);
-  t(30, 152, shipment.agencies?.phone ? `Tel: ${shipment.agencies.phone}` : "", 8);
+  tb(40, 129, consigneeName);
+  t(40, 139, consigneeAddress, 8);
+  t(40, 149, shipment.agencies?.phone ? `Tel: ${shipment.agencies.phone}` : "", 8);
 
-  tb(30, 187, org?.name ?? "");
-  t(30, 196, shipment.warehouses?.city ?? "", 8);
-  t(30, 205, shipment.warehouses?.full_address ?? "", 7.5);
+  // Agent / Org
+  tb(40, 187, org?.name ?? "");
+  t(40, 196, shipment.warehouses?.city ?? "", 8);
+  t(40, 205, shipment.warehouses?.full_address ?? "", 7.5);
 
-  t(340, 187, hawbNumbers.length > 40 ? hawbNumbers.slice(0, 40) : hawbNumbers, 7.5);
-  t(340, 196, `REF: ${shipment.shipment_number}`, 8);
-  t(340, 205, settings.hawb_iata_code ? `IATA: ${settings.hawb_iata_code}` : "", 8);
+  // Accounting Information
+  t(320, 187, hawbNumbers.length > 40 ? hawbNumbers.slice(0, 40) : hawbNumbers, 7.5);
+  t(320, 196, `REF: ${shipment.shipment_number}`, 8);
+  t(320, 205, settings.hawb_iata_code ? `IATA: ${settings.hawb_iata_code}` : "", 8);
 
+  // IATA Code / Account No.
   t(32, 218, settings.hawb_iata_code ?? "", 8);
   t(170, 218, settings.hawb_account_no ?? "", 8);
 
+  // Airport of Departure (IATA code)
   tb(40, 234, departureAirport?.toUpperCase() || settings.hawb_departure_iata || "MIA");
 
+  // Routing
   tb(40, 256, arrivalAirport);
   t(67, 256, carrierName, 8);
   t(155, 256, awbNumber, 8);
   t(324, 256, "USD", 8);
   tb(371, 257, "X");
-  tb(378, 257, "X");
+  tb(403, 257, "X");
   drawTextRight(page, font, 495, 256, declaredTotal != null ? fmt(declaredTotal) : "NVD", 8);
   drawTextRight(page, font, 570, 256, declaredTotal != null ? fmt(declaredTotal) : "NCV", 8);
 
+  // Destination
   tb(40, 280, arrivalAirport);
-  t(210, 270, flightDate, 8);
-  t(445, 270, "NIL", 8);
+  t(177, 280, flightDate, 8);
+  drawTextRight(page, font, 345, 280, "NIL", 8);
 
+  // Handling Information
   const handlingLines = (shipment.notes ?? "").split("\n").slice(0, 3);
-  drawMultiline(page, font, 40, 308, handlingLines, 6.5, 7.5);
+  drawMultiline(page, font, 40, 308, handlingLines, 8, 9);
 
+  // Rate Description
   tb(40, 357, piecesStr);
   drawTextRight(page, fontBold, 107, 357, fmt(grossKg));
   t(113, 357, "K", 8);
@@ -459,15 +476,21 @@ function stampMawbFields(
   t(113, 367, "L", 8);
   t(155, 357, "Q", 8);
   drawTextRight(page, fontBold, 255, 357, fmt(chargeableKg));
+  t(270, 357, "AS AGREED", 8);
 
-  drawMultiline(page, font, 448, 357, goodsLines, 6, 10);
+  // Nature of Goods
+  drawMultiline(page, font, 448, 357, goodsLines, 7.5, 10);
 
-  tb(40, 515, piecesStr);
-  drawTextRight(page, fontBold, 107, 515, fmt(grossKg));
-  t(113, 515, "K", 8);
+  // Bottom totals
+  tb(40, 510, piecesStr);
+  drawTextRight(page, fontBold, 107, 510, fmt(grossKg));
+  t(113, 510, "K", 8);
+  drawTextRight(page, font, 107, 520, totalWeightLb ? fmt(totalWeightLb) : "", 7.5);
+  t(113, 520, "L", 8);
 
-  t(320, 712, fmtDate(shipment.created_at), 8);
-  t(440, 712, shipment.warehouses?.city || settings.hawb_airport_name || "MIAMI", 8);
+  // Execution
+  t(275, 705, fmtDate(shipment.created_at), 8);
+  drawTextCenter(page, font, 377, 705, shipment.warehouses?.city || settings.hawb_airport_name || "MIAMI", 8);
 }
 
 // ── Core stamp logic ──
