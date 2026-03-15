@@ -102,23 +102,23 @@ export function SiActionBar({
           if (count === 0) setVisible(false);
         }}
       >
-        <div className="rounded-lg border border-gray-200 bg-white shadow-lg">
-          <div className="flex items-center gap-3 px-4 py-2.5">
+        <div className="rounded-xl bg-gray-900 shadow-2xl ring-1 ring-white/10">
+          <div className="flex items-center gap-3 px-5 py-3">
             {/* Left: Selection count */}
             <div className="flex shrink-0 items-center gap-1.5">
-              <span className="text-sm font-bold text-gray-900">{count}</span>
-              <span className="text-sm text-gray-500">SI{count !== 1 && "s"} seleccionada{count !== 1 && "s"}</span>
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-gray-900">{count}</span>
+              <span className="text-sm text-gray-300">SI{count !== 1 && "s"} seleccionada{count !== 1 && "s"}</span>
               <button
                 type="button"
                 onClick={onClearSelection}
-                className="ml-1 text-xs text-gray-400 hover:text-gray-600"
+                className="ml-1 text-xs text-gray-500 hover:text-white"
                 title="Deseleccionar todo"
               >
                 ✕
               </button>
             </div>
 
-            <div className="mx-2 h-6 w-px shrink-0 bg-gray-200" />
+            <div className="mx-2 h-6 w-px shrink-0 bg-gray-700" />
 
             {/* Center: Create shipment button */}
             <button
@@ -127,8 +127,8 @@ export function SiActionBar({
               disabled={isMixed}
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
                 isMixed
-                  ? "cursor-not-allowed border-gray-200 text-gray-400 opacity-50"
-                  : "border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                  ? "cursor-not-allowed border-gray-700 text-gray-600 opacity-50"
+                  : "border-gray-600 text-gray-200 hover:border-gray-400 hover:bg-gray-800"
               }`}
             >
               Crear Embarque
