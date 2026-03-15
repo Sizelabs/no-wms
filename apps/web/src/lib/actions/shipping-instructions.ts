@@ -407,7 +407,7 @@ export async function finalizeShippingInstruction(id: string): Promise<{ error?:
 
   const { data: si } = await supabase
     .from("shipping_instructions")
-    .select("status, organization_id, shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
+    .select("status, organization_id, shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb, total_pieces))")
     .eq("id", id)
     .single();
 
@@ -416,7 +416,7 @@ export async function finalizeShippingInstruction(id: string): Promise<{ error?:
 
   // Calculate totals from items
   const items = si.shipping_instruction_items ?? [];
-  const totalPieces = items.length;
+  const totalPieces = items.reduce((sum: number, i: any) => sum + (i.warehouse_receipts?.total_pieces ?? 0), 0);
   const totalWeight = items.reduce((sum: number, i: any) => sum + (i.warehouse_receipts?.total_billable_weight_lb ?? 0), 0);
 
   // Update SI totals and status (HAWB generated later when assigned to shipment)

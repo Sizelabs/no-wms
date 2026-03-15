@@ -15,7 +15,7 @@ interface SiWithItems {
   modalities: unknown;
   shipping_instruction_items: Array<{
     warehouse_receipt_id: string;
-    warehouse_receipts: { total_billable_weight_lb: number | null } | null;
+    warehouse_receipts: { total_billable_weight_lb: number | null; total_pieces: number | null } | null;
   }>;
 }
 
@@ -35,7 +35,10 @@ async function generateHawbForSi(
   if (!hawbNumber) return;
 
   const items = si.shipping_instruction_items ?? [];
-  const totalPieces = items.length;
+  const totalPieces = items.reduce(
+    (sum, i) => sum + (i.warehouse_receipts?.total_pieces ?? 0),
+    0,
+  );
   const totalWeight = items.reduce(
     (sum, i) => sum + Number(i.warehouse_receipts?.total_billable_weight_lb ?? 0),
     0,
@@ -321,7 +324,7 @@ export async function assignSiToShipment(
   const [{ data: si }, { data: shipment }] = await Promise.all([
     supabase
       .from("shipping_instructions")
-      .select("id, status, organization_id, modality, modalities(code), hawbs(id), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
+      .select("id, status, organization_id, modality, modalities(code), hawbs(id), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb, total_pieces))")
       .eq("id", siId)
       .single(),
     supabase.from("shipments").select("id, modality, organization_id").eq("id", shipmentId).single(),
@@ -394,7 +397,7 @@ export async function createShipmentWithSIs(
   // Fetch all SIs with their modality + items
   const { data: sis } = await supabase
     .from("shipping_instructions")
-    .select("id, organization_id, modality, modalities(code), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb))")
+    .select("id, organization_id, modality, modalities(code), shipping_instruction_items(warehouse_receipt_id, warehouse_receipts(total_billable_weight_lb, total_pieces))")
     .in("id", siIds);
 
   if (!sis?.length) return { id: shipmentId, shipment_number: shipmentResult.shipment_number };
