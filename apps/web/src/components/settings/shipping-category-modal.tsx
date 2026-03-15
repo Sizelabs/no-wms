@@ -167,6 +167,7 @@ export function ShippingCategoryModal({ open, onClose, item }: ShippingCategoryM
                     Modalidad<span className="ml-0.5 text-red-400">*</span>
                   </label>
                   <select
+                    key={modalities.length}
                     name="modality_id"
                     defaultValue={item?.modality_id ?? ""}
                     required
