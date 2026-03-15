@@ -2,23 +2,42 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getUserWarehouseScope } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getUnknownWrs(filters?: {
   status?: string;
   maskTracking?: boolean;
 }) {
-  const supabase = await createClient();
+  const [supabase, warehouseScope] = await Promise.all([
+    createClient(),
+    getUserWarehouseScope(),
+  ]);
+
+  // Empty warehouse scope = no access
+  if (warehouseScope !== null && warehouseScope.length === 0) {
+    return { data: [], error: null };
+  }
+
+  // Note: agency scope is intentionally NOT applied here — unknown WRs have
+  // agency_id = NULL, so agencies should see all unclaimed WRs in their
+  // warehouse scope to decide which to claim. Org-level RLS still enforces
+  // cross-org isolation.
 
   // Query warehouse_receipts directly where agency is not assigned,
   // left-joining unknown_wrs for claim tracking info.
-  const query = supabase
+  let query = supabase
     .from("warehouse_receipts")
     .select(
-      "id, wr_number, received_at, consignee_name, consignees(full_name), packages(tracking_number, carrier, sender_name), unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
+      "id, wr_number, warehouse_id, received_at, consignee_name, consignees(full_name), packages(tracking_number, carrier, sender_name), unknown_wrs(id, status, claimed_by_agency_id, claimed_at)",
     )
     .is("agency_id", null)
     .order("received_at", { ascending: false });
+
+  // Scope to user's warehouses when applicable
+  if (warehouseScope !== null && warehouseScope.length > 0) {
+    query = query.in("warehouse_id", warehouseScope);
+  }
 
   const { data, error } = await query;
 
