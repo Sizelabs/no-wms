@@ -29,7 +29,16 @@ export default function LandingPage() {
               baseFrequency="0.65"
               numOctaves="3"
               stitchTiles="stitch"
-            />
+              seed="0"
+            >
+              <animate
+                attributeName="seed"
+                from="0"
+                to="500"
+                dur="60s"
+                repeatCount="indefinite"
+              />
+            </feTurbulence>
             <feColorMatrix type="saturate" values="0" />
           </filter>
           <rect width="100%" height="100%" filter="url(#lp-grain)" />
