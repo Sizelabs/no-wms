@@ -8,7 +8,7 @@ import { useState } from "react";
 import { ShipmentEditModal } from "@/components/shipments/shipment-edit-modal";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { InfoField } from "@/components/ui/info-field";
-import { Sheet, SheetBody, SheetHeader, SheetToolbar } from "@/components/ui/sheet";
+import { Sheet, SheetBody, SheetHeader, SheetToolbar, TOOLBAR_ICON_BUTTON } from "@/components/ui/sheet";
 import { getNextShipmentStatus, getShipmentStatusLabel, useAdvanceShipmentStatus } from "@/hooks/use-advance-shipment-status";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 import type { ShipmentDetail } from "@/lib/types/shipments";
@@ -48,9 +48,10 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
           {/* Right: actions */}
           <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={() => setEditOpen(true)}
               title="Editar"
-              className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+              className={TOOLBAR_ICON_BUTTON}
             >
               <Pencil className="size-4" />
             </button>
@@ -60,29 +61,31 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
                 href={`/api/print/mawb/${shipment.id}`}
                 target="_blank"
                 title="Imprimir MAWB"
-                className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+                className={TOOLBAR_ICON_BUTTON}
               >
                 <Printer className="size-4" />
               </Link>
             )}
 
-            <div className="mx-0.5 h-5 w-px bg-gray-300/60" />
-
             {nextStatus && (
-              <button
-                onClick={() => shipment && advance(shipment.id, shipment.modality, shipment.status)}
-                disabled={isPending}
-                className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
-              >
-                {isPending ? "..." : `Avanzar a: ${getShipmentStatusLabel(nextStatus)}`}
-              </button>
+              <>
+                <div className="mx-0.5 h-5 w-px bg-gray-300/60" />
+                <button
+                  type="button"
+                  onClick={() => advance(shipment.id, shipment.modality, shipment.status)}
+                  disabled={isPending}
+                  className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {isPending ? "..." : `Avanzar a: ${getShipmentStatusLabel(nextStatus)}`}
+                </button>
+              </>
             )}
 
             <Link
               href={`/${locale}/shipments/${shipment.id}`}
               onClick={onClose}
               title="Abrir pagina completa"
-              className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+              className={TOOLBAR_ICON_BUTTON}
             >
               <ExternalLink className="size-4" />
             </Link>

@@ -106,6 +106,9 @@ export function SheetHeader({ children, onClose }: { children: ReactNode; onClos
   );
 }
 
+export const TOOLBAR_ICON_BUTTON = "rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-gray-700";
+export const TOOLBAR_LABEL_BUTTON = "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200/60 hover:text-gray-900";
+
 export function SheetToolbar({ children }: { children: ReactNode }) {
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-gray-50/80 px-5 py-2.5">
