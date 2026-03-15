@@ -1,13 +1,13 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { DestinationCoverageModal } from "@/components/settings/destination-coverage-modal";
 import { DestinationModal } from "@/components/settings/destination-modal";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { VirtualTableBody } from "@/components/ui/virtual-table-body";
 import { useModalState } from "@/hooks/use-modal-state";
-import { upsertCourierDestination } from "@/lib/actions/couriers";
 import { deleteDestination } from "@/lib/actions/destinations";
 
 interface DestinationRow {
@@ -54,15 +54,7 @@ export function DestinationList({ data, canCreate = false, canUpdate = false, ca
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
-
-  // Optimistic state for courier destinations: key is "courierId:destinationId:modalityId"
-  const [optimisticToggles, setOptimisticToggle] = useOptimistic(
-    {} as Record<string, boolean>,
-    (state: Record<string, boolean>, update: { key: string; value: boolean }) => ({
-      ...state,
-      [update.key]: update.value,
-    }),
-  );
+  const [coverageDestination, setCoverageDestination] = useState<DestinationRow | null>(null);
 
   const filtered = data.filter((d) => {
     if (search) {
@@ -127,18 +119,13 @@ export function DestinationList({ data, canCreate = false, canUpdate = false, ca
               <th className="px-4 py-3">Destino</th>
               <th className="px-4 py-3">Moneda</th>
               <th className="px-4 py-3">Estado</th>
-              {couriers.map((c) => (
-                <th key={c.id} className="px-4 py-3 text-center">
-                  {couriers.length === 1 ? "Cobertura" : c.name}
-                </th>
-              ))}
               {hasActions && <th className="px-4 py-3">Acciones</th>}
             </tr>
           </thead>
           <VirtualTableBody
             items={filtered}
             scrollElement={scrollEl}
-            colSpan={(hasActions ? 4 : 3) + couriers.length}
+            colSpan={hasActions ? 4 : 3}
             emptyMessage="No hay destinos registrados."
             renderRow={(d) => (
               <tr key={d.id} className="hover:bg-gray-50">
@@ -155,56 +142,24 @@ export function DestinationList({ data, canCreate = false, canUpdate = false, ca
                     {d.is_active ? "Activo" : "Inactivo"}
                   </span>
                 </td>
-                {couriers.map((c) => (
-                  <td key={c.id} className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1 justify-center">
-                      {modalities.map((m) => {
-                        const toggleKey = `${c.id}:${d.id}:${m.id}`;
-                        const cd = c.courier_destinations.find(
-                          (cd) => cd.destination_id === d.id && cd.modality_id === m.id,
-                        );
-                        const serverValue = cd?.is_active ?? false;
-                        const isEnabled = toggleKey in optimisticToggles ? optimisticToggles[toggleKey]! : serverValue;
-                        return (
-                          <label
-                            key={m.id}
-                            className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer select-none"
-                            title={m.name}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isEnabled}
-                              onChange={() => {
-                                startTransition(async () => {
-                                  setOptimisticToggle({ key: toggleKey, value: !isEnabled });
-                                  await upsertCourierDestination(
-                                    c.id,
-                                    d.id,
-                                    m.id,
-                                    c.organization_id,
-                                    !isEnabled,
-                                  );
-                                });
-                              }}
-                              className="h-3 w-3 rounded border-gray-300"
-                            />
-                            {m.code.slice(0, 3).toUpperCase()}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </td>
-                ))}
                 {hasActions && (
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     {canUpdate && (
-                      <button
-                        onClick={() => modal.openEdit(d)}
-                        className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
-                      >
-                        Editar
-                      </button>
+                      <>
+                        <button
+                          onClick={() => modal.openEdit(d)}
+                          className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => setCoverageDestination(d)}
+                          className="rounded border px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                        >
+                          Cobertura
+                        </button>
+                      </>
                     )}
                     {canDelete && d.is_active && (
                       <button
@@ -230,6 +185,18 @@ export function DestinationList({ data, canCreate = false, canUpdate = false, ca
         onClose={modal.close}
         destination={modal.editItem}
       />
+
+      {coverageDestination && (
+        <DestinationCoverageModal
+          key={coverageDestination.id}
+          open={!!coverageDestination}
+          onClose={() => setCoverageDestination(null)}
+          destinationId={coverageDestination.id}
+          destinationLabel={formatLocation(coverageDestination)}
+          couriers={couriers}
+          modalities={modalities}
+        />
+      )}
     </div>
   );
 }
