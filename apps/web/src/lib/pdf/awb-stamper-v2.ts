@@ -242,7 +242,9 @@ function stampHawbFields(
   const byFirstCarrier = carrierName || courierName;
   const mawbNumber = (shipment?.awb_number as string) ?? "";
   const depDate = shipment?.departure_date as string | null;
+  const arrDate = (shipment as Record<string, unknown> | null)?.arrival_date as string | null;
   const flightDate = depDate ? fmtDate(depDate) : "";
+  const flightDate2 = arrDate ? fmtDate(arrDate) : "";
   const piecesStr = String(hawb.pieces ?? 0);
 
   const t = (x: number, sy: number, text: string, sz?: number) => drawText(page, font, x, sy, text, sz);
@@ -308,6 +310,7 @@ function stampHawbFields(
   // Destination (IATA code)
   tb(40, 280, arrivalAirport);
   t(177, 280, flightDate, 8);
+  t(245, 280, flightDate2, 8);
   drawTextRight(page, font, 345, 280, "NIL", 8);
 
   // Handling Information
@@ -393,6 +396,7 @@ function stampMawbFields(
   const carrierName = carrier?.name ?? "";
   const awbNumber = shipment.awb_number ?? "";
   const flightDate = shipment.departure_date ? fmtDate(shipment.departure_date) : "";
+  const flightDate2 = (shipment as Record<string, unknown>).arrival_date ? fmtDate((shipment as Record<string, unknown>).arrival_date as string) : "";
   const piecesStr = String(totalPieces);
 
   const goodsItems: Parameters<typeof buildGoodsLines>[0] = [];
@@ -461,6 +465,7 @@ function stampMawbFields(
   // Destination
   tb(40, 280, arrivalAirport);
   t(177, 280, flightDate, 8);
+  t(245, 280, flightDate2, 8);
   drawTextRight(page, font, 345, 280, "NIL", 8);
 
   // Handling Information
