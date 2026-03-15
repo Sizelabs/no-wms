@@ -241,9 +241,8 @@ function stampHawbFields(
   const courierName = (courier?.name as string) ?? "";
   const byFirstCarrier = carrierName || courierName;
   const mawbNumber = (shipment?.awb_number as string) ?? "";
-  const flightNumber = (shipment?.flight_number as string) ?? "";
   const depDate = shipment?.departure_date as string | null;
-  const flightDate = `${flightNumber}${depDate ? ` / ${fmtDate(depDate)}` : ""}`;
+  const flightDate = depDate ? fmtDate(depDate) : "";
   const piecesStr = String(hawb.pieces ?? 0);
 
   const t = (x: number, sy: number, text: string, sz?: number) => drawText(page, font, x, sy, text, sz);
@@ -393,7 +392,7 @@ function stampMawbFields(
   const arrivalAirport = shipment.arrival_airport?.toUpperCase() || "";
   const carrierName = carrier?.name ?? "";
   const awbNumber = shipment.awb_number ?? "";
-  const flightDate = `${shipment.flight_number ?? ""}${shipment.departure_date ? ` / ${fmtDate(shipment.departure_date)}` : ""}`;
+  const flightDate = shipment.departure_date ? fmtDate(shipment.departure_date) : "";
   const piecesStr = String(totalPieces);
 
   const goodsItems: Parameters<typeof buildGoodsLines>[0] = [];
