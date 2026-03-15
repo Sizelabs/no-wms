@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
@@ -96,13 +97,19 @@ export function SheetHeader({ children, onClose }: { children: ReactNode; onClos
         <button
           type="button"
           onClick={onClose}
-          className="rounded p-1 text-gray-400 hover:text-gray-600"
+          className="-mr-1.5 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
         >
-          <svg className="size-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+          <X className="size-5" />
         </button>
       )}
+    </div>
+  );
+}
+
+export function SheetToolbar({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-gray-50/80 px-5 py-2.5">
+      {children}
     </div>
   );
 }

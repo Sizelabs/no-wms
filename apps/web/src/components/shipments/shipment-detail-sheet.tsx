@@ -1,13 +1,14 @@
 "use client";
 
+import { ExternalLink, Pencil, Printer } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { ShipmentEditModal } from "@/components/shipments/shipment-edit-modal";
-import { InfoField } from "@/components/ui/info-field";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
-import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
+import { InfoField } from "@/components/ui/info-field";
+import { Sheet, SheetBody, SheetHeader, SheetToolbar } from "@/components/ui/sheet";
 import { getNextShipmentStatus, getShipmentStatusLabel, useAdvanceShipmentStatus } from "@/hooks/use-advance-shipment-status";
 import { MODALITY_COLORS, MODALITY_LABELS } from "@/lib/constants/modalities";
 import type { ShipmentDetail } from "@/lib/types/shipments";
@@ -30,52 +31,68 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
       <SheetHeader onClose={onClose}>
         {shipment ? `Embarque ${shipment.shipment_number}` : "Detalle"}
       </SheetHeader>
+
+      {shipment && (
+        <SheetToolbar>
+          {/* Left: status + modality badges */}
+          <div className="flex items-center gap-2">
+            <ShipmentStatusBadge status={shipment.status} />
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${MODALITY_COLORS[shipment.modality] ?? ""}`}>
+              {MODALITY_LABELS[shipment.modality] ?? shipment.modality}
+            </span>
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setEditOpen(true)}
+              title="Editar"
+              className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+            >
+              <Pencil className="size-4" />
+            </button>
+
+            {shipment.modality === "air" && shipment.awb_number && (
+              <Link
+                href={`/api/print/mawb/${shipment.id}`}
+                target="_blank"
+                title="Imprimir MAWB"
+                className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+              >
+                <Printer className="size-4" />
+              </Link>
+            )}
+
+            <div className="mx-0.5 h-5 w-px bg-gray-300/60" />
+
+            {nextStatus && (
+              <button
+                onClick={() => shipment && advance(shipment.id, shipment.modality, shipment.status)}
+                disabled={isPending}
+                className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+              >
+                {isPending ? "..." : `Avanzar a: ${getShipmentStatusLabel(nextStatus)}`}
+              </button>
+            )}
+
+            <Link
+              href={`/${locale}/shipments/${shipment.id}`}
+              onClick={onClose}
+              title="Abrir pagina completa"
+              className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+            >
+              <ExternalLink className="size-4" />
+            </Link>
+          </div>
+        </SheetToolbar>
+      )}
+
       <SheetBody>
         {shipment && (
           <div className="space-y-5">
-            {/* Status + actions bar */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <ShipmentStatusBadge status={shipment.status} />
-                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${MODALITY_COLORS[shipment.modality] ?? ""}`}>
-                  {MODALITY_LABELS[shipment.modality] ?? shipment.modality}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setEditOpen(true)}
-                  className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Editar
-                </button>
-                {shipment.modality === "air" && shipment.awb_number && (
-                  <Link
-                    href={`/api/print/mawb/${shipment.id}`}
-                    target="_blank"
-                    className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Imprimir MAWB
-                  </Link>
-                )}
-                {nextStatus && (
-                  <button
-                    onClick={() => shipment && advance(shipment.id, shipment.modality, shipment.status)}
-                    disabled={isPending}
-                    className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-                  >
-                    {isPending ? "..." : `Avanzar a: ${getShipmentStatusLabel(nextStatus!)}`}
-                  </button>
-                )}
-                <Link
-                  href={`/${locale}/shipments/${shipment.id}`}
-                  onClick={onClose}
-                  className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Abrir pagina completa
-                </Link>
-              </div>
-            </div>
-
             {/* Common fields */}
             <div className="grid gap-3 sm:grid-cols-2">
               <InfoField label="Transportista" value={shipment.carriers?.name} />
