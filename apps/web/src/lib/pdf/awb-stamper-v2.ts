@@ -3,6 +3,8 @@ import path from "path";
 
 import { PDFDocument, PDFPage, StandardFonts, type PDFFont } from "pdf-lib";
 
+import { formatAirportForPrint } from "@no-wms/shared/constants/airports";
+
 import type { HawbStampInput, MawbStampInput } from "./awb-pdf";
 
 // ── Constants ──
@@ -235,8 +237,10 @@ function stampHawbFields(
   const volumeKg = calcVolumeKg(items);
   const chargeableKg = Math.max(grossKg, volumeKg);
   const cons = si.consignees;
-  const departureAirport = (shipment?.departure_airport as string)?.toUpperCase() || settings.hawb_departure_iata || "MIA";
-  const arrivalAirport = (shipment?.arrival_airport as string)?.toUpperCase() || "";
+  const departureIata = (shipment?.departure_airport as string)?.toUpperCase() || settings.hawb_departure_iata || "MIA";
+  const arrivalIata = (shipment?.arrival_airport as string)?.toUpperCase() || "";
+  const departureAirportPrint = formatAirportForPrint(departureIata);
+  const arrivalAirportPrint = formatAirportForPrint(arrivalIata);
   const carrierName = (shipment?.carrier_name as string) ?? "";
   const courierName = (courier?.name as string) ?? "";
   const byFirstCarrier = carrierName || courierName;
@@ -295,11 +299,11 @@ function stampHawbFields(
   t(32, 218, settings.hawb_iata_code ?? "", 8);
   t(170, 218, settings.hawb_account_no ?? "", 8);
 
-  // Airport of Departure (IATA code)
-  tb(40, 234, departureAirport);
+  // Airport of Departure (Name - IATA)
+  tb(40, 234, departureAirportPrint);
 
   // Routing — "To" is arrival IATA code, "By First Carrier" is MAWB carrier
-  tb(40, 256, arrivalAirport);
+  tb(40, 256, arrivalIata);
   t(67, 256, byFirstCarrier, 8);
   t(324, 256, "USD", 8);
   tb(371, 257, "X");
@@ -307,8 +311,15 @@ function stampHawbFields(
   drawTextRight(page, font, 495, 256, si.total_declared_value_usd != null ? fmt(si.total_declared_value_usd) : "NVD", 8);
   drawTextRight(page, font, 570, 256, si.total_declared_value_usd != null ? fmt(si.total_declared_value_usd) : "NCV", 8);
 
-  // Destination (IATA code)
-  tb(40, 280, arrivalAirport);
+  // Destination (Name - IATA) — split into 2 lines if long
+  if (arrivalAirportPrint.length > 25) {
+    const words = arrivalAirportPrint.split(" ");
+    const mid = Math.ceil(words.length / 2);
+    tb(40, 276, words.slice(0, mid).join(" "), 7);
+    tb(40, 285, words.slice(mid).join(" "), 7);
+  } else {
+    tb(40, 280, arrivalAirportPrint);
+  }
   t(177, 280, flightDate, 8);
   t(245, 280, flightDate2, 8);
   drawTextRight(page, font, 345, 280, "NIL", 8);
@@ -391,8 +402,10 @@ function stampMawbFields(
 
   const shipperName = shipment.shipper_name || org?.name || "";
   const shipperAddress = shipment.shipper_address || shipment.warehouses?.full_address || "";
-  const departureAirport = (shipment as Record<string, unknown>).departure_airport as string | null;
-  const arrivalAirport = shipment.arrival_airport?.toUpperCase() || "";
+  const departureIata = ((shipment as Record<string, unknown>).departure_airport as string | null)?.toUpperCase() || settings.hawb_departure_iata || "MIA";
+  const arrivalIata = shipment.arrival_airport?.toUpperCase() || "";
+  const departureAirportPrint = formatAirportForPrint(departureIata);
+  const arrivalAirportPrint = formatAirportForPrint(arrivalIata);
   const carrierName = carrier?.name ?? "";
   const awbNumber = shipment.awb_number ?? "";
   const flightDate = shipment.departure_date ? fmtDate(shipment.departure_date) : "";
@@ -450,20 +463,26 @@ function stampMawbFields(
   t(170, 218, settings.hawb_account_no ?? "", 8);
 
   // Airport of Departure (IATA code)
-  tb(40, 234, departureAirport?.toUpperCase() || settings.hawb_departure_iata || "MIA");
+  tb(40, 234, departureAirportPrint);
 
   // Routing
-  tb(40, 256, arrivalAirport);
+  tb(40, 256, arrivalIata);
   t(67, 256, carrierName, 8);
-  t(155, 256, awbNumber, 8);
   t(324, 256, "USD", 8);
   tb(371, 257, "X");
   tb(403, 257, "X");
   drawTextRight(page, font, 495, 256, declaredTotal != null ? fmt(declaredTotal) : "NVD", 8);
   drawTextRight(page, font, 570, 256, declaredTotal != null ? fmt(declaredTotal) : "NCV", 8);
 
-  // Destination
-  tb(40, 280, arrivalAirport);
+  // Destination (Name - IATA) — split into 2 lines if long
+  if (arrivalAirportPrint.length > 25) {
+    const words = arrivalAirportPrint.split(" ");
+    const mid = Math.ceil(words.length / 2);
+    tb(40, 276, words.slice(0, mid).join(" "), 7);
+    tb(40, 285, words.slice(mid).join(" "), 7);
+  } else {
+    tb(40, 280, arrivalAirportPrint);
+  }
   t(177, 280, flightDate, 8);
   t(245, 280, flightDate2, 8);
   drawTextRight(page, font, 345, 280, "NIL", 8);

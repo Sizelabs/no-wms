@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { AirportCombobox } from "@/components/ui/airport-combobox";
 import { Combobox } from "@/components/ui/combobox";
 import { inputClass } from "@/components/ui/form-section";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -254,11 +255,11 @@ export function ShipmentEditModal({ open, onClose, shipment }: ShipmentEditModal
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm text-gray-600">Aeropuerto origen</label>
-                  <input type="text" value={departureAirport} onChange={(e) => setDepartureAirport(e.target.value)} placeholder="GYE" className={inputClass} />
+                  <AirportCombobox value={departureAirport} onChange={setDepartureAirport} />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm text-gray-600">Aeropuerto destino</label>
-                  <input type="text" value={arrivalAirport} onChange={(e) => setArrivalAirport(e.target.value)} placeholder="PTY" className={inputClass} />
+                  <AirportCombobox value={arrivalAirport} onChange={setArrivalAirport} />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm text-gray-600">Fecha salida</label>

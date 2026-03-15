@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { AirportCombobox } from "@/components/ui/airport-combobox";
 import { Combobox } from "@/components/ui/combobox";
 import { inputClass } from "@/components/ui/form-section";
 import { createShipment, createShipmentWithSIs } from "@/lib/actions/shipments";
@@ -303,11 +304,11 @@ export function ShipmentCreateForm({ warehouses, destinations, carriers, agencie
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Aeropuerto origen</label>
-              <input type="text" value={departureAirport} onChange={(e) => setDepartureAirport(e.target.value)} placeholder="GYE" className={`mt-1 ${inputClass}`} />
+              <AirportCombobox value={departureAirport} onChange={setDepartureAirport} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Aeropuerto destino</label>
-              <input type="text" value={arrivalAirport} onChange={(e) => setArrivalAirport(e.target.value)} placeholder="PTY" className={`mt-1 ${inputClass}`} />
+              <AirportCombobox value={arrivalAirport} onChange={setArrivalAirport} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Fecha salida</label>

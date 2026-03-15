@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useNotification } from "@/components/layout/notification";
+import { AirportCombobox } from "@/components/ui/airport-combobox";
 import { Combobox } from "@/components/ui/combobox";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { createShipmentWithSIs } from "@/lib/actions/shipments";
@@ -266,10 +267,10 @@ export function CreateShipmentModal({
                 <input type="text" value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} placeholder="LA-601" className={inputClass} />
               </Field>
               <Field label="Aeropuerto origen">
-                <input type="text" value={departureAirport} onChange={(e) => setDepartureAirport(e.target.value)} placeholder="GYE" className={inputClass} />
+                <AirportCombobox value={departureAirport} onChange={setDepartureAirport} />
               </Field>
               <Field label="Aeropuerto destino">
-                <input type="text" value={arrivalAirport} onChange={(e) => setArrivalAirport(e.target.value)} placeholder="PTY" className={inputClass} />
+                <AirportCombobox value={arrivalAirport} onChange={setArrivalAirport} />
               </Field>
               <Field label="Fecha salida">
                 <input type="date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className={inputClass} />
