@@ -11,12 +11,16 @@ Backlog → Todo → In Progress → In Review → Done
 
 When asked to process NWMS issues (or when triggered by `/loop`):
 
-1. **Fetch** open issues from team NWMS with state "Todo" or "Backlog" using the Linear MCP
-2. **Prioritize** by priority value: 1=Urgent, 2=High, 3=Medium, 4=Low
-3. **For each issue**, in priority order:
+1. **Pull latest main** before anything else:
+   ```bash
+   git checkout main && git pull origin main
+   ```
+2. **Fetch** open issues from team NWMS with state "Todo" or "Backlog" using the Linear MCP
+3. **Prioritize** by priority value: 1=Urgent, 2=High, 3=Medium, 4=Low
+4. **For each issue**, in priority order:
    - Read full description with `get_issue`. Use `extract_images` if screenshots exist.
    - Move to **In Progress**: `save_issue({ id: "<ID>", state: "In Progress" })`
-   - Branch from main: `git checkout main && git pull && git checkout -b <issue.gitBranchName>`
+   - Branch from main: `git checkout -b <issue.gitBranchName>`
    - Analyze the codebase, understand patterns, implement the fix/feature
    - Run linter/typecheck/tests to validate
    - Run `/simplify` if the changes are meaningful enough to benefit from it
@@ -44,8 +48,8 @@ When asked to process NWMS issues (or when triggered by `/loop`):
      `<branch-name>` — merged into main, pending push.
      ```
    - **Never move to Done** — leave in "In Review" for Juan to verify
-4. Move to the next issue and repeat
-5. **When no more Todo/Backlog issues remain**, push all commits at once:
+5. Move to the next issue and repeat
+6. **When no more Todo/Backlog issues remain**, push all commits at once:
    ```bash
    git push origin main
    ```
