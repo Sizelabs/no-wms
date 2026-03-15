@@ -192,7 +192,6 @@ export function CourierList({ couriers, canCreate = false, canUpdate = false }: 
       title={selectedItem?.name ?? ""}
       detailHref={selectedItem ? `/${locale}/settings/couriers/${selectedItem.id}` : undefined}
       editAction={canUpdate && selectedItem && detailData ? () => {
-        closeSheet();
         modal.openEdit({ ...selectedItem, ...detailData } as Courier & typeof detailData);
       } : undefined}
     >

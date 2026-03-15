@@ -126,7 +126,7 @@ export function ForwarderList({ forwarders, counts, canCreate = false, canUpdate
       onClose={closeSheet}
       title={selectedItem?.name ?? ""}
       detailHref={selectedItem ? `/${locale}/settings/forwarders/${selectedItem.id}` : undefined}
-      editAction={canUpdate && selectedItem ? () => { closeSheet(); modal.openEdit(selectedItem); } : undefined}
+      editAction={canUpdate && selectedItem ? () => { modal.openEdit(selectedItem); } : undefined}
     >
       {selectedItem && (
         <div className="grid gap-3 sm:grid-cols-2">

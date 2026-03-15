@@ -162,7 +162,6 @@ export function ConsigneeList({ consignees, canCreate = false, canUpdate = false
         title={selectedItem?.full_name ?? ""}
         detailHref={selectedItem ? `/${locale}/consignees/${selectedItem.id}` : undefined}
         editAction={canUpdate && selectedItem && detailData ? () => {
-          closeSheet();
           modal.openEdit({ ...selectedItem, ...detailData } as Consignee & typeof detailData);
         } : undefined}
       >

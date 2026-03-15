@@ -153,7 +153,7 @@ export function WarehouseList({ warehouses, canCreate = false, canUpdate = false
       onClose={closeSheet}
       title={selectedItem?.name ?? ""}
       detailHref={selectedItem ? `/${locale}/settings/warehouses/${selectedItem.id}` : undefined}
-      editAction={canUpdate && selectedItem ? () => { closeSheet(); modal.openEdit(selectedItem); } : undefined}
+      editAction={canUpdate && selectedItem ? () => { modal.openEdit(selectedItem); } : undefined}
     >
       {selectedItem && (
         <>

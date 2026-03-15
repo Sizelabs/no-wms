@@ -158,7 +158,7 @@ export function CarrierList({ carriers, modalities, canCreate = false, canUpdate
         onClose={closeSheet}
         title={selectedItem ? `Transportista ${selectedItem.name}` : "Detalle"}
         detailHref={selectedItem ? `/${locale}/settings/carriers/${selectedItem.id}` : undefined}
-        editAction={canUpdate && selectedItem ? () => { closeSheet(); modal.openEdit(selectedItem); } : undefined}
+        editAction={canUpdate && selectedItem ? () => { modal.openEdit(selectedItem); } : undefined}
       >
         {selectedItem && (
           <div className="grid gap-3 sm:grid-cols-2">

@@ -183,7 +183,6 @@ export function AgencyList({ agencies, canCreate = false, canUpdate = false }: A
         title={selectedItem ? `Agencia ${selectedItem.name}` : "Detalle"}
         detailHref={selectedItem ? `/${locale}/agencies/${selectedItem.id}` : undefined}
         editAction={canUpdate && selectedItem && detailData ? () => {
-          closeSheet();
           modal.openEdit({ ...selectedItem, ...detailData } as Agency & typeof detailData);
         } : undefined}
       >
