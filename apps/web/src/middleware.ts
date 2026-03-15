@@ -9,19 +9,22 @@ const intlMiddleware = createIntlMiddleware(routing);
 // Paths that don't require authentication
 const publicPaths = ["/login", "/signup", "/forgot-password", "/set-password"];
 
-function isPublicPath(pathname: string): boolean {
-  // Strip locale prefix (e.g., /es/login → /login)
+/** Strip locale prefix and return resolved locale + remaining path. */
+function stripLocale(pathname: string): { locale: string; path: string } {
   const segments = pathname.split("/").filter(Boolean);
   const locales = routing.locales as readonly string[];
-  const pathWithoutLocale =
-    segments.length > 0 && locales.includes(segments[0]!)
-      ? "/" + segments.slice(1).join("/")
-      : pathname;
+  if (segments.length > 0 && locales.includes(segments[0]!)) {
+    return { locale: segments[0]!, path: "/" + segments.slice(1).join("/") };
+  }
+  return { locale: routing.defaultLocale, path: pathname };
+}
 
+function isPublicPath(pathname: string): boolean {
+  const { path } = stripLocale(pathname);
   return (
-    publicPaths.some((p) => pathWithoutLocale.startsWith(p)) ||
-    pathWithoutLocale === "/" ||
-    pathWithoutLocale === ""
+    publicPaths.some((p) => path.startsWith(p)) ||
+    path === "/" ||
+    path === ""
   );
 }
 
@@ -39,13 +42,18 @@ export default async function middleware(request: NextRequest) {
 
   // 3. Check auth for protected routes
   const { pathname } = request.nextUrl;
+  const { locale, path } = stripLocale(pathname);
 
   if (!user && !isPublicPath(pathname)) {
     // Redirect to login
-    const locale = pathname.split("/")[1] || routing.defaultLocale;
     const loginUrl = new URL(`/${locale}/login`, request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // 4. Authenticated users at root → redirect to dashboard home
+  if (user && (path === "/" || path === "")) {
+    return NextResponse.redirect(new URL(`/${locale}/home`, request.url));
   }
 
   return response;

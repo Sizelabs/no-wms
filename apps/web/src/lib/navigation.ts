@@ -24,7 +24,7 @@ const NAV_CONFIG: NavConfig = {
     {
       id: "overview",
       items: [
-        { label: "dashboard", href: "/", icon: "LayoutDashboard" },
+        { label: "dashboard", href: "/home", icon: "LayoutDashboard" },
       ],
     },
     {
