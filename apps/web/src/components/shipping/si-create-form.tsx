@@ -10,7 +10,7 @@ import { Combobox } from "@/components/ui/combobox";
 import type { UploadedFile } from "@/components/ui/file-upload";
 import { FileUpload } from "@/components/ui/file-upload";
 import { selectClass } from "@/components/ui/form-section";
-import { createShippingInstruction, getRouteModalities, getShippingCategories } from "@/lib/actions/shipping-instructions";
+import { cancelWorkOrdersForSi, checkWrWorkOrderConflicts, createShippingInstruction, getRouteModalities, getShippingCategories } from "@/lib/actions/shipping-instructions";
 
 interface Agency {
   id: string;
@@ -131,6 +131,19 @@ export function SiCreateForm({
     });
   }, [modalityId, destinationId, destinations]);
 
+  // Work order conflict state
+  interface WoConflict {
+    warehouse_receipt_id: string;
+    wr_number: string;
+    work_order_id: string;
+    wo_number: string;
+    wo_type: string;
+    wo_status: string;
+    cancellable: boolean;
+  }
+  const [woConflicts, setWoConflicts] = useState<WoConflict[]>([]);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+
   // Document upload state — keyed by document_type
   const [docUploads, setDocUploads] = useState<Record<string, UploadedFile[]>>({});
 
@@ -162,11 +175,8 @@ export function SiCreateForm({
   const totalDeclared = selectedWrData.reduce((sum, wr) => sum + (wr.total_declared_value_usd ?? 0), 0);
   const hasDgr = selectedWrData.some((wr) => wr.has_dgr_package === true);
 
-  const handleSubmit = () => {
-    if (!selectedWrs.length || !agencyId || !consigneeId || !destinationId || !modalityId || !selectedCategoryId) return;
-
+  const submitSi = (wrIds: string[]) => {
     startTransition(async () => {
-      // Collect already-uploaded document metadata
       const uploadedDocs = Object.entries(docUploads).flatMap(([docType, files]) =>
         files.map((f) => ({ document_type: docType, storage_path: f.storagePath, file_name: f.fileName, content_type: "", file_size: 0 })),
       );
@@ -179,7 +189,7 @@ export function SiCreateForm({
       fd.set("destination_id", destinationId);
       fd.set("shipping_category_id", selectedCategoryId);
       if (selectedCategory) fd.set("courier_category", selectedCategory.code);
-      fd.set("warehouse_receipt_ids", JSON.stringify(selectedWrs));
+      fd.set("warehouse_receipt_ids", JSON.stringify(wrIds));
       if (cedulaRuc) fd.set("cedula_ruc", cedulaRuc);
       fd.set("cupo_4x4_used", String(cupo4x4));
       if (specialInstructions) fd.set("special_instructions", specialInstructions);
@@ -205,6 +215,53 @@ export function SiCreateForm({
         setSelectedCategoryId("");
         setDocUploads({});
       }
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!selectedWrs.length || !agencyId || !consigneeId || !destinationId || !modalityId || !selectedCategoryId) return;
+
+    startTransition(async () => {
+      const { conflicts } = await checkWrWorkOrderConflicts(selectedWrs);
+      if (conflicts.length > 0) {
+        setWoConflicts(conflicts);
+        setShowConflictDialog(true);
+      } else {
+        submitSi(selectedWrs);
+      }
+    });
+  };
+
+  const handleResolveConflicts = () => {
+    const cancellableWoIds = [...new Set(woConflicts.filter((c) => c.cancellable).map((c) => c.work_order_id))];
+    const nonCancellableWrIds = new Set(woConflicts.filter((c) => !c.cancellable).map((c) => c.warehouse_receipt_id));
+    const remainingWrs = selectedWrs.filter((id) => !nonCancellableWrIds.has(id));
+
+    if (!remainingWrs.length) {
+      notify("No quedan WRs disponibles después de remover los conflictos.", "error");
+      setShowConflictDialog(false);
+      setWoConflicts([]);
+      return;
+    }
+
+    startTransition(async () => {
+      if (cancellableWoIds.length > 0) {
+        const cancelResult = await cancelWorkOrdersForSi(cancellableWoIds);
+        if (cancelResult.error) {
+          notify(cancelResult.error, "error");
+          setShowConflictDialog(false);
+          setWoConflicts([]);
+          return;
+        }
+      }
+
+      if (nonCancellableWrIds.size > 0) {
+        setSelectedWrs(remainingWrs);
+      }
+
+      setShowConflictDialog(false);
+      setWoConflicts([]);
+      submitSi(remainingWrs);
     });
   };
 
@@ -453,6 +510,83 @@ export function SiCreateForm({
           {isPending ? "Creando..." : "Crear Instrucción de Embarque"}
         </button>
       </div>
+
+      {/* Work order conflict resolution dialog */}
+      {showConflictDialog && woConflicts.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-lg rounded-lg bg-white shadow-xl">
+            <div className="border-b px-5 py-4">
+              <h3 className="text-base font-semibold text-gray-900">
+                WRs con órdenes de trabajo activas
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Algunos WRs seleccionados tienen órdenes de trabajo en curso. Elija cómo proceder:
+              </p>
+            </div>
+            <div className="max-h-64 overflow-y-auto px-5 py-3">
+              {(() => {
+                const cancellable = woConflicts.filter((c) => c.cancellable);
+                const nonCancellable = woConflicts.filter((c) => !c.cancellable);
+                return (
+                  <div className="space-y-3">
+                    {cancellable.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                          Se cancelarán automáticamente
+                        </p>
+                        <div className="mt-1 space-y-1">
+                          {cancellable.map((c) => (
+                            <div key={`${c.warehouse_receipt_id}:${c.work_order_id}`} className="flex items-center justify-between rounded bg-amber-50 px-3 py-2 text-sm">
+                              <span className="font-mono text-xs">{c.wr_number}</span>
+                              <span className="text-xs text-gray-500">
+                                OT {c.wo_number} ({c.wo_type}) — <span className="text-amber-700">Solicitada</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {nonCancellable.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                          Se removerán de la instrucción
+                        </p>
+                        <div className="mt-1 space-y-1">
+                          {nonCancellable.map((c) => (
+                            <div key={`${c.warehouse_receipt_id}:${c.work_order_id}`} className="flex items-center justify-between rounded bg-red-50 px-3 py-2 text-sm">
+                              <span className="font-mono text-xs">{c.wr_number}</span>
+                              <span className="text-xs text-gray-500">
+                                OT {c.wo_number} ({c.wo_type}) — <span className="text-red-700 capitalize">{c.wo_status === "approved" ? "Aprobada" : "En progreso"}</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="flex justify-end gap-2 border-t px-5 py-4">
+              <button
+                type="button"
+                onClick={() => { setShowConflictDialog(false); setWoConflicts([]); }}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleResolveConflicts}
+                disabled={isPending}
+                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                {isPending ? "Procesando..." : "Continuar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

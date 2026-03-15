@@ -538,6 +538,99 @@ export async function getRouteModalities(destinationId: string) {
   return { data: modalities, error: null };
 }
 
+/** Check which selected WRs have active work orders and return conflict details. */
+export async function checkWrWorkOrderConflicts(wrIds: string[]): Promise<{
+  conflicts: Array<{
+    warehouse_receipt_id: string;
+    wr_number: string;
+    work_order_id: string;
+    wo_number: string;
+    wo_type: string;
+    wo_status: string;
+    cancellable: boolean;
+  }>;
+}> {
+  if (!wrIds.length) return { conflicts: [] };
+
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("work_order_items")
+    .select("warehouse_receipt_id, warehouse_receipts(wr_number), work_orders!inner(id, wo_number, type, status)")
+    .in("warehouse_receipt_id", wrIds)
+    .in("work_orders.status", ["requested", "approved", "in_progress"]);
+
+  if (!data?.length) return { conflicts: [] };
+
+  const conflicts = data.map((item) => {
+    const wo = item.work_orders as unknown as { id: string; wo_number: string; type: string; status: string };
+    const wr = item.warehouse_receipts as unknown as { wr_number: string };
+    return {
+      warehouse_receipt_id: item.warehouse_receipt_id,
+      wr_number: wr?.wr_number ?? "",
+      work_order_id: wo.id,
+      wo_number: wo.wo_number,
+      wo_type: wo.type,
+      wo_status: wo.status,
+      cancellable: wo.status === "requested",
+    };
+  });
+
+  return { conflicts };
+}
+
+/** Cancel work orders to unblock SI creation. Only cancels WOs in "requested" status. */
+export async function cancelWorkOrdersForSi(woIds: string[]): Promise<{ error?: string }> {
+  if (!woIds.length) return {};
+
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  // Fetch WOs and verify they are cancellable
+  const { data: wos } = await supabase
+    .from("work_orders")
+    .select("id, status, organization_id, work_order_items(warehouse_receipt_id)")
+    .in("id", woIds);
+
+  if (!wos?.length) return { error: "Órdenes de trabajo no encontradas" };
+
+  const nonCancellable = wos.filter((wo) => wo.status !== "requested");
+  if (nonCancellable.length) {
+    return { error: "Solo se pueden cancelar OTs en estado 'Solicitada'" };
+  }
+
+  // Cancel all WOs and return their WRs to in_warehouse
+  const allWrIds = wos.flatMap(
+    (wo) => (wo.work_order_items ?? []).map((i: { warehouse_receipt_id: string }) => i.warehouse_receipt_id),
+  );
+
+  await Promise.all([
+    supabase
+      .from("work_orders")
+      .update({ status: "cancelled", cancellation_reason: "Cancelada automáticamente para crear instrucción de embarque" })
+      .in("id", woIds),
+    ...(allWrIds.length
+      ? [supabase.from("warehouse_receipts").update({ status: "in_warehouse" }).in("id", allWrIds)]
+      : []),
+    ...wos.map((wo) =>
+      supabase.from("work_order_status_history").insert({
+        organization_id: wo.organization_id,
+        work_order_id: wo.id,
+        old_status: wo.status,
+        new_status: "cancelled",
+        changed_by: user.id,
+      }),
+    ),
+  ]);
+
+  revalidatePath("/work-orders");
+  revalidatePath("/inventory");
+
+  return {};
+}
+
 /** @deprecated Use getShippingCategories instead */
 export async function getCourierCategories(countryCode: string) {
   return getShippingCategories(countryCode);
