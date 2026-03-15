@@ -222,6 +222,72 @@ export async function createShipment(formData: FormData): Promise<{ id: string; 
   return { id: data.id, shipment_number: data.shipment_number };
 }
 
+export async function updateShipment(id: string, formData: FormData): Promise<{ error?: string }> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado" };
+
+  const { data: shipment } = await supabase
+    .from("shipments")
+    .select("modality")
+    .eq("id", id)
+    .single();
+
+  if (!shipment) return { error: "Embarque no encontrado" };
+
+  const modality = shipment.modality;
+
+  const updateData: Record<string, unknown> = {
+    carrier_id: (formData.get("carrier_id") as string) || null,
+    destination_id: (formData.get("destination_id") as string) || null,
+    destination_agent_id: (formData.get("destination_agent_id") as string) || null,
+    shipper_name: (formData.get("shipper_name") as string) || null,
+    shipper_address: (formData.get("shipper_address") as string) || null,
+    consignee_name: (formData.get("consignee_name") as string) || null,
+    consignee_address: (formData.get("consignee_address") as string) || null,
+    notes: (formData.get("notes") as string) || null,
+  };
+
+  if (modality === "air") {
+    updateData.awb_number = (formData.get("awb_number") as string) || null;
+    updateData.booking_number = (formData.get("booking_number") as string) || null;
+    updateData.flight_number = (formData.get("flight_number") as string) || null;
+    updateData.departure_airport = (formData.get("departure_airport") as string) || null;
+    updateData.arrival_airport = (formData.get("arrival_airport") as string) || null;
+    updateData.departure_date = (formData.get("departure_date") as string) || null;
+    updateData.arrival_date = (formData.get("arrival_date") as string) || null;
+  }
+
+  if (modality === "ocean") {
+    updateData.bol_number = (formData.get("bol_number") as string) || null;
+    updateData.port_of_loading = (formData.get("port_of_loading") as string) || null;
+    updateData.vessel_name = (formData.get("vessel_name") as string) || null;
+    updateData.voyage_id = (formData.get("voyage_id") as string) || null;
+    updateData.port_of_unloading = (formData.get("port_of_unloading") as string) || null;
+    updateData.freight_terms = (formData.get("freight_terms") as string) || null;
+  }
+
+  if (modality === "ground") {
+    updateData.route_number = (formData.get("route_number") as string) || null;
+    updateData.origin_terminal = (formData.get("origin_terminal") as string) || null;
+    updateData.destination_terminal = (formData.get("destination_terminal") as string) || null;
+    updateData.truck_plate = (formData.get("truck_plate") as string) || null;
+    updateData.driver_name = (formData.get("driver_name") as string) || null;
+    updateData.driver_phone = (formData.get("driver_phone") as string) || null;
+  }
+
+  const { error } = await supabase
+    .from("shipments")
+    .update(updateData)
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/shipments");
+  return {};
+}
+
 export async function getShipments(filters?: { status?: string; modality?: string }) {
   const supabase = await createClient();
   const warehouseScope = await getUserWarehouseScope();

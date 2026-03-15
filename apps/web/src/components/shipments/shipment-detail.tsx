@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import { ContainerPanel } from "@/components/shipments/container-panel";
+import { ShipmentEditModal } from "@/components/shipments/shipment-edit-modal";
 import { InfoField } from "@/components/ui/info-field";
 import { HouseBillAssignmentPanel } from "@/components/shipments/house-bill-assignment-panel";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
@@ -16,6 +18,7 @@ interface ShipmentDetailProps {
 
 export function ShipmentDetail({ shipment }: ShipmentDetailProps) {
   const { advance, isPending } = useAdvanceShipmentStatus();
+  const [editOpen, setEditOpen] = useState(false);
 
   const nextStatus = getNextShipmentStatus(shipment.modality, shipment.status);
 
@@ -28,6 +31,12 @@ export function ShipmentDetail({ shipment }: ShipmentDetailProps) {
           <span className="text-sm text-gray-500">{MODALITY_LABELS[shipment.modality] ?? shipment.modality}</span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setEditOpen(true)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Editar
+          </button>
           {shipment.modality === "air" && shipment.awb_number && (
             <Link
               href={`/api/print/mawb/${shipment.id}`}
@@ -156,6 +165,9 @@ export function ShipmentDetail({ shipment }: ShipmentDetailProps) {
           <ContainerPanel shipmentId={shipment.id} containers={shipment.shipment_containers ?? []} />
         </div>
       )}
+
+      {/* Edit modal */}
+      <ShipmentEditModal open={editOpen} onClose={() => setEditOpen(false)} shipment={shipment} />
     </div>
   );
 }

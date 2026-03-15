@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
+import { ShipmentEditModal } from "@/components/shipments/shipment-edit-modal";
 import { InfoField } from "@/components/ui/info-field";
 import { ShipmentStatusBadge } from "@/components/shipments/shipment-status-badge";
 import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
@@ -19,6 +21,7 @@ interface ShipmentDetailSheetProps {
 export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailSheetProps) {
   const { locale } = useParams<{ locale: string }>();
   const { advance, isPending } = useAdvanceShipmentStatus();
+  const [editOpen, setEditOpen] = useState(false);
 
   const nextStatus = shipment ? getNextShipmentStatus(shipment.modality, shipment.status) : undefined;
 
@@ -39,6 +42,12 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEditOpen(true)}
+                  className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Editar
+                </button>
                 {shipment.modality === "air" && shipment.awb_number && (
                   <Link
                     href={`/api/print/mawb/${shipment.id}`}
@@ -199,6 +208,11 @@ export function ShipmentDetailSheet({ open, onClose, shipment }: ShipmentDetailS
           </div>
         )}
       </SheetBody>
+
+      {/* Edit modal */}
+      {shipment && (
+        <ShipmentEditModal open={editOpen} onClose={() => setEditOpen(false)} shipment={shipment} />
+      )}
     </Sheet>
   );
 }

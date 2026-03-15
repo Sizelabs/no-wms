@@ -28,11 +28,17 @@ export interface ShipmentDetail {
   shipment_number: string;
   modality: string;
   status: string;
+  warehouse_id: string;
+  carrier_id: string | null;
+  destination_id: string | null;
+  destination_agent_id: string | null;
   carriers: { name: string; code: string } | null;
   destinations: { city: string; country_code: string } | null;
   agencies: { name: string; code: string } | null;
   shipper_name: string | null;
+  shipper_address: string | null;
   consignee_name: string | null;
+  consignee_address: string | null;
   total_pieces: number | null;
   total_weight_lb: number | null;
   notes: string | null;

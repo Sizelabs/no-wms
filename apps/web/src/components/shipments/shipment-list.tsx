@@ -90,9 +90,14 @@ export function ShipmentList({ data }: ShipmentListProps) {
     }
     // Then fetch full detail with relations
     const nonce = ++fetchNonce.current;
-    const { data: full } = await getShipment(id);
-    if (fetchNonce.current !== nonce) return;
-    setSheetData(full as ShipmentDetailData | null);
+    try {
+      const { data: full } = await getShipment(id);
+      if (fetchNonce.current !== nonce) return;
+      setSheetData(full as ShipmentDetailData | null);
+    } catch {
+      // Server action can fail when navigating rapidly between shipments;
+      // the stale nonce check above ensures only the latest request wins.
+    }
   }, [data]);
 
   const closeSheet = useCallback(() => {
